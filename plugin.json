@@ -1,0 +1,19 @@
+{ 
+    "slug": "Animatek", 
+    "name": "Animatek", 
+    "version": "2.6.4", 
+    "license": "GPL-3.0-or-later", 
+    "brand": "Animatek", 
+    "author": "Javier Melgar", 
+    "manualUrl": "https://animatek.net/ultimate-ztep-zequencer/", 
+    "authorEmail": "animatek909@gmail.com", 
+    "pluginUrl": "https://animatek.net", 
+     "modules": [ 
+        { "slug": "UZZ", 
+        "name": "UZZ", 
+        "description": "Step sequencer", 
+        "tags": ["Sequencer"] 
+        } 
+        ] 
+    
+    }

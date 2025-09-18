@@ -514,10 +514,9 @@ struct UZZ : Module {
             // ¿Multiplicación fraccionaria?
             bool isFracMultiplier = (ratio > 1.f) && (std::fabs(ratio - std::round(ratio)) > 1e-4f);
 
-            // Alineación de fase:
-            // - Divisiones (ratio <= 1) y multiplicaciones ENTERAS -> lock a borde
-            // - Multiplicaciones fraccionarias -> NO reiniciar fase
-            if (ratio <= 1.f || !isFracMultiplier) {
+            // FIX: Solo realinear fase si ratio >= 1 y NO fraccionario.
+            // Para divisiones (ratio < 1), NO resetear virtTimer: acumulamos a través de múltiples pulsos.
+            if (ratio >= 1.f && !isFracMultiplier) {
                 virtTimer = 0.f;
             }
 
@@ -670,12 +669,12 @@ struct UZZ : Module {
             if (!muteGlobal && mode == 0) {
                 int   gateMode = (int) std::round(params[GATE_MODE_PARAM].getValue());
                 float gLen     = gateLen;
+
                 if (gateMode == 0) {
-                    // ⟶ CLAMP por periodo REAL del tick (virtPeriod), no por lastPeriod
-                    gLen = clamp(params[DUR_0 + step].getValue(), 0.001f, 4.0f);
-                    float tickPeriod = (virtPeriod > 1e-6f) ? virtPeriod : lastPeriod;
-                    if (tickPeriod > 1e-6f) gLen = std::min(gLen, tickPeriod * 0.95f);
+                    // FIX: permitir notas largas (no recortar contra virtPeriod/lastPeriod).
+                    gLen = clamp(params[DUR_0 + step].getValue(), 0.001f, 10.0f);
                 }
+
                 if (gateMode == 1) { gatePulse.trigger(trigLen); stepGateTrig[k].trigger(trigLen); }
                 else               { gatePulse.trigger(gLen);    stepGateTrig[k].trigger(gLen);    }
             } else {
@@ -849,26 +848,27 @@ struct UZZWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(Vec(trigL, UI::Y_C2), module, UZZ::RND_M2_TRIG_INPUT));
         addParam(createParamCentered<RndM2Button>(Vec(randX, UI::Y_C2), module, UZZ::RND_M2_PARAM));
 
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(232.f, 357.f), module, UZZ::START_PARAM));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(232.f, 328.f), module, UZZ::STEPS_PARAM));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(232.f, 300.f), module, UZZ::RATIO_IDX_PARAM));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(229.f, 357.f), module, UZZ::START_PARAM));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(229.f, 328.f), module, UZZ::STEPS_PARAM));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(229.f, 300.f), module, UZZ::RATIO_IDX_PARAM));
 
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(382.f, 300.f), module, UZZ::DIR_MODE_PARAM));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(382.f, 328.f), module, UZZ::SWING_PARAM));
-        addParam(createParamCentered<Trimpot>(Vec(568.f, 300.f), module, UZZ::SLEW_PARAM));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(332.f, 300.f), module, UZZ::DIR_MODE_PARAM));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(332.f, 328.f), module, UZZ::SWING_PARAM));
+        
 
         addInput(createInputCentered<PJ301MPort>(Vec(130.f, 300.f), module, UZZ::CLK_INPUT));
         addInput(createInputCentered<PJ301MPort>(Vec(130.f, 328.f), module, UZZ::RESET_INPUT));
         addInput(createInputCentered<PJ301MPort>(Vec(130.f, 357.f), module, UZZ::XPOSE_INPUT));
 
-        addOutput(createOutputCentered<PJ301MPort>(Vec(700.f, 300.f), module, UZZ::M1_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(Vec(700.f, 328.f), module, UZZ::M2_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(Vec(700.f, 357.f), module, UZZ::EOC_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(Vec(690.f, 300.f), module, UZZ::M1_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(Vec(690.f, 328.f), module, UZZ::M2_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(Vec(690.f, 357.f), module, UZZ::EOC_OUTPUT));
 
-        addOutput(createOutputCentered<PJ301MPort>(Vec(598.f, 300.f), module, UZZ::PITCH_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(Vec(598.f, 328.f), module, UZZ::GATE_OUTPUT));
-        addParam(createParamCentered<CKSS>(Vec(568.f, 328.f), module, UZZ::GATE_MODE_PARAM));
-        addOutput(createOutputCentered<PJ301MPort>(Vec(598.f, 357.f), module, UZZ::STEP_GATES_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(Vec(588.f, 300.f), module, UZZ::PITCH_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(Vec(588.f, 328.f), module, UZZ::GATE_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(Vec(588.f, 357.f), module, UZZ::STEP_GATES_OUTPUT));//Poly
+        addParam(createParamCentered<CKSS>(Vec(539.f, 328.f), module, UZZ::GATE_MODE_PARAM));//Gate / Trigger
+        addParam(createParamCentered<Trimpot>(Vec(539.f, 300.f), module, UZZ::SLEW_PARAM));
     }
 
     void appendContextMenu(ui::Menu* menu) override {

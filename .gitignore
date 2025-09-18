@@ -1,12 +1,31 @@
-# Ignore all dotfiles except git dotfiles
-.*
-!.git*
+# VCV Rack plugin
+/build/
+/dist/
+/dep/
+/.cache/
+/bin/
+/obj/
 
-# Binaries and build targets
-*.a
+# Binarios y objetos
+*.dll
 *.so
 *.dylib
-*.dll
-/build
-/dep
-/dist
+*.o
+*.obj
+*.a
+*.lib
+*.pdb
+*.dSYM/
+
+# Paquetes y zips
+*.zip
+*.7z
+*.tar
+*.gz
+
+# IDEs y sistema
+.vscode/
+.idea/
+*.iml
+.DS_Store
+Thumbs.db

@@ -1,18 +1,19 @@
 { 
     "slug": "Animatek", 
     "name": "Animatek", 
-    "version": "2.6.4", 
+    "version": "2.0.0", 
     "license": "GPL-3.0-or-later", 
     "brand": "Animatek", 
     "author": "Javier Melgar", 
     "manualUrl": "https://animatek.net/ultimate-ztep-zequencer/", 
+    "sourceUrl": "https://github.com/animatek/VCV-RACK-DEVICES",
     "authorEmail": "animatek909@gmail.com", 
     "pluginUrl": "https://animatek.net", 
      "modules": [ 
         { "slug": "UZZ", 
         "name": "UZZ", 
         "description": "Step sequencer", 
-        "tags": ["Sequencer"] 
+        "tags": ["Sequencer", "Clock modulator"]
         } 
         ] 
     

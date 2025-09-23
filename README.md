@@ -19,4 +19,19 @@ Este repositorio es un **intento de port** del UZZ a **VCV Rack 2.x**, mantenien
 
  Nota: durante el port pueden cambiar nombres y comportamientos hasta alcanzar paridad con la versión Max for Live.
 
+ # Changelog
+
+## [2.0.5] - 2025-09-23
+### Fixed
+- Clock multipliers now trigger the first sub-tick correctly (×2, ×3, ×4… no longer skip).
+- Gate/Trigger handling improved for more consistent behavior.
+- Removed unused variables and cleaned up compilation warnings.
+
+### Changed
+- Limited maximum multiplier to ×48 (removed ×64 and ×96 which caused continuous gates).
+- Old patches saved with ×64/×96 automatically clamp to ×48 for compatibility.
+
+### Notes
+- Tested with VCV Rack 2.5 SDK.
+
 

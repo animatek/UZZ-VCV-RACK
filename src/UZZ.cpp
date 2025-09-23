@@ -45,19 +45,19 @@ static inline int wrap16(int x) { return x & 15; }
 // CLOCK RATIO
 // ============================================================================
 static constexpr float RATIO_TABLE[] = {
-    1.f/96.f, 1.f/64.f, 1.f/48.f, 1.f/32.f, 1.f/24.f, 1.f/16.f, 1.f/12.f, 1.f/10.f,
+    1.f/48.f, 1.f/32.f, 1.f/24.f, 1.f/16.f, 1.f/12.f, 1.f/10.f,
     1.f/8.f,  1.f/6.f,  1.f/5.f,  1.f/4.f,  1.f/3.f,  1.f/2.5f, 1.f/2.f,  1.f/1.5f,
     1.f,
-    1.5f, 2.f, 2.5f, 3.f, 4.f, 5.f, 6.f, 8.f, 10.f, 12.f, 16.f, 24.f, 32.f, 48.f, 64.f, 96.f
+    1.5f, 2.f, 2.5f, 3.f, 4.f, 5.f, 6.f, 8.f, 10.f, 12.f, 16.f, 24.f, 32.f, 48.f
 };
 static constexpr int   NUM_RATIOS = (int)(sizeof(RATIO_TABLE)/sizeof(RATIO_TABLE[0]));
 static constexpr int   RATIO_DEFAULT_INDEX = 16;
 
 static constexpr const char* RATIO_LABELS[NUM_RATIOS] = {
-    "÷96","÷64","÷48","÷32","÷24","÷16","÷12","÷10",
+    "÷48","÷32","÷24","÷16","÷12","÷10",
     "÷8","÷6","÷5","÷4","÷3","÷2.5","÷2","÷1.5",
     "×1",
-    "×1.5","×2","×2.5","×3","×4","×5","×6","×8","×10","×12","×16","×24","×32","×48","×64","×96"
+    "×1.5","×2","×2.5","×3","×4","×5","×6","×8","×10","×12","×16","×24","×32","×48"
 };
 
 struct RatioQuantity : ParamQuantity {
@@ -502,32 +502,31 @@ struct UZZ : Module {
         int   ratioIdx = clamp((int) std::round(params[RATIO_IDX_PARAM].getValue()), 0, NUM_RATIOS - 1);
         float ratio    = RATIO_TABLE[ratioIdx];
 
-        bool extPulse = clkTrig.process(inputs[CLK_INPUT].getVoltage());
-        if (extPulse) {
-            lastPeriod    = timeSinceClk;
-            timeSinceClk  = 0.f;
-            sinceLastEdge = 0.f;
+bool extPulse = clkTrig.process(inputs[CLK_INPUT].getVoltage());
+if (extPulse) {
+    lastPeriod    = timeSinceClk;
+    timeSinceClk  = 0.f;
+    sinceLastEdge = 0.f;
 
-            if (lastPeriod > 1e-4f)
-                virtPeriod = lastPeriod / std::max(ratio, 1e-6f);
+    if (lastPeriod > 1e-4f)
+        virtPeriod = lastPeriod / std::max(ratio, 1e-6f);
 
-            // ¿Multiplicación fraccionaria?
-            bool isFracMultiplier = (ratio > 1.f) && (std::fabs(ratio - std::round(ratio)) > 1e-4f);
+    // ¿multiplicador entero? (×2, ×3, ×4, …)
+    bool isIntMultiplier = (ratio >= 1.f) && (std::fabs(ratio - std::round(ratio)) < 1e-4f);
 
-            // FIX: Solo realinear fase si ratio >= 1 y NO fraccionario.
-            // Para divisiones (ratio < 1), NO resetear virtTimer: acumulamos a través de múltiples pulsos.
-            if (ratio >= 1.f && !isFracMultiplier) {
-                virtTimer = 0.f;
-            }
-
-            // Solo en ×1 encolamos el tick del propio borde externo
-            if (std::fabs(ratio - 1.f) < 1e-4f) {
-                queuedBaseTicks++;
-            }
-
-            clockWasConnected = true;
-            havePhase = true;
+    // Para multiplicadores realineamos fase; para divisores no tocamos virtTimer
+    if (ratio >= 1.f) {
+        virtTimer = 0.f;
+        // En ×N enteros, encolar tick inmediato en el mismo flanco externo
+        if (isIntMultiplier) {
+            queuedBaseTicks++;
         }
+    }
+
+    clockWasConnected = true;
+    havePhase = true;
+}
+
 
         // Timeout de pérdida de fase
         float timeout = 0.5f;
@@ -666,20 +665,49 @@ struct UZZ : Module {
             int mode = (int) std::round(params[STEP_MODE_0 + step].getValue());
             int k    = (step - start + 16) & 15;
 
-            if (!muteGlobal && mode == 0) {
-                int   gateMode = (int) std::round(params[GATE_MODE_PARAM].getValue());
-                float gLen     = gateLen;
+         if (!muteGlobal && mode == 0) {
+    int   gateMode = (int) std::round(params[GATE_MODE_PARAM].getValue());
+    float userDur  = clamp(params[DUR_0 + step].getValue(), 0.001f, 10.0f);
 
-                if (gateMode == 0) {
-                    // FIX: permitir notas largas (no recortar contra virtPeriod/lastPeriod).
-                    gLen = clamp(params[DUR_0 + step].getValue(), 0.001f, 10.0f);
-                }
+    // Duración efectiva base
+    float gLen = (gateMode == 0) ? userDur : trigLen;
 
-                if (gateMode == 1) { gatePulse.trigger(trigLen); stepGateTrig[k].trigger(trigLen); }
-                else               { gatePulse.trigger(gLen);    stepGateTrig[k].trigger(gLen);    }
-            } else {
-                gatePulse.reset();
-            }
+    // --- ANTI-CONTINUO EN MULTIPLICACIÓN ---
+    // Exige un tiempo "off" mínimo entre sub-pulsos.
+    if (gateMode == 0 && ratio > 1.f && virtPeriod > 0.f) {
+        // 1) no ocupar más del 90% del periodo
+        float maxDuty = virtPeriod * 0.90f;
+        if (gLen > maxDuty) gLen = maxDuty;
+
+        // 2) deja al menos 1 ms (o 2 samples) de LOW garantizado
+        float minOff = std::max(0.001f, 2.f * args.sampleTime);   // 1 ms o 2 muestras
+        float maxLen = virtPeriod - minOff;
+        if (gLen > maxLen) gLen = std::max(trigLen, maxLen);      // nunca negativo
+    }
+
+    // Disparo (idéntico para salida principal y poly por paso)
+    gatePulse.trigger(gLen);
+    stepGateTrig[k].trigger(gLen);
+}
+else {
+    gatePulse.reset();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         }
 
         // Gate principal
@@ -765,10 +793,11 @@ struct RndM2Button : TL1105 {
 struct StepModeButton : app::SvgSwitch {
     StepModeButton() {
         momentary = false;
+        shadow->visible = false;
         addFrame(APP->window->loadSvg(asset::plugin(pluginInstance, "res/step_play.svg")));
         addFrame(APP->window->loadSvg(asset::plugin(pluginInstance, "res/step_mute.svg")));
-        addFrame(APP->window->loadSvg(asset::plugin(pluginInstance, "res/step_skip.svg")));
-    }
+        addFrame(APP->window->loadSvg(asset::plugin(pluginInstance, "res/step_skip.svg"))); 
+        }
 };
 
 struct NoteLabel : TransparentWidget {
@@ -811,7 +840,7 @@ struct UZZWidget : ModuleWidget {
             addParam(createParamCentered<StepModeButton>(Vec(Xc(i) + 10, UI::Y_STEP_MODE), module, UZZ::STEP_MODE_0 + i));
         for (int i = 0; i < cols; ++i) {
             auto* lbl = new NoteLabel(module, i);
-            lbl->box.pos = Vec(Xc(i) - 10 - lbl->box.size.x * .5f, UI::Y_NOTE - 6.f);
+            lbl->box.pos = Vec(Xc(i) - lbl->box.size.x * .2f - 18, UI::Y_NOTE +2 );
             addChild(lbl);
         }
 

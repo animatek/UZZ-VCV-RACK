@@ -21,6 +21,19 @@ Este repositorio es un **intento de port** del UZZ a **VCV Rack 2.x**, mantenien
 
  # Changelog
 
+
+ ## 2.1.0 - 2025-10-03
+- Added per-row shift controls for Pitch, Octave, Duration, Mod1, and Mod2 including wrap-free behaviour and step-size tweaks (Mod rows now move 10% per click).
+- Introduced contextual menu refinements: dedicated submenus for Direction mode, Range Mod 1, Range Mod 2, and a toggle to emit EOC on reset.
+- Implemented optional EOC trigger on external reset with persistence.
+- Refined reset handling so the active step still fires before jumping back to the start window.
+- Added custom input/output port widgets with 10% scale reduction and support for optional recoloured SVGs.
+- Tuned slew response to a logarithmic curve as the fixed behaviour.
+- Cleaned up random button lights logic to retain the original smoothing behaviour.
+- Documented project rules and workflow expectations in `AGENTS.md`.
+- Fixed malformed `plugin.json` manifest (missing closing quote/comma on version).
+
+
 ## [2.0.5] - 2025-09-23
 ### Fixed
 - Clock multipliers now trigger the first sub-tick correctly (×2, ×3, ×4… no longer skip).

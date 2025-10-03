@@ -6,6 +6,7 @@ using namespace rack;
 using namespace rack::componentlibrary;
 
 // ============================================================================
+
 // LAYOUT (toca solo esto para mover la GUI)
 // ============================================================================
 namespace UI {
@@ -24,24 +25,53 @@ namespace UI {
     static constexpr float Y_C2            = 264.f;
 
     static constexpr float RAND_X          = LEFT - 10.f;
+    static constexpr float SHIFT_X         = RAND_X - 18.f;
+    static constexpr float SHIFT_X_OFFSET  = 15.f;
+    static constexpr float SHIFT_Y_DELTA   = 14.f;
+    static constexpr float SHIFT_Y_FINE    = -1.f;
+    static constexpr float ROW_SHIFT_SCALE = 0.85f;
+    static constexpr float RAND_BTN_SCALE  = 0.90f;
+    static constexpr float RAND_BTN_X_OFFSET = -3.f;
+    static constexpr float PORT_SCALE      = 0.90f;
     static constexpr float TRIG_RIGHT_PAD  = 14.f;
     static constexpr float BOTTOM_MARGIN   = 28.f;
 
     static constexpr float TRIG_LEFT_GAP = 23.f;
     inline float trigLeftX() { return RAND_X - TRIG_LEFT_GAP; }
-
+    inline float rowShiftX() { return SHIFT_X + SHIFT_X_OFFSET; }
+    inline float rowShiftYUp(float centerY) { return centerY - SHIFT_Y_DELTA + SHIFT_Y_FINE; }
+    inline float rowShiftYDown(float centerY) { return centerY + SHIFT_Y_DELTA - SHIFT_Y_FINE; }
+    inline float randButtonX() { return RAND_X + RAND_BTN_X_OFFSET; }
     inline float usable(float boxW) { return boxW - LEFT - RIGHT; }
     inline float colW(float boxW)   { return usable(boxW) / float(COLS); }
     inline float colCenter(float boxW, int i) { return LEFT + (i + 0.5f) * colW(boxW); }
     inline float trigX(float boxW)  { return colCenter(boxW, 15) + (colW(boxW) * 0.5f) + TRIG_RIGHT_PAD; }
 }
 
+namespace UIAssets {
+    static constexpr const char* INPUT_PORT_SVG  = "res/port_input.svg";
+    static constexpr const char* OUTPUT_PORT_SVG = "res/port_output.svg";
+}
+
 // ============================================================================
+
+std::shared_ptr<window::Svg> loadPluginSvgIfExists(const char* relPath) {
+    if (!relPath)
+        return nullptr;
+    std::string path = asset::plugin(pluginInstance, relPath);
+    if (system::exists(path))
+        return APP->window->loadSvg(path);
+    return nullptr;
+}
+
+// ============================================================================
+
 // Helpers
 // ============================================================================
 static inline int wrap16(int x) { return x & 15; }
 
 // ============================================================================
+
 // CLOCK RATIO
 // ============================================================================
 static constexpr float RATIO_TABLE[] = {
@@ -69,6 +99,7 @@ struct RatioQuantity : ParamQuantity {
 };
 
 // ============================================================================
+
 // Dirección
 // ============================================================================
 enum DirectionMode { DIR_FWD=0, DIR_REV=1, DIR_PINGPONG=2, DIR_RANDOM=3, DIR_DRUNK=4 };
@@ -83,6 +114,7 @@ struct DirModeQuantity : ParamQuantity {
 };
 
 // ============================================================================
+
 // Rangos de M1/M2 (global, usado por módulo y menú contextual)
 // ============================================================================
 namespace UZZRanges {
@@ -114,6 +146,7 @@ namespace UZZRanges {
 } // namespace UZZRanges
 
 // ============================================================================
+
 // Módulo
 // ============================================================================
 struct UZZ : Module {
@@ -146,6 +179,12 @@ struct UZZ : Module {
 
         RND_PITCH_PARAM, RND_OCTAVE_PARAM, RND_STEP_PARAM,
         RND_DUR_PARAM,  RND_M1_PARAM,      RND_M2_PARAM,
+
+        PITCH_SHIFT_DOWN_PARAM, PITCH_SHIFT_UP_PARAM,
+        OCT_SHIFT_DOWN_PARAM,   OCT_SHIFT_UP_PARAM,
+        DUR_SHIFT_DOWN_PARAM,   DUR_SHIFT_UP_PARAM,
+        M1_SHIFT_DOWN_PARAM,    M1_SHIFT_UP_PARAM,
+        M2_SHIFT_DOWN_PARAM,    M2_SHIFT_UP_PARAM,
 
         NUM_PARAMS
     };
@@ -184,12 +223,24 @@ struct UZZ : Module {
     dsp::BooleanTrigger rndDurTrig, rndM1Trig, rndM2Trig;
     dsp::SchmittTrigger rndDurCvTrig, rndM1CvTrig, rndM2CvTrig;
 
+    dsp::BooleanTrigger shiftPitchUpTrig, shiftPitchDownTrig;
+    dsp::BooleanTrigger shiftOctUpTrig,   shiftOctDownTrig;
+    dsp::BooleanTrigger shiftDurUpTrig,   shiftDurDownTrig;
+    dsp::BooleanTrigger shiftM1UpTrig,    shiftM1DownTrig;
+    dsp::BooleanTrigger shiftM2UpTrig,    shiftM2DownTrig;
+
     bool skipNextPitchRandom = false;
     bool skipNextOctRandom   = false;
     bool skipNextStepRandom  = false;
     bool skipNextDurRandom   = false;
     bool skipNextM1Random    = false;
     bool skipNextM2Random    = false;
+
+    // Primer tick tras RESET debe tocar el paso actual (sin avanzar)
+    bool playCurrentOnNextTick = false;
+    bool resetPending = false;
+    int  resetTargetStep = 0;
+    bool eocOnReset = false;
 
     float virtTimer  = 0.f;
     float virtPeriod = 0.125f;
@@ -210,7 +261,6 @@ struct UZZ : Module {
 
     float pitchOut = 0.f;
     bool  pitchInit = false;
-
     // Anti-rebote para ticks (segundos desde el último tick REAL emitido)
     float sinceLastTick = 1e9f;
 
@@ -260,6 +310,17 @@ struct UZZ : Module {
         configParam(RND_DUR_PARAM,    0.f, 1.f, 0.f, "Randomize duration");
         configParam(RND_M1_PARAM,     0.f, 1.f, 0.f, "Randomize mod1");
         configParam(RND_M2_PARAM,     0.f, 1.f, 0.f, "Randomize mod2");
+
+        configButton(PITCH_SHIFT_DOWN_PARAM, "Shift pitch row down");
+        configButton(PITCH_SHIFT_UP_PARAM,   "Shift pitch row up");
+        configButton(OCT_SHIFT_DOWN_PARAM,   "Shift octave row down");
+        configButton(OCT_SHIFT_UP_PARAM,     "Shift octave row up");
+        configButton(DUR_SHIFT_DOWN_PARAM,   "Shift duration row down");
+        configButton(DUR_SHIFT_UP_PARAM,     "Shift duration row up");
+        configButton(M1_SHIFT_DOWN_PARAM,    "Shift mod1 row down");
+        configButton(M1_SHIFT_UP_PARAM,      "Shift mod1 row up");
+        configButton(M2_SHIFT_DOWN_PARAM,    "Shift mod2 row down");
+        configButton(M2_SHIFT_UP_PARAM,      "Shift mod2 row up");
 
         // Entradas/Salidas
         configInput (CLK_INPUT,   "Clock");
@@ -313,6 +374,10 @@ struct UZZ : Module {
         pitchOut  = 0.f;
 
         sinceLastTick = 1e9f;
+
+        playCurrentOnNextTick = false; // se armará en un RESET externo
+        resetPending = false;
+        resetTargetStep = start;
     }
 
     // --- Random helpers ---
@@ -332,17 +397,94 @@ struct UZZ : Module {
     void resetM1Row()   { for (int i = 0; i < 16; ++i) params[M1_0  + i].setValue(0.f); }
     void resetM2Row()   { for (int i = 0; i < 16; ++i) params[M2_0  + i].setValue(0.f); }
 
+    static float quantize_to_step(float value, float min_val, float step) {
+        if (step <= 0.f)
+            return value;
+        float steps_from_min = std::round((value - min_val) / step);
+        return min_val + steps_from_min * step;
+    }
+
+    void get_active_window(int& start_idx, int& count) {
+        count = clamp((int) std::round(params[STEPS_PARAM].getValue()), 1, 16);
+        start_idx = clamp((int) std::round(params[START_PARAM].getValue()) - 1, 0, 15);
+    }
+
+    void shift_row_int(int base_param, int dir, int start_idx, int count, int min_val, int max_val) {
+        if (count <= 0)
+            return;
+        int step_dir = (dir >= 0) ? 1 : -1;
+        for (int i = 0; i < count; ++i) {
+            int idx = wrap16(start_idx + i);
+            int param_id = base_param + idx;
+            int current = (int) std::round(params[param_id].getValue());
+            int next = current + step_dir;
+            next = clamp(next, min_val, max_val);
+            params[param_id].setValue((float) next);
+        }
+    }
+
+    void shift_row_float(int base_param, int dir, int start_idx, int count, float step_amount,
+                         float min_val, float max_val, bool quantize) {
+        if (count <= 0)
+            return;
+        int step_dir = (dir >= 0) ? 1 : -1;
+        for (int i = 0; i < count; ++i) {
+            int idx = wrap16(start_idx + i);
+            int param_id = base_param + idx;
+            float current = params[param_id].getValue();
+            if (quantize)
+                current = quantize_to_step(current, min_val, step_amount);
+            float next = current + (float) step_dir * step_amount;
+            if (quantize)
+                next = quantize_to_step(next, min_val, step_amount);
+            next = clamp(next, min_val, max_val);
+            params[param_id].setValue(next);
+        }
+    }
+
+    void shift_pitch_row(int dir) {
+        int start_idx = 0, count = 0;
+        get_active_window(start_idx, count);
+        shift_row_int(PITCH_0, dir, start_idx, count, 0, 11);
+    }
+
+    void shift_oct_row(int dir) {
+        int start_idx = 0, count = 0;
+        get_active_window(start_idx, count);
+        shift_row_int(OCT_0, dir, start_idx, count, -2, 2);
+    }
+
+    void shift_dur_row(int dir) {
+        int start_idx = 0, count = 0;
+        get_active_window(start_idx, count);
+        shift_row_float(DUR_0, dir, start_idx, count, 0.1f, 0.005f, 2.0f, true);
+    }
+
+    void shift_m1_row(int dir) {
+        int start_idx = 0, count = 0;
+        get_active_window(start_idx, count);
+        shift_row_float(M1_0, dir, start_idx, count, 1.f, 0.f, 10.f, true);
+    }
+
+    void shift_m2_row(int dir) {
+        int start_idx = 0, count = 0;
+        get_active_window(start_idx, count);
+        shift_row_float(M2_0, dir, start_idx, count, 1.f, 0.f, 10.f, true);
+    }
+
     // Persistencia de rangos
     json_t* dataToJson() override {
         json_t* root = Module::dataToJson();
         json_object_set_new(root, "m1Range", json_integer(m1Range));
         json_object_set_new(root, "m2Range", json_integer(m2Range));
+        json_object_set_new(root, "eocOnReset", json_boolean(eocOnReset));
         return root;
     }
     void dataFromJson(json_t* root) override {
         Module::dataFromJson(root);
         if (auto* j = json_object_get(root, "m1Range")) m1Range = clamp((int)json_integer_value(j), 0, UZZRanges::MR_COUNT-1);
         if (auto* j = json_object_get(root, "m2Range")) m2Range = clamp((int)json_integer_value(j), 0, UZZRanges::MR_COUNT-1);
+        if (auto* j = json_object_get(root, "eocOnReset")) eocOnReset = json_is_true(j);
     }
 
     // Navegación entre pasos
@@ -414,6 +556,17 @@ struct UZZ : Module {
         lights[RND_M1_LIGHT].setSmoothBrightness(params[RND_M1_PARAM].getValue(),       args.sampleTime);
         lights[RND_M2_LIGHT].setSmoothBrightness(params[RND_M2_PARAM].getValue(),       args.sampleTime);
 
+        if (shiftPitchUpTrig.process(params[PITCH_SHIFT_UP_PARAM].getValue() > 0.5f)) shift_pitch_row(+1);
+        if (shiftPitchDownTrig.process(params[PITCH_SHIFT_DOWN_PARAM].getValue() > 0.5f)) shift_pitch_row(-1);
+        if (shiftOctUpTrig.process(params[OCT_SHIFT_UP_PARAM].getValue() > 0.5f)) shift_oct_row(+1);
+        if (shiftOctDownTrig.process(params[OCT_SHIFT_DOWN_PARAM].getValue() > 0.5f)) shift_oct_row(-1);
+        if (shiftDurUpTrig.process(params[DUR_SHIFT_UP_PARAM].getValue() > 0.5f)) shift_dur_row(+1);
+        if (shiftDurDownTrig.process(params[DUR_SHIFT_DOWN_PARAM].getValue() > 0.5f)) shift_dur_row(-1);
+        if (shiftM1UpTrig.process(params[M1_SHIFT_UP_PARAM].getValue() > 0.5f)) shift_m1_row(+1);
+        if (shiftM1DownTrig.process(params[M1_SHIFT_DOWN_PARAM].getValue() > 0.5f)) shift_m1_row(-1);
+        if (shiftM2UpTrig.process(params[M2_SHIFT_UP_PARAM].getValue() > 0.5f)) shift_m2_row(+1);
+        if (shiftM2DownTrig.process(params[M2_SHIFT_DOWN_PARAM].getValue() > 0.5f)) shift_m2_row(-1);
+
         // Random por TRIG (CV)
         if (rndPitchCvTrig.process(inputs[RND_PITCH_TRIG_INPUT].getVoltage())) randomizePitch();
         if (rndOctCvTrig  .process(inputs[RND_OCT_TRIG_INPUT].getVoltage()))   randomizeOctaves();
@@ -431,11 +584,16 @@ struct UZZ : Module {
 
         // RESET — limpieza completa pero sin “romper” el enganche del reloj
         if (rstTrig.process(inputs[RESET_INPUT].getVoltage())) {
-            step = start;
+            resetPending = true;
+            resetTargetStep = start;
+            playCurrentOnNextTick = true;
 
             gatePulse.reset();
             eocPulse.reset();
             for (int i = 0; i < 16; ++i) stepGateTrig[i].reset();
+
+            if (eocOnReset)
+                eocPulse.trigger(trigLen);
 
             pingDir = 0;
             drunkDir = 1;
@@ -502,31 +660,30 @@ struct UZZ : Module {
         int   ratioIdx = clamp((int) std::round(params[RATIO_IDX_PARAM].getValue()), 0, NUM_RATIOS - 1);
         float ratio    = RATIO_TABLE[ratioIdx];
 
-bool extPulse = clkTrig.process(inputs[CLK_INPUT].getVoltage());
-if (extPulse) {
-    lastPeriod    = timeSinceClk;
-    timeSinceClk  = 0.f;
-    sinceLastEdge = 0.f;
+        bool extPulse = clkTrig.process(inputs[CLK_INPUT].getVoltage());
+        if (extPulse) {
+            lastPeriod    = timeSinceClk;
+            timeSinceClk  = 0.f;
+            sinceLastEdge = 0.f;
 
-    if (lastPeriod > 1e-4f)
-        virtPeriod = lastPeriod / std::max(ratio, 1e-6f);
+            if (lastPeriod > 1e-4f)
+                virtPeriod = lastPeriod / std::max(ratio, 1e-6f);
 
-    // ¿multiplicador entero? (×2, ×3, ×4, …)
-    bool isIntMultiplier = (ratio >= 1.f) && (std::fabs(ratio - std::round(ratio)) < 1e-4f);
+            // ¿multiplicador entero? (×2, ×3, ×4, …)
+            bool isIntMultiplier = (ratio >= 1.f) && (std::fabs(ratio - std::round(ratio)) < 1e-4f);
 
-    // Para multiplicadores realineamos fase; para divisores no tocamos virtTimer
-    if (ratio >= 1.f) {
-        virtTimer = 0.f;
-        // En ×N enteros, encolar tick inmediato en el mismo flanco externo
-        if (isIntMultiplier) {
-            queuedBaseTicks++;
+            // Para multiplicadores realineamos fase; para divisores no tocamos virtTimer
+            if (ratio >= 1.f) {
+                virtTimer = 0.f;
+                // En ×N enteros, encolar tick inmediato en el mismo flanco externo
+                if (isIntMultiplier) {
+                    queuedBaseTicks++;
+                }
+            }
+
+            clockWasConnected = true;
+            havePhase = true;
         }
-    }
-
-    clockWasConnected = true;
-    havePhase = true;
-}
-
 
         // Timeout de pérdida de fase
         float timeout = 0.5f;
@@ -595,57 +752,65 @@ if (extPulse) {
             int nextStep = step;
             bool wrapped = false;
 
-            if (modeDir == DIR_FWD || modeDir == DIR_REV) {
-                int dir = (modeDir == DIR_FWD) ? 0 : 1;
-                nextStep = findNextPlayable(start, steps, dir, relBefore, allSkip);
-                int relAfter = (nextStep - start + 16) & 15;
-                wrapped = (dir == 0) ? (relAfter < relBefore) : (relAfter > relBefore);
-            }
-            else if (modeDir == DIR_PINGPONG) {
-                int dir = pingDir;
-                bool all1 = false;
-                int cand1 = findNextPlayable(start, steps, dir, relBefore, all1);
-                int relAfter1 = (cand1 - start + 16) & 15;
-                bool wouldWrap = (dir == 0) ? (relAfter1 < relBefore) : (relAfter1 > relBefore);
-                if (!all1 && !wouldWrap) {
-                    nextStep = cand1; wrapped = false;
-                } else {
-                    pingDir = 1 - pingDir;
-                    int dir2 = pingDir;
-                    bool all2 = false;
-                    int cand2 = findNextPlayable(start, steps, dir2, relBefore, all2);
-                    nextStep = cand2; wrapped = true;
+            if (!playCurrentOnNextTick) {
+                if (modeDir == DIR_FWD || modeDir == DIR_REV) {
+                    int dir = (modeDir == DIR_FWD) ? 0 : 1;
+                    nextStep = findNextPlayable(start, steps, dir, relBefore, allSkip);
+                    int relAfter = (nextStep - start + 16) & 15;
+                    wrapped = (dir == 0) ? (relAfter < relBefore) : (relAfter > relBefore);
                 }
-            }
-            else if (modeDir == DIR_RANDOM) {
-                std::vector<int> pool; pool.reserve(steps);
-                for (int k = 0; k < steps; ++k) {
-                    int sIdx = wrap16(start + k);
-                    int m = (int) std::round(params[STEP_MODE_0 + sIdx].getValue());
-                    if (m != 2) pool.push_back(sIdx);
+                else if (modeDir == DIR_PINGPONG) {
+                    int dir = pingDir;
+                    bool all1 = false;
+                    int cand1 = findNextPlayable(start, steps, dir, relBefore, all1);
+                    int relAfter1 = (cand1 - start + 16) & 15;
+                    bool wouldWrap = (dir == 0) ? (relAfter1 < relBefore) : (relAfter1 > relBefore);
+                    if (!all1 && !wouldWrap) {
+                        nextStep = cand1; wrapped = false;
+                    } else {
+                        pingDir = 1 - pingDir;
+                        int dir2 = pingDir;
+                        bool all2 = false;
+                        int cand2 = findNextPlayable(start, steps, dir2, relBefore, all2);
+                        nextStep = cand2; wrapped = true;
+                    }
                 }
-                if (!pool.empty()) {
-                    int idx = (int) std::floor(random::uniform() * pool.size());
-                    idx = clamp(idx, 0, (int)pool.size() - 1);
-                    nextStep = pool[idx];
-                } else {
-                    bool dummy = false;
-                    nextStep = findNextPlayable(start, steps, 0, relBefore, dummy);
+                else if (modeDir == DIR_RANDOM) {
+                    std::vector<int> pool; pool.reserve(steps);
+                    for (int k = 0; k < steps; ++k) {
+                        int sIdx = wrap16(start + k);
+                        int m = (int) std::round(params[STEP_MODE_0 + sIdx].getValue());
+                        if (m != 2) pool.push_back(sIdx);
+                    }
+                    if (!pool.empty()) {
+                        int idx = (int) std::floor(random::uniform() * pool.size());
+                        idx = clamp(idx, 0, (int)pool.size() - 1);
+                        nextStep = pool[idx];
+                    } else {
+                        bool dummy = false;
+                        nextStep = findNextPlayable(start, steps, 0, relBefore, dummy);
+                    }
+                    wrapped = false;
                 }
+                else { // DRUNK
+                    drunkDir = (random::uniform() < 0.5f) ? -1 : 1;
+                    bool allA = false;
+                    int candA = findNeighborPlayable(start, steps, relBefore, drunkDir, allA);
+                    if (!allA) nextStep = candA;
+                    else {
+                        bool allB = false;
+                        int candB = findNeighborPlayable(start, steps, relBefore, -drunkDir, allB);
+                        nextStep = candB;
+                    }
+                    int relAfter = (nextStep - start + 16) & 15;
+                    wrapped = (relBefore == 0 && relAfter == (steps - 1)) || (relBefore == (steps - 1) && relAfter == 0);
+                }
+            } else {
+                // Primer tick tras RESET: no avances; toca el paso actual
+                nextStep = step;
                 wrapped = false;
-            }
-            else { // DRUNK
-                drunkDir = (random::uniform() < 0.5f) ? -1 : 1;
-                bool allA = false;
-                int candA = findNeighborPlayable(start, steps, relBefore, drunkDir, allA);
-                if (!allA) nextStep = candA;
-                else {
-                    bool allB = false;
-                    int candB = findNeighborPlayable(start, steps, relBefore, -drunkDir, allB);
-                    nextStep = candB;
-                }
-                int relAfter = (nextStep - start + 16) & 15;
-                wrapped = (relBefore == 0 && relAfter == (steps - 1)) || (relBefore == (steps - 1) && relAfter == 0);
+                allSkip = ((int) std::round(params[STEP_MODE_0 + nextStep].getValue()) == 2);
+                playCurrentOnNextTick = false; // desarmar para ticks siguientes
             }
 
             step = nextStep;
@@ -665,49 +830,46 @@ if (extPulse) {
             int mode = (int) std::round(params[STEP_MODE_0 + step].getValue());
             int k    = (step - start + 16) & 15;
 
-         if (!muteGlobal && mode == 0) {
-    int   gateMode = (int) std::round(params[GATE_MODE_PARAM].getValue());
-    float userDur  = clamp(params[DUR_0 + step].getValue(), 0.001f, 10.0f);
+            bool resetFiresAfterGate = resetPending;
+            if (!muteGlobal && mode == 0) {
+                int   gateMode = (int) std::round(params[GATE_MODE_PARAM].getValue());
+                float userDur  = clamp(params[DUR_0 + step].getValue(), 0.001f, 10.0f);
 
-    // Duración efectiva base
-    float gLen = (gateMode == 0) ? userDur : trigLen;
+                // Duración efectiva base
+                float gLen = (gateMode == 0) ? userDur : trigLen;
 
-    // --- ANTI-CONTINUO EN MULTIPLICACIÓN ---
-    // Exige un tiempo "off" mínimo entre sub-pulsos.
-    if (gateMode == 0 && ratio > 1.f && virtPeriod > 0.f) {
-        // 1) no ocupar más del 90% del periodo
-        float maxDuty = virtPeriod * 0.90f;
-        if (gLen > maxDuty) gLen = maxDuty;
+                // --- ANTI-CONTINUO EN MULTIPLICACIÓN ---
+                // Exige un tiempo "off" mínimo entre sub-pulsos.
+                if (gateMode == 0 && ratio > 1.f && virtPeriod > 0.f) {
+                    // 1) no ocupar más del 90% del periodo
+                    float maxDuty = virtPeriod * 0.90f;
+                    if (gLen > maxDuty) gLen = maxDuty;
 
-        // 2) deja al menos 1 ms (o 2 samples) de LOW garantizado
-        float minOff = std::max(0.001f, 2.f * args.sampleTime);   // 1 ms o 2 muestras
-        float maxLen = virtPeriod - minOff;
-        if (gLen > maxLen) gLen = std::max(trigLen, maxLen);      // nunca negativo
-    }
+                    // 2) deja al menos 1 ms (o 2 samples) de LOW garantizado
+                    float minOff = std::max(0.001f, 2.f * args.sampleTime);   // 1 ms o 2 muestras
+                    float maxLen = virtPeriod - minOff;
+                    if (gLen > maxLen) gLen = std::max(trigLen, maxLen);      // nunca negativo
+                }
 
-    // Disparo (idéntico para salida principal y poly por paso)
-    gatePulse.trigger(gLen);
-    stepGateTrig[k].trigger(gLen);
-}
-else {
-    gatePulse.reset();
-}
+                // Disparo (idéntico para salida principal y poly por paso)
+                gatePulse.trigger(gLen);
+                stepGateTrig[k].trigger(gLen);
+            }
+            else {
+                gatePulse.reset();
+            }
 
+            if (resetFiresAfterGate) {
+                step = resetTargetStep;
+                playCurrentOnNextTick = true;
+                resetPending = false;
+            }
+        }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        if (!clockNow && resetPending) {
+            step = resetTargetStep;
+            playCurrentOnNextTick = true;
+            resetPending = false;
         }
 
         // Gate principal
@@ -730,7 +892,9 @@ else {
                 pitchOut = pitchV; pitchInit = true;
             } else {
                 float tau = std::max(1e-5f, slewSec);
-                float alpha = 1.f - std::exp(-args.sampleTime / tau);
+                float alpha;
+                float expAlpha = 1.f - std::exp(-args.sampleTime / tau);
+                alpha = std::sqrt(std::min(expAlpha, 1.f));
                 if (!pitchInit) { pitchOut = pitchV; pitchInit = true; }
                 pitchOut += (pitchV - pitchOut) * alpha;
             }
@@ -748,6 +912,24 @@ else {
 // Widgets custom
 // ============================================================================
 struct RndPitchButton : TL1105 {
+    void draw(const DrawArgs& args) override {
+        nvgSave(args.vg);
+        float scale = UI::RAND_BTN_SCALE;
+        Vec center = box.size.mult(0.5f);
+        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+        nvgScale(args.vg, scale, scale);
+        SvgSwitch::draw(args);
+        nvgRestore(args.vg);
+    }
+    void drawLayer(const DrawArgs& args, int layer) override {
+        nvgSave(args.vg);
+        float scale = UI::RAND_BTN_SCALE;
+        Vec center = box.size.mult(0.5f);
+        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+        nvgScale(args.vg, scale, scale);
+        SvgSwitch::drawLayer(args, layer);
+        nvgRestore(args.vg);
+    }
     void onDoubleClick(const event::DoubleClick& e) override {
         if (auto q = getParamQuantity())
             if (auto m = dynamic_cast<UZZ*>(q->module)) { m->resetPitchRow(); m->skipNextPitchRandom = true; }
@@ -755,6 +937,24 @@ struct RndPitchButton : TL1105 {
     }
 };
 struct RndOctButton : TL1105 {
+    void draw(const DrawArgs& args) override {
+        nvgSave(args.vg);
+        float scale = UI::RAND_BTN_SCALE;
+        Vec center = box.size.mult(0.5f);
+        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+        nvgScale(args.vg, scale, scale);
+        SvgSwitch::draw(args);
+        nvgRestore(args.vg);
+    }
+    void drawLayer(const DrawArgs& args, int layer) override {
+        nvgSave(args.vg);
+        float scale = UI::RAND_BTN_SCALE;
+        Vec center = box.size.mult(0.5f);
+        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+        nvgScale(args.vg, scale, scale);
+        SvgSwitch::drawLayer(args, layer);
+        nvgRestore(args.vg);
+    }
     void onDoubleClick(const event::DoubleClick& e) override {
         if (auto q = getParamQuantity())
             if (auto m = dynamic_cast<UZZ*>(q->module)) { m->resetOctaveRow(); m->skipNextOctRandom = true; }
@@ -762,6 +962,24 @@ struct RndOctButton : TL1105 {
     }
 };
 struct RndStepButton : TL1105 {
+    void draw(const DrawArgs& args) override {
+        nvgSave(args.vg);
+        float scale = UI::RAND_BTN_SCALE;
+        Vec center = box.size.mult(0.5f);
+        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+        nvgScale(args.vg, scale, scale);
+        SvgSwitch::draw(args);
+        nvgRestore(args.vg);
+    }
+    void drawLayer(const DrawArgs& args, int layer) override {
+        nvgSave(args.vg);
+        float scale = UI::RAND_BTN_SCALE;
+        Vec center = box.size.mult(0.5f);
+        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+        nvgScale(args.vg, scale, scale);
+        SvgSwitch::drawLayer(args, layer);
+        nvgRestore(args.vg);
+    }
     void onDoubleClick(const event::DoubleClick& e) override {
         if (auto q = getParamQuantity())
             if (auto m = dynamic_cast<UZZ*>(q->module)) { m->resetStepModeRow(); m->skipNextStepRandom = true; }
@@ -769,6 +987,24 @@ struct RndStepButton : TL1105 {
     }
 };
 struct RndDurButton : TL1105 {
+    void draw(const DrawArgs& args) override {
+        nvgSave(args.vg);
+        float scale = UI::RAND_BTN_SCALE;
+        Vec center = box.size.mult(0.5f);
+        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+        nvgScale(args.vg, scale, scale);
+        SvgSwitch::draw(args);
+        nvgRestore(args.vg);
+    }
+    void drawLayer(const DrawArgs& args, int layer) override {
+        nvgSave(args.vg);
+        float scale = UI::RAND_BTN_SCALE;
+        Vec center = box.size.mult(0.5f);
+        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+        nvgScale(args.vg, scale, scale);
+        SvgSwitch::drawLayer(args, layer);
+        nvgRestore(args.vg);
+    }
     void onDoubleClick(const event::DoubleClick& e) override {
         if (auto q = getParamQuantity())
             if (auto m = dynamic_cast<UZZ*>(q->module)) { m->resetDurRow(); m->skipNextDurRandom = true; }
@@ -776,6 +1012,24 @@ struct RndDurButton : TL1105 {
     }
 };
 struct RndM1Button : TL1105 {
+    void draw(const DrawArgs& args) override {
+        nvgSave(args.vg);
+        float scale = UI::RAND_BTN_SCALE;
+        Vec center = box.size.mult(0.5f);
+        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+        nvgScale(args.vg, scale, scale);
+        SvgSwitch::draw(args);
+        nvgRestore(args.vg);
+    }
+    void drawLayer(const DrawArgs& args, int layer) override {
+        nvgSave(args.vg);
+        float scale = UI::RAND_BTN_SCALE;
+        Vec center = box.size.mult(0.5f);
+        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+        nvgScale(args.vg, scale, scale);
+        SvgSwitch::drawLayer(args, layer);
+        nvgRestore(args.vg);
+    }
     void onDoubleClick(const event::DoubleClick& e) override {
         if (auto q = getParamQuantity())
             if (auto m = dynamic_cast<UZZ*>(q->module)) { m->resetM1Row(); m->skipNextM1Random = true; }
@@ -783,10 +1037,135 @@ struct RndM1Button : TL1105 {
     }
 };
 struct RndM2Button : TL1105 {
+    void draw(const DrawArgs& args) override {
+        nvgSave(args.vg);
+        float scale = UI::RAND_BTN_SCALE;
+        Vec center = box.size.mult(0.5f);
+        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+        nvgScale(args.vg, scale, scale);
+        SvgSwitch::draw(args);
+        nvgRestore(args.vg);
+    }
+    void drawLayer(const DrawArgs& args, int layer) override {
+        nvgSave(args.vg);
+        float scale = UI::RAND_BTN_SCALE;
+        Vec center = box.size.mult(0.5f);
+        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+        nvgScale(args.vg, scale, scale);
+        SvgSwitch::drawLayer(args, layer);
+        nvgRestore(args.vg);
+    }
     void onDoubleClick(const event::DoubleClick& e) override {
         if (auto q = getParamQuantity())
             if (auto m = dynamic_cast<UZZ*>(q->module)) { m->resetM2Row(); m->skipNextM2Random = true; }
         e.consume(this);
+    }
+};
+
+
+struct UzzInputPort : PJ301MPort {
+    UzzInputPort() {
+        if (auto svg = loadPluginSvgIfExists(UIAssets::INPUT_PORT_SVG))
+            setSvg(svg);
+    }
+    void draw(const DrawArgs& args) override {
+        nvgSave(args.vg);
+        float scale = UI::PORT_SCALE;
+        Vec center = box.size.mult(0.5f);
+        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+        nvgScale(args.vg, scale, scale);
+        PJ301MPort::draw(args);
+        nvgRestore(args.vg);
+    }
+    void drawLayer(const DrawArgs& args, int layer) override {
+        nvgSave(args.vg);
+        float scale = UI::PORT_SCALE;
+        Vec center = box.size.mult(0.5f);
+        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+        nvgScale(args.vg, scale, scale);
+        PJ301MPort::drawLayer(args, layer);
+        nvgRestore(args.vg);
+    }
+};
+
+struct UzzOutputPort : PJ301MPort {
+    UzzOutputPort() {
+        if (auto svg = loadPluginSvgIfExists(UIAssets::OUTPUT_PORT_SVG))
+            setSvg(svg);
+    }
+    void draw(const DrawArgs& args) override {
+        nvgSave(args.vg);
+        float scale = UI::PORT_SCALE;
+        Vec center = box.size.mult(0.5f);
+        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+        nvgScale(args.vg, scale, scale);
+        PJ301MPort::draw(args);
+        nvgRestore(args.vg);
+    }
+    void drawLayer(const DrawArgs& args, int layer) override {
+        nvgSave(args.vg);
+        float scale = UI::PORT_SCALE;
+        Vec center = box.size.mult(0.5f);
+        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+        nvgScale(args.vg, scale, scale);
+        PJ301MPort::drawLayer(args, layer);
+        nvgRestore(args.vg);
+    }
+};
+
+struct RowShiftUpButton : app::SvgSwitch {
+    RowShiftUpButton() {
+        momentary = true;
+        shadow->visible = false;
+        auto svg = APP->window->loadSvg(asset::plugin(pluginInstance, "res/Up.svg"));
+        addFrame(svg);
+        addFrame(svg);
+    }
+    void draw(const DrawArgs& args) override {
+        nvgSave(args.vg);
+        float scale = UI::ROW_SHIFT_SCALE;
+        Vec center = box.size.mult(0.5f);
+        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+        nvgScale(args.vg, scale, scale);
+        SvgSwitch::draw(args);
+        nvgRestore(args.vg);
+    }
+    void drawLayer(const DrawArgs& args, int layer) override {
+        nvgSave(args.vg);
+        float scale = UI::ROW_SHIFT_SCALE;
+        Vec center = box.size.mult(0.5f);
+        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+        nvgScale(args.vg, scale, scale);
+        SvgSwitch::drawLayer(args, layer);
+        nvgRestore(args.vg);
+    }
+};
+
+struct RowShiftDownButton : app::SvgSwitch {
+    RowShiftDownButton() {
+        momentary = true;
+        shadow->visible = false;
+        auto svg = APP->window->loadSvg(asset::plugin(pluginInstance, "res/Down.svg"));
+        addFrame(svg);
+        addFrame(svg);
+    }
+    void draw(const DrawArgs& args) override {
+        nvgSave(args.vg);
+        float scale = UI::ROW_SHIFT_SCALE;
+        Vec center = box.size.mult(0.5f);
+        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+        nvgScale(args.vg, scale, scale);
+        SvgSwitch::draw(args);
+        nvgRestore(args.vg);
+    }
+    void drawLayer(const DrawArgs& args, int layer) override {
+        nvgSave(args.vg);
+        float scale = UI::ROW_SHIFT_SCALE;
+        Vec center = box.size.mult(0.5f);
+        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+        nvgScale(args.vg, scale, scale);
+        SvgSwitch::drawLayer(args, layer);
+        nvgRestore(args.vg);
     }
 };
 
@@ -797,7 +1176,7 @@ struct StepModeButton : app::SvgSwitch {
         addFrame(APP->window->loadSvg(asset::plugin(pluginInstance, "res/step_play.svg")));
         addFrame(APP->window->loadSvg(asset::plugin(pluginInstance, "res/step_mute.svg")));
         addFrame(APP->window->loadSvg(asset::plugin(pluginInstance, "res/step_skip.svg"))); 
-        }
+    }
 };
 
 struct NoteLabel : TransparentWidget {
@@ -824,12 +1203,13 @@ struct NoteLabel : TransparentWidget {
 std::shared_ptr<Font> NoteLabel::font = nullptr;
 
 // ============================================================================
+
 // Widget del módulo
 // ============================================================================
 struct UZZWidget : ModuleWidget {
     UZZWidget(UZZ* module) {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/bg-blue-04.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/uzz.svg")));
 
         const int cols = UI::COLS;
         auto Xc = [&](int i){ return UI::colCenter(box.size.x, i); };
@@ -856,26 +1236,36 @@ struct UZZWidget : ModuleWidget {
         for (int i = 0; i < cols; ++i)
             addParam(createParamCentered<RoundSmallBlackKnob>(Vec(Xc(i), UI::Y_C2), module, UZZ::M2_0 + i));
 
-        const float randX = UI::RAND_X;
         const float trigL = UI::trigLeftX();
 
-        addInput(createInputCentered<PJ301MPort>(Vec(trigL, UI::Y_STEP_MODE + 18), module, UZZ::RND_STEP_TRIG_INPUT));
-        addParam(createParamCentered<RndStepButton>(Vec(randX, UI::Y_STEP_MODE + 18), module, UZZ::RND_STEP_PARAM));
+        addInput(createInputCentered<UzzInputPort>(Vec(trigL, UI::Y_STEP_MODE + 18), module, UZZ::RND_STEP_TRIG_INPUT));
+        addParam(createParamCentered<RndStepButton>(Vec(UI::randButtonX(), UI::Y_STEP_MODE + 18), module, UZZ::RND_STEP_PARAM));
 
-        addInput(createInputCentered<PJ301MPort>(Vec(trigL, UI::Y_PITCH), module, UZZ::RND_PITCH_TRIG_INPUT));
-        addParam(createParamCentered<RndPitchButton>(Vec(randX, UI::Y_PITCH), module, UZZ::RND_PITCH_PARAM));
+        addInput(createInputCentered<UzzInputPort>(Vec(trigL, UI::Y_PITCH), module, UZZ::RND_PITCH_TRIG_INPUT));
+        addParam(createParamCentered<RndPitchButton>(Vec(UI::randButtonX(), UI::Y_PITCH), module, UZZ::RND_PITCH_PARAM));
 
-        addInput(createInputCentered<PJ301MPort>(Vec(trigL, UI::Y_OCT), module, UZZ::RND_OCT_TRIG_INPUT));
-        addParam(createParamCentered<RndOctButton>(Vec(randX, UI::Y_OCT), module, UZZ::RND_OCTAVE_PARAM));
+        addInput(createInputCentered<UzzInputPort>(Vec(trigL, UI::Y_OCT), module, UZZ::RND_OCT_TRIG_INPUT));
+        addParam(createParamCentered<RndOctButton>(Vec(UI::randButtonX(), UI::Y_OCT), module, UZZ::RND_OCTAVE_PARAM));
 
-        addInput(createInputCentered<PJ301MPort>(Vec(trigL, UI::Y_DUR), module, UZZ::RND_DUR_TRIG_INPUT));
-        addParam(createParamCentered<RndDurButton>(Vec(randX, UI::Y_DUR), module, UZZ::RND_DUR_PARAM));
+        addInput(createInputCentered<UzzInputPort>(Vec(trigL, UI::Y_DUR), module, UZZ::RND_DUR_TRIG_INPUT));
+        addParam(createParamCentered<RndDurButton>(Vec(UI::randButtonX(), UI::Y_DUR), module, UZZ::RND_DUR_PARAM));
 
-        addInput(createInputCentered<PJ301MPort>(Vec(trigL, UI::Y_C1), module, UZZ::RND_M1_TRIG_INPUT));
-        addParam(createParamCentered<RndM1Button>(Vec(randX, UI::Y_C1), module, UZZ::RND_M1_PARAM));
+        addInput(createInputCentered<UzzInputPort>(Vec(trigL, UI::Y_C1), module, UZZ::RND_M1_TRIG_INPUT));
+        addParam(createParamCentered<RndM1Button>(Vec(UI::randButtonX(), UI::Y_C1), module, UZZ::RND_M1_PARAM));
 
-        addInput(createInputCentered<PJ301MPort>(Vec(trigL, UI::Y_C2), module, UZZ::RND_M2_TRIG_INPUT));
-        addParam(createParamCentered<RndM2Button>(Vec(randX, UI::Y_C2), module, UZZ::RND_M2_PARAM));
+        addInput(createInputCentered<UzzInputPort>(Vec(trigL, UI::Y_C2), module, UZZ::RND_M2_TRIG_INPUT));
+        addParam(createParamCentered<RndM2Button>(Vec(UI::randButtonX(), UI::Y_C2), module, UZZ::RND_M2_PARAM));
+
+        auto addShiftPair = [&](float y, int downParam, int upParam) {
+            addParam(createParamCentered<RowShiftUpButton>(Vec(UI::rowShiftX(), UI::rowShiftYUp(y)), module, upParam));
+            addParam(createParamCentered<RowShiftDownButton>(Vec(UI::rowShiftX(), UI::rowShiftYDown(y)), module, downParam));
+        };
+
+        addShiftPair(UI::Y_PITCH, UZZ::PITCH_SHIFT_DOWN_PARAM, UZZ::PITCH_SHIFT_UP_PARAM);
+        addShiftPair(UI::Y_OCT,   UZZ::OCT_SHIFT_DOWN_PARAM,   UZZ::OCT_SHIFT_UP_PARAM);
+        addShiftPair(UI::Y_DUR,   UZZ::DUR_SHIFT_DOWN_PARAM,   UZZ::DUR_SHIFT_UP_PARAM);
+        addShiftPair(UI::Y_C1,    UZZ::M1_SHIFT_DOWN_PARAM,    UZZ::M1_SHIFT_UP_PARAM);
+        addShiftPair(UI::Y_C2,    UZZ::M2_SHIFT_DOWN_PARAM,    UZZ::M2_SHIFT_UP_PARAM);
 
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(229.f, 357.f), module, UZZ::START_PARAM));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(229.f, 328.f), module, UZZ::STEPS_PARAM));
@@ -884,18 +1274,17 @@ struct UZZWidget : ModuleWidget {
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(332.f, 300.f), module, UZZ::DIR_MODE_PARAM));
         addParam(createParamCentered<RoundSmallBlackKnob>(Vec(332.f, 328.f), module, UZZ::SWING_PARAM));
         
+        addInput(createInputCentered<UzzInputPort>(Vec(130.f, 300.f), module, UZZ::CLK_INPUT));
+        addInput(createInputCentered<UzzInputPort>(Vec(130.f, 328.f), module, UZZ::RESET_INPUT));
+        addInput(createInputCentered<UzzInputPort>(Vec(130.f, 357.f), module, UZZ::XPOSE_INPUT));
 
-        addInput(createInputCentered<PJ301MPort>(Vec(130.f, 300.f), module, UZZ::CLK_INPUT));
-        addInput(createInputCentered<PJ301MPort>(Vec(130.f, 328.f), module, UZZ::RESET_INPUT));
-        addInput(createInputCentered<PJ301MPort>(Vec(130.f, 357.f), module, UZZ::XPOSE_INPUT));
+        addOutput(createOutputCentered<UzzOutputPort>(Vec(690.f, 300.f), module, UZZ::M1_OUTPUT));
+        addOutput(createOutputCentered<UzzOutputPort>(Vec(690.f, 328.f), module, UZZ::M2_OUTPUT));
+        addOutput(createOutputCentered<UzzOutputPort>(Vec(690.f, 357.f), module, UZZ::EOC_OUTPUT));
 
-        addOutput(createOutputCentered<PJ301MPort>(Vec(690.f, 300.f), module, UZZ::M1_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(Vec(690.f, 328.f), module, UZZ::M2_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(Vec(690.f, 357.f), module, UZZ::EOC_OUTPUT));
-
-        addOutput(createOutputCentered<PJ301MPort>(Vec(588.f, 300.f), module, UZZ::PITCH_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(Vec(588.f, 328.f), module, UZZ::GATE_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(Vec(588.f, 357.f), module, UZZ::STEP_GATES_OUTPUT));//Poly
+        addOutput(createOutputCentered<UzzOutputPort>(Vec(588.f, 300.f), module, UZZ::PITCH_OUTPUT));
+        addOutput(createOutputCentered<UzzOutputPort>(Vec(588.f, 328.f), module, UZZ::GATE_OUTPUT));
+        addOutput(createOutputCentered<UzzOutputPort>(Vec(588.f, 357.f), module, UZZ::STEP_GATES_OUTPUT));//Poly
         addParam(createParamCentered<CKSS>(Vec(539.f, 328.f), module, UZZ::GATE_MODE_PARAM));//Gate / Trigger
         addParam(createParamCentered<Trimpot>(Vec(539.f, 300.f), module, UZZ::SLEW_PARAM));
     }
@@ -905,33 +1294,33 @@ struct UZZWidget : ModuleWidget {
         auto* m = dynamic_cast<UZZ*>(module);
 
         menu->addChild(new ui::MenuSeparator());
+        menu->addChild(createCheckMenuItem("EOC on reset", "",
+            [m]() { return m && m->eocOnReset; },
+            [m]() { if (m) m->eocOnReset = !m->eocOnReset; }
+        ));
 
-        auto* label = new ui::MenuLabel;
-        label->text = "Direction mode";
-        menu->addChild(label);
-
-        for (int i = 0; i <= 4; ++i) {
-            menu->addChild(createCheckMenuItem(
-                DIR_LABELS[i], "",
-                [m, i]() {
-                    if (!m) return false;
-                    int cur = (int) std::round(m->params[UZZ::DIR_MODE_PARAM].getValue());
-                    return cur == i;
-                },
-                [m, i]() {
-                    if (!m) return;
-                    m->params[UZZ::DIR_MODE_PARAM].setValue((float)i);
-                    m->pingDir  = 0;
-                    m->drunkDir = 1;
-                }
-            ));
-        }
+        menu->addChild(createSubmenuItem("Direction mode", "", [m](ui::Menu* sub){
+            for (int i = 0; i <= 4; ++i) {
+                sub->addChild(createCheckMenuItem(
+                    DIR_LABELS[i], "",
+                    [m, i]() {
+                        if (!m) return false;
+                        int cur = (int) std::round(m->params[UZZ::DIR_MODE_PARAM].getValue());
+                        return cur == i;
+                    },
+                    [m, i]() {
+                        if (!m) return;
+                        m->params[UZZ::DIR_MODE_PARAM].setValue((float)i);
+                        m->pingDir  = 0;
+                        m->drunkDir = 1;
+                    }
+                ));
+            }
+        }));
 
         // ---- Rangos M1/M2 ----
         menu->addChild(new ui::MenuSeparator());
-        menu->addChild(createSubmenuItem("Range", "", [m](ui::Menu* sub){
-            // M1
-            auto* l1 = new ui::MenuLabel; l1->text = "M1"; sub->addChild(l1);
+        menu->addChild(createSubmenuItem("Range Mod 1", "", [m](ui::Menu* sub){
             for (int r = 0; r < UZZRanges::MR_COUNT; ++r) {
                 sub->addChild(createCheckMenuItem(
                     UZZRanges::RANGE_DEFS[r].label, "",
@@ -939,9 +1328,8 @@ struct UZZWidget : ModuleWidget {
                     [m, r]() { if (m) m->m1Range = r; }
                 ));
             }
-            sub->addChild(new ui::MenuSeparator());
-            // M2
-            auto* l2 = new ui::MenuLabel; l2->text = "M2"; sub->addChild(l2);
+        }));
+        menu->addChild(createSubmenuItem("Range Mod 2", "", [m](ui::Menu* sub){
             for (int r = 0; r < UZZRanges::MR_COUNT; ++r) {
                 sub->addChild(createCheckMenuItem(
                     UZZRanges::RANGE_DEFS[r].label, "",

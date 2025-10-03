@@ -1267,26 +1267,31 @@ struct UZZWidget : ModuleWidget {
         addShiftPair(UI::Y_C1,    UZZ::M1_SHIFT_DOWN_PARAM,    UZZ::M1_SHIFT_UP_PARAM);
         addShiftPair(UI::Y_C2,    UZZ::M2_SHIFT_DOWN_PARAM,    UZZ::M2_SHIFT_UP_PARAM);
 
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(229.f, 357.f), module, UZZ::START_PARAM));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(229.f, 328.f), module, UZZ::STEPS_PARAM));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(229.f, 300.f), module, UZZ::RATIO_IDX_PARAM));
+        const float bottomBase = box.size.y - UI::BOTTOM_MARGIN;
+        const float yBottomRow = bottomBase + 5.f;
+        const float yMiddleRow = bottomBase - 24.f;
+        const float yTopRow    = bottomBase - 52.f;
 
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(332.f, 300.f), module, UZZ::DIR_MODE_PARAM));
-        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(332.f, 328.f), module, UZZ::SWING_PARAM));
-        
-        addInput(createInputCentered<UzzInputPort>(Vec(130.f, 300.f), module, UZZ::CLK_INPUT));
-        addInput(createInputCentered<UzzInputPort>(Vec(130.f, 328.f), module, UZZ::RESET_INPUT));
-        addInput(createInputCentered<UzzInputPort>(Vec(130.f, 357.f), module, UZZ::XPOSE_INPUT));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(229.f, yBottomRow), module, UZZ::START_PARAM));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(229.f, yMiddleRow), module, UZZ::STEPS_PARAM));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(229.f, yTopRow),    module, UZZ::RATIO_IDX_PARAM));
 
-        addOutput(createOutputCentered<UzzOutputPort>(Vec(690.f, 300.f), module, UZZ::M1_OUTPUT));
-        addOutput(createOutputCentered<UzzOutputPort>(Vec(690.f, 328.f), module, UZZ::M2_OUTPUT));
-        addOutput(createOutputCentered<UzzOutputPort>(Vec(690.f, 357.f), module, UZZ::EOC_OUTPUT));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(332.f, yTopRow),    module, UZZ::DIR_MODE_PARAM));
+        addParam(createParamCentered<RoundSmallBlackKnob>(Vec(332.f, yMiddleRow), module, UZZ::SWING_PARAM));
 
-        addOutput(createOutputCentered<UzzOutputPort>(Vec(588.f, 300.f), module, UZZ::PITCH_OUTPUT));
-        addOutput(createOutputCentered<UzzOutputPort>(Vec(588.f, 328.f), module, UZZ::GATE_OUTPUT));
-        addOutput(createOutputCentered<UzzOutputPort>(Vec(588.f, 357.f), module, UZZ::STEP_GATES_OUTPUT));//Poly
-        addParam(createParamCentered<CKSS>(Vec(539.f, 328.f), module, UZZ::GATE_MODE_PARAM));//Gate / Trigger
-        addParam(createParamCentered<Trimpot>(Vec(539.f, 300.f), module, UZZ::SLEW_PARAM));
+        addInput(createInputCentered<UzzInputPort>(Vec(130.f, yTopRow),    module, UZZ::CLK_INPUT));
+        addInput(createInputCentered<UzzInputPort>(Vec(130.f, yMiddleRow), module, UZZ::RESET_INPUT));
+        addInput(createInputCentered<UzzInputPort>(Vec(130.f, yBottomRow), module, UZZ::XPOSE_INPUT));
+
+        addOutput(createOutputCentered<UzzOutputPort>(Vec(690.f, yTopRow),    module, UZZ::M1_OUTPUT));
+        addOutput(createOutputCentered<UzzOutputPort>(Vec(690.f, yMiddleRow), module, UZZ::M2_OUTPUT));
+        addOutput(createOutputCentered<UzzOutputPort>(Vec(690.f, yBottomRow), module, UZZ::EOC_OUTPUT));
+
+        addOutput(createOutputCentered<UzzOutputPort>(Vec(588.f, yTopRow),    module, UZZ::PITCH_OUTPUT));
+        addOutput(createOutputCentered<UzzOutputPort>(Vec(588.f, yMiddleRow), module, UZZ::GATE_OUTPUT));
+        addOutput(createOutputCentered<UzzOutputPort>(Vec(588.f, yBottomRow), module, UZZ::STEP_GATES_OUTPUT));//Poly
+        addParam(createParamCentered<CKSS>(Vec(539.f, yMiddleRow), module, UZZ::GATE_MODE_PARAM));//Gate / Trigger
+        addParam(createParamCentered<Trimpot>(Vec(539.f, yTopRow),    module, UZZ::SLEW_PARAM));
     }
 
     void appendContextMenu(ui::Menu* menu) override {

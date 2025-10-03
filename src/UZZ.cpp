@@ -1209,7 +1209,7 @@ std::shared_ptr<Font> NoteLabel::font = nullptr;
 struct UZZWidget : ModuleWidget {
     UZZWidget(UZZ* module) {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/uzz.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/UZZ.svg")));
 
         const int cols = UI::COLS;
         auto Xc = [&](int i){ return UI::colCenter(box.size.x, i); };

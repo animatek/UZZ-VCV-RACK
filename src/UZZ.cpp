@@ -35,6 +35,7 @@ namespace UI {
     static constexpr float PORT_SCALE      = 0.90f;
     static constexpr float TRIG_RIGHT_PAD  = 14.f;
 
+    [[maybe_unused]] static constexpr float BOTTOM_MARGIN = 28.f;
     static constexpr float TRIG_LEFT_GAP = 23.f;
     inline float trigLeftX() { return RAND_X - TRIG_LEFT_GAP; }
     inline float rowShiftX() { return SHIFT_X + SHIFT_X_OFFSET; }

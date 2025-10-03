@@ -30,7 +30,6 @@ Este repositorio es un **intento de port** del UZZ a **VCV Rack 2.x**, mantenien
 - Added custom input/output port widgets with 10% scale reduction and support for optional recoloured SVGs.
 - Tuned slew response to a logarithmic curve as the fixed behaviour.
 - Cleaned up random button lights logic to retain the original smoothing behaviour.
-- Documented project rules and workflow expectations in `AGENTS.md`.
 - Fixed malformed `plugin.json` manifest (missing closing quote/comma on version).
 
 

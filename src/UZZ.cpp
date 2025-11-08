@@ -51,19 +51,38 @@ namespace UI {
 namespace UIAssets {
     static constexpr const char* INPUT_PORT_SVG  = "res/port_input.svg";
     static constexpr const char* OUTPUT_PORT_SVG = "res/port_output.svg";
+    static constexpr const char* NOTE_FONT       = "res/fonts/Inter-Medium.ttf";
+    static constexpr const char* NOTE_FONT_FALLBACK = "res/fonts/NotoSans-Regular.ttf";
 }
 
 // ============================================================================
 
-std::shared_ptr<window::Svg> loadPluginSvgIfExists(const char* relPath) {
-    if (!relPath)
+static std::shared_ptr<window::Svg> loadSvgFile(const std::string& path) {
+    if (path.empty() || !system::exists(path))
         return nullptr;
-    std::string path = asset::plugin(pluginInstance, relPath);
-    if (system::exists(path))
-        return APP->window->loadSvg(path);
+    try {
+        if (APP && APP->window)
+            return APP->window->loadSvg(path);
+        return window::Svg::load(path);
+    } catch (const std::exception& e) {
+        WARN("Failed to load SVG %s: %s", path.c_str(), e.what());
+    } catch (...) {
+        WARN("Failed to load SVG %s: unknown error", path.c_str());
+    }
     return nullptr;
 }
 
+std::shared_ptr<window::Svg> loadPluginSvgIfExists(const char* relPath) {
+    if (!relPath || !pluginInstance)
+        return nullptr;
+    return loadSvgFile(asset::plugin(pluginInstance, relPath));
+}
+
+std::shared_ptr<window::Svg> loadSystemSvg(const char* relPath) {
+    if (!relPath)
+        return nullptr;
+    return loadSvgFile(asset::system(relPath));
+}
 // ============================================================================
 
 // Helpers
@@ -81,7 +100,7 @@ static constexpr float RATIO_TABLE[] = {
     1.5f, 2.f, 2.5f, 3.f, 4.f, 5.f, 6.f, 8.f, 10.f, 12.f, 16.f, 24.f, 32.f, 48.f
 };
 static constexpr int   NUM_RATIOS = (int)(sizeof(RATIO_TABLE)/sizeof(RATIO_TABLE[0]));
-static constexpr int   RATIO_DEFAULT_INDEX = 16;
+static constexpr int   RATIO_DEFAULT_INDEX = 14;
 
 static constexpr const char* RATIO_LABELS[NUM_RATIOS] = {
     "÷48","÷32","÷24","÷16","÷12","÷10",
@@ -475,17 +494,88 @@ struct UZZ : Module {
     // Persistencia de rangos
     json_t* dataToJson() override {
         json_t* root = Module::dataToJson();
+        if (!root)
+            root = json_object();
+        
+        // Guardar rangos (ya validados)
         json_object_set_new(root, "m1Range", json_integer(m1Range));
         json_object_set_new(root, "m2Range", json_integer(m2Range));
         json_object_set_new(root, "eocOnReset", json_boolean(eocOnReset));
+        
+        // CRÍTICO: Guardar el paso actual de forma segura
+        json_object_set_new(root, "currentStep", json_integer(step));
+        
+        // Guardar estado de dirección pingpong/drunk
+        json_object_set_new(root, "pingDir", json_integer(pingDir));
+        json_object_set_new(root, "drunkDir", json_integer(drunkDir));
+        
         return root;
     }
+
     void dataFromJson(json_t* root) override {
         Module::dataFromJson(root);
-        if (auto* j = json_object_get(root, "m1Range")) m1Range = clamp((int)json_integer_value(j), 0, UZZRanges::MR_COUNT-1);
-        if (auto* j = json_object_get(root, "m2Range")) m2Range = clamp((int)json_integer_value(j), 0, UZZRanges::MR_COUNT-1);
-        if (auto* j = json_object_get(root, "eocOnReset")) eocOnReset = json_is_true(j);
+        onReset();
+
+        // limpiar flags de randomización manualmente (onReset no los toca)
+        skipNextPitchRandom = false;
+        skipNextOctRandom   = false;
+        skipNextStepRandom  = false;
+        skipNextDurRandom   = false;
+        skipNextM1Random    = false;
+        skipNextM2Random    = false;
+
+        eocOnReset = false;
+
+        if (!root)
+            return;
+
+        // Rangos
+        if (auto* j = json_object_get(root, "m1Range")) {
+            int val = (int) json_integer_value(j);
+            m1Range = clamp(val, 0, UZZRanges::MR_COUNT - 1);
+        } else {
+            m1Range = UZZRanges::MR_0_10;
+        }
+
+        if (auto* j = json_object_get(root, "m2Range")) {
+            int val = (int) json_integer_value(j);
+            m2Range = clamp(val, 0, UZZRanges::MR_COUNT - 1);
+        } else {
+            m2Range = UZZRanges::MR_0_10;
+        }
+
+        if (auto* j = json_object_get(root, "eocOnReset"))
+            eocOnReset = json_is_true(j);
+
+        // Ventana actual
+        int steps = clamp((int) std::round(params[STEPS_PARAM].getValue()), 1, 16);
+        int start = clamp((int) std::round(params[START_PARAM].getValue()) - 1, 0, 15);
+
+        // Paso actual
+        if (auto* j = json_object_get(root, "currentStep")) {
+            int savedStep = clamp((int) json_integer_value(j), 0, 15);
+            int rel = (savedStep - start + 16) & 15;
+            step = (rel < steps) ? savedStep : start;
+        } else {
+            step = start;
+        }
+
+        // Direcciones
+        if (auto* j = json_object_get(root, "pingDir")) {
+            pingDir = clamp((int) json_integer_value(j), 0, 1);
+        } else {
+            pingDir = 0;
+        }
+
+        if (auto* j = json_object_get(root, "drunkDir")) {
+            int dir = clamp((int) json_integer_value(j), -1, 1);
+            drunkDir = (dir == 0) ? 1 : dir;
+        } else {
+            drunkDir = 1;
+        }
     }
+
+    
 
     // Navegación entre pasos
     int findNextPlayable(int start, int len, int dir, int currentRel, bool& allSkip) {
@@ -529,6 +619,23 @@ struct UZZ : Module {
     }
 
     void process(const ProcessArgs& args) override {
+
+   // VALIDACIÓN: Proteger contra valores corruptos
+   if (!std::isfinite(timeSinceClk)) timeSinceClk = 0.f;
+   if (!std::isfinite(lastPeriod)) lastPeriod = 0.f;
+   if (!std::isfinite(virtTimer)) virtTimer = 0.f;
+   if (!std::isfinite(virtPeriod) || virtPeriod <= 0.f) virtPeriod = 0.125f;
+   if (!std::isfinite(pitchOut)) pitchOut = 0.f;
+   if (!std::isfinite(sinceLastEdge)) sinceLastEdge = 0.f;
+   if (!std::isfinite(sinceLastTick)) sinceLastTick = 1e9f;
+   if (!std::isfinite(pendingTimer)) pendingTimer = 0.f;
+   if (!std::isfinite(pendingDelay)) pendingDelay = 0.f;
+   
+   // ... resto del código original de process()
+
+
+
+
         // ========= Estado cable clock =========
         bool clkConnected = inputs[CLK_INPUT].isConnected();
         if (clkConnected) {
@@ -659,6 +766,9 @@ struct UZZ : Module {
         // =================== CLOCK + RATIO ===================
         int   ratioIdx = clamp((int) std::round(params[RATIO_IDX_PARAM].getValue()), 0, NUM_RATIOS - 1);
         float ratio    = RATIO_TABLE[ratioIdx];
+        bool  needsVirtualClock = std::fabs(ratio - 1.f) > 1e-6f;
+        if (!needsVirtualClock)
+            havePhase = false;
 
         bool extPulse = clkTrig.process(inputs[CLK_INPUT].getVoltage());
         if (extPulse) {
@@ -682,7 +792,7 @@ struct UZZ : Module {
             }
 
             clockWasConnected = true;
-            havePhase = true;
+            havePhase = needsVirtualClock;
         }
 
         // Timeout de pérdida de fase
@@ -696,7 +806,7 @@ struct UZZ : Module {
         }
 
         // El oscilador virtual es la fuente de subdivisiones/divisiones (sin duplicar)
-        if (havePhase && virtPeriod > 0.f) {
+        if (needsVirtualClock && havePhase && virtPeriod > 0.f) {
             virtTimer += args.sampleTime;
             while (virtTimer >= virtPeriod) {
                 virtTimer -= virtPeriod;
@@ -1064,10 +1174,23 @@ struct RndM2Button : TL1105 {
 
 
 struct UzzInputPort : PJ301MPort {
+    bool svgLoaded = false;
+    
     UzzInputPort() {
-        if (auto svg = loadPluginSvgIfExists(UIAssets::INPUT_PORT_SVG))
-            setSvg(svg);
+        // NO cargar SVG en el constructor - lazy load en step()
     }
+
+
+    void step() override {
+        if (!svgLoaded) {
+            svgLoaded = true;
+            if (auto svg = loadPluginSvgIfExists(UIAssets::INPUT_PORT_SVG)) {
+                setSvg(svg);
+            }
+        }
+        PJ301MPort::step();
+    }
+
     void draw(const DrawArgs& args) override {
         nvgSave(args.vg);
         float scale = UI::PORT_SCALE;
@@ -1077,6 +1200,7 @@ struct UzzInputPort : PJ301MPort {
         PJ301MPort::draw(args);
         nvgRestore(args.vg);
     }
+    
     void drawLayer(const DrawArgs& args, int layer) override {
         nvgSave(args.vg);
         float scale = UI::PORT_SCALE;
@@ -1089,10 +1213,22 @@ struct UzzInputPort : PJ301MPort {
 };
 
 struct UzzOutputPort : PJ301MPort {
+    bool svgLoaded = false;
+    
     UzzOutputPort() {
-        if (auto svg = loadPluginSvgIfExists(UIAssets::OUTPUT_PORT_SVG))
-            setSvg(svg);
+        // NO cargar SVG en el constructor - lazy load en step()
     }
+    
+    void step() override {
+        if (!svgLoaded) {
+            svgLoaded = true;
+            if (auto svg = loadPluginSvgIfExists(UIAssets::OUTPUT_PORT_SVG)) {
+                setSvg(svg);
+            }
+        }
+        PJ301MPort::step();
+    }
+    
     void draw(const DrawArgs& args) override {
         nvgSave(args.vg);
         float scale = UI::PORT_SCALE;
@@ -1102,6 +1238,7 @@ struct UzzOutputPort : PJ301MPort {
         PJ301MPort::draw(args);
         nvgRestore(args.vg);
     }
+    
     void drawLayer(const DrawArgs& args, int layer) override {
         nvgSave(args.vg);
         float scale = UI::PORT_SCALE;
@@ -1113,81 +1250,153 @@ struct UzzOutputPort : PJ301MPort {
     }
 };
 
-struct RowShiftUpButton : app::SvgSwitch {
-    RowShiftUpButton() {
-        momentary = true;
-        shadow->visible = false;
-        auto svg = APP->window->loadSvg(asset::plugin(pluginInstance, "res/Up.svg"));
-        addFrame(svg);
-        addFrame(svg);
-    }
-    void draw(const DrawArgs& args) override {
-        nvgSave(args.vg);
-        float scale = UI::ROW_SHIFT_SCALE;
-        Vec center = box.size.mult(0.5f);
-        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
-        nvgScale(args.vg, scale, scale);
-        SvgSwitch::draw(args);
-        nvgRestore(args.vg);
-    }
-    void drawLayer(const DrawArgs& args, int layer) override {
-        nvgSave(args.vg);
-        float scale = UI::ROW_SHIFT_SCALE;
-        Vec center = box.size.mult(0.5f);
-        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
-        nvgScale(args.vg, scale, scale);
-        SvgSwitch::drawLayer(args, layer);
-        nvgRestore(args.vg);
-    }
-};
 
-struct RowShiftDownButton : app::SvgSwitch {
-    RowShiftDownButton() {
-        momentary = true;
-        shadow->visible = false;
-        auto svg = APP->window->loadSvg(asset::plugin(pluginInstance, "res/Down.svg"));
-        addFrame(svg);
-        addFrame(svg);
-    }
-    void draw(const DrawArgs& args) override {
-        nvgSave(args.vg);
-        float scale = UI::ROW_SHIFT_SCALE;
-        Vec center = box.size.mult(0.5f);
-        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
-        nvgScale(args.vg, scale, scale);
-        SvgSwitch::draw(args);
-        nvgRestore(args.vg);
-    }
-    void drawLayer(const DrawArgs& args, int layer) override {
-        nvgSave(args.vg);
-        float scale = UI::ROW_SHIFT_SCALE;
-        Vec center = box.size.mult(0.5f);
-        nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
-        nvgScale(args.vg, scale, scale);
-        SvgSwitch::drawLayer(args, layer);
-        nvgRestore(args.vg);
-    }
-};
+    struct RowShiftUpButton : app::SvgSwitch {
+        RowShiftUpButton() {
+            momentary = true;
+            shadow->visible = false;
+            tryLoadFrames();
+        }
+        void tryLoadFrames() {
+            if (!frames.empty())
+                return;
+            if (auto svg = loadPluginSvgIfExists("res/Up.svg")) {
+                addFrame(svg);
+                addFrame(svg);
+            } else if (auto svg = loadSystemSvg("res/ComponentLibrary/TL1105_0.svg")) {
+                addFrame(svg);
+                addFrame(svg);
+            }
+        }
+        void draw(const DrawArgs& args) override {
+            tryLoadFrames();
+            nvgSave(args.vg);
+            float scale = UI::ROW_SHIFT_SCALE;
+            Vec center = box.size.mult(0.5f);
+            nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+            nvgScale(args.vg, scale, scale);
+            if (!frames.empty())
+                SvgSwitch::draw(args);
+            nvgRestore(args.vg);
+        }
+        void drawLayer(const DrawArgs& args, int layer) override {
+            tryLoadFrames();
+            nvgSave(args.vg);
+            float scale = UI::ROW_SHIFT_SCALE;
+            Vec center = box.size.mult(0.5f);
+            nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+            nvgScale(args.vg, scale, scale);
+            if (!frames.empty())
+                SvgSwitch::drawLayer(args, layer);
+            nvgRestore(args.vg);
+        }
+    };
 
-struct StepModeButton : app::SvgSwitch {
-    StepModeButton() {
-        momentary = false;
-        shadow->visible = false;
-        addFrame(APP->window->loadSvg(asset::plugin(pluginInstance, "res/step_play.svg")));
-        addFrame(APP->window->loadSvg(asset::plugin(pluginInstance, "res/step_mute.svg")));
-        addFrame(APP->window->loadSvg(asset::plugin(pluginInstance, "res/step_skip.svg"))); 
-    }
-};
+    struct RowShiftDownButton : app::SvgSwitch {
+        RowShiftDownButton() {
+            momentary = true;
+            shadow->visible = false;
+            tryLoadFrames();
+        }
+        void tryLoadFrames() {
+            if (!frames.empty())
+                return;
+            if (auto svg = loadPluginSvgIfExists("res/Down.svg")) {
+                addFrame(svg);
+                addFrame(svg);
+            } else if (auto svg = loadSystemSvg("res/ComponentLibrary/TL1105_1.svg")) {
+                addFrame(svg);
+                addFrame(svg);
+            }
+        }
+        void draw(const DrawArgs& args) override {
+            tryLoadFrames();
+            nvgSave(args.vg);
+            float scale = UI::ROW_SHIFT_SCALE;
+            Vec center = box.size.mult(0.5f);
+            nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+            nvgScale(args.vg, scale, scale);
+            if (!frames.empty())
+                SvgSwitch::draw(args);
+            nvgRestore(args.vg);
+        }
+        void drawLayer(const DrawArgs& args, int layer) override {
+            tryLoadFrames();
+            nvgSave(args.vg);
+            float scale = UI::ROW_SHIFT_SCALE;
+            Vec center = box.size.mult(0.5f);
+            nvgTranslate(args.vg, center.x * (1.f - scale), center.y * (1.f - scale));
+            nvgScale(args.vg, scale, scale);
+            if (!frames.empty())
+                SvgSwitch::drawLayer(args, layer);
+            nvgRestore(args.vg);
+        }
+    };
 
-struct NoteLabel : TransparentWidget {
-    UZZ* module = nullptr;
-    int stepIndex = 0;
-    static std::shared_ptr<Font> font;
+    struct StepModeButton : app::SvgSwitch {
+        StepModeButton() {
+            momentary = false;
+            shadow->visible = false;
+            tryLoadFrames();
+        }
+        void tryLoadFrames() {
+            if (!frames.empty())
+                return;
 
-    NoteLabel(UZZ* m, int i) {
-        module = m; stepIndex = i; box.size = Vec(24.f, 12.f);
-        if (!font) font = APP->window->loadFont(asset::system("res/fonts/ShareTechMono-Regular.ttf"));
-    }
+            auto loadFrame = [&](const char* pluginPath, const char* fallbackPath) {
+                if (auto svg = loadPluginSvgIfExists(pluginPath)) {
+                    addFrame(svg);
+                    return true;
+                }
+                if (auto svg = loadSystemSvg(fallbackPath)) {
+                    addFrame(svg);
+                    return true;
+                }
+                return false;
+            };
+
+            loadFrame("res/step_play.svg", "res/ComponentLibrary/TL1105_0.svg");
+            loadFrame("res/step_mute.svg", "res/ComponentLibrary/TL1105_1.svg");
+            loadFrame("res/step_skip.svg", "res/ComponentLibrary/TL1105_2.svg");
+        }
+        void draw(const DrawArgs& args) override {
+            tryLoadFrames();
+            if (frames.empty())
+                return;
+            app::SvgSwitch::draw(args);
+        }
+        void drawLayer(const DrawArgs& args, int layer) override {
+            tryLoadFrames();
+            if (frames.empty())
+                return;
+            app::SvgSwitch::drawLayer(args, layer);
+        }
+    };
+
+    struct NoteLabel : TransparentWidget {
+        UZZ* module = nullptr;
+        int stepIndex = 0;
+        static std::shared_ptr<Font> font;
+
+        NoteLabel(UZZ* m, int i) {
+            module = m; stepIndex = i; box.size = Vec(24.f, 12.f);
+            if (!font && APP && APP->window) {
+                auto loadFontSafe = [](const char* path) -> std::shared_ptr<Font> {
+                    if (!path) return nullptr;
+                    try {
+                        return APP->window->loadFont(asset::system(path));
+                    } catch (const std::exception& e) {
+                        WARN("Failed to load font %s: %s", path, e.what());
+                    } catch (...) {
+                        WARN("Failed to load font %s: unknown error", path);
+                    }
+                    return nullptr;
+                };
+                font = loadFontSafe(UIAssets::NOTE_FONT);
+                if (!font)
+                    font = loadFontSafe(UIAssets::NOTE_FONT_FALLBACK);
+            }
+        }
     void draw(const DrawArgs& args) override {
         if (!module) return;
         int s   = (int) std::round(module->params[UZZ::PITCH_0 + stepIndex].getValue());

@@ -51,8 +51,7 @@ namespace UI {
 namespace UIAssets {
     static constexpr const char* INPUT_PORT_SVG  = "res/port_input.svg";
     static constexpr const char* OUTPUT_PORT_SVG = "res/port_output.svg";
-    static constexpr const char* NOTE_FONT       = "res/fonts/Inter-Medium.ttf";
-    static constexpr const char* NOTE_FONT_FALLBACK = "res/fonts/NotoSans-Regular.ttf";
+
 }
 
 // ============================================================================
@@ -84,6 +83,26 @@ std::shared_ptr<window::Svg> loadSystemSvg(const char* relPath) {
     return loadSvgFile(asset::system(relPath));
 }
 // ============================================================================
+
+static std::shared_ptr<Font> loadFontFile(const std::string& path) {
+    if (path.empty() || !system::exists(path))
+        return nullptr;
+    try {
+        if (APP && APP->window)
+            return APP->window->loadFont(path);
+    } catch (const std::exception& e) {
+        WARN("Failed to load font %s: %s", path.c_str(), e.what());
+    } catch (...) {
+        WARN("Failed to load font %s: unknown error", path.c_str());
+    }
+    return nullptr;
+}
+
+static std::shared_ptr<Font> loadSystemFont(const char* relPath) {
+    if (!relPath)
+        return nullptr;
+    return loadFontFile(asset::system(relPath));
+}
 
 // Helpers
 // ============================================================================
@@ -1380,35 +1399,23 @@ struct UzzOutputPort : PJ301MPort {
 
         NoteLabel(UZZ* m, int i) {
             module = m; stepIndex = i; box.size = Vec(24.f, 12.f);
-            if (!font && APP && APP->window) {
-                auto loadFontSafe = [](const char* path) -> std::shared_ptr<Font> {
-                    if (!path) return nullptr;
-                    try {
-                        return APP->window->loadFont(asset::system(path));
-                    } catch (const std::exception& e) {
-                        WARN("Failed to load font %s: %s", path, e.what());
-                    } catch (...) {
-                        WARN("Failed to load font %s: unknown error", path);
-                    }
-                    return nullptr;
-                };
-                font = loadFontSafe(UIAssets::NOTE_FONT);
-                if (!font)
-                    font = loadFontSafe(UIAssets::NOTE_FONT_FALLBACK);
+            if (!font) {
+                font = loadSystemFont("res/fonts/ShareTechMono-Regular.ttf");
             }
         }
-    void draw(const DrawArgs& args) override {
-        if (!module) return;
-        int s   = (int) std::round(module->params[UZZ::PITCH_0 + stepIndex].getValue());
-        int oct = (int) std::round(module->params[UZZ::OCT_0   + stepIndex].getValue()) + 4;
-        static const char* N[12] = {"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
-        std::string txt = string::f("%s%d", N[(s%12+12)%12], oct);
-        nvgFontSize(args.vg, 10.f); if (font) nvgFontFaceId(args.vg, font->handle);
-        nvgFillColor(args.vg, nvgRGB(0xC8,0xD4,0xE3));
-        nvgTextAlign(args.vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
-        nvgText(args.vg, box.size.x * .5f, box.size.y * .5f, txt.c_str(), nullptr);
-    }
-};
+
+        void draw(const DrawArgs& args) override {
+            if (!module) return;
+            int s   = (int) std::round(module->params[UZZ::PITCH_0 + stepIndex].getValue());
+            int oct = (int) std::round(module->params[UZZ::OCT_0   + stepIndex].getValue()) + 4;
+            static const char* N[12] = {"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
+            std::string txt = string::f("%s%d", N[(s%12+12)%12], oct);
+            nvgFontSize(args.vg, 10.f); if (font) nvgFontFaceId(args.vg, font->handle);
+            nvgFillColor(args.vg, nvgRGB(0xC8,0xD4,0xE3));
+            nvgTextAlign(args.vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
+            nvgText(args.vg, box.size.x * .5f, box.size.y * .5f, txt.c_str(), nullptr);
+        }
+    };
 std::shared_ptr<Font> NoteLabel::font = nullptr;
 
 // ============================================================================

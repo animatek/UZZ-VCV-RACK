@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 870 380" width="870" height="380">
+  <g id="background">
+    <rect x="0" y="0" width="870" height="380" fill="#E5E5E5"  />
+  </g>
+  <g id="accent_bars">
+    <rect x="0" y="0" width="870" height="2.4" fill="#2C7FFF"  />
+    <rect x="0" y="377.6" width="870" height="2.4" fill="#2C7FFF"  />
+  </g>
+  <g id="separators">
+    <line x1="48" y1="96" x2="868" y2="96" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="48" y1="144" x2="868" y2="144" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="48" y1="192" x2="868" y2="192" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="48" y1="240" x2="868" y2="240" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="48" y1="51" x2="868" y2="51" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="48" y1="281" x2="868" y2="281" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
+  </g>
+  <g id="col_separators">
+    <line x1="48" y1="4.4" x2="48" y2="375.6" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="99.3125" y1="4.4" x2="99.3125" y2="281" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="150.625" y1="4.4" x2="150.625" y2="375.6" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="201.938" y1="4.4" x2="201.938" y2="281" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="253.25" y1="4.4" x2="253.25" y2="281" stroke="#707890" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="304.562" y1="4.4" x2="304.562" y2="375.6" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="355.875" y1="4.4" x2="355.875" y2="281" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="407.188" y1="4.4" x2="407.188" y2="281" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="458.5" y1="4.4" x2="458.5" y2="375.6" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="509.812" y1="4.4" x2="509.812" y2="281" stroke="#707890" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="509.812" y1="281" x2="509.812" y2="375.6" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="561.125" y1="4.4" x2="561.125" y2="281" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="612.438" y1="4.4" x2="612.438" y2="281" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="663.75" y1="4.4" x2="663.75" y2="281" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="715.062" y1="4.4" x2="715.062" y2="281" stroke="#707890" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="715.062" y1="281" x2="715.062" y2="375.6" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="766.375" y1="4.4" x2="766.375" y2="281" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="817.688" y1="4.4" x2="817.688" y2="375.6" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
+  </g>
+  <g id="logo" transform="translate(484.156,364) scale(0.00206) translate(-4386,-4369)">
+    <path d="M3953,4248.31L3953,1873.04C3953,1769.02 4022.35,1699.67 4126.38,1699.67L4663.84,1699.67C4767.87,1699.67 4837.22,1769.02 4837.22,1873.04L4837.22,4248.31C4837.22,4352.34 4767.87,4421.69 4663.84,4421.69L4126.38,4421.69C4022.35,4421.69 3953,4352.34 3953,4248.31ZM3953,8565.4L3953,6536.89C3953,6432.86 4022.35,6363.51 4126.38,6363.51L4663.84,6363.51C4767.87,6363.51 4837.22,6432.86 4837.22,6536.89L4837.22,8565.4C4837.22,8669.43 4906.57,8756.11 5027.94,8738.78C7143.14,8426.7 8772.88,6588.9 8772.88,4369.67C8772.88,1959.73 6796.38,0.57 4386.44,0.57C1959.16,0.57 0,1959.73 0,4369.67C0,6606.24 1647.08,8426.7 3762.28,8738.78C3883.65,8756.11 3953,8669.43 3953,8565.4Z" fill="#2C7FFF" fill-rule="nonzero"/>
+  </g>
+</svg>

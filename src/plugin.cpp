@@ -8,8 +8,10 @@ void init(Plugin* p) {
 
 	// Add modules here
 
-		p->addModel(modelUZZ);   // registra el módulo UZZ
-	
+		p->addModel(modelUZZ);    // UZZ step sequencer
+		p->addModel(modelOxiCv);  // OXI-CV (6HP MIDI-to-CV for Oxi One)
+		p->addModel(modelOxiCvExp); // OXI-CV EXPANSOR
+
 
 	// Any other plugin initialization may go here.
 	// As an alternative, consider lazy-loading assets and lookup tables when your module is created to reduce startup times of Rack.

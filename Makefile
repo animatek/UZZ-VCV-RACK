@@ -2,7 +2,7 @@
 RACK_DIR ?= ../..
 
 # FLAGS will be passed to both the C and C++ compiler
-FLAGS +=
+FLAGS += -fno-math-errno
 CFLAGS +=
 CXXFLAGS +=
 
@@ -21,3 +21,17 @@ DISTRIBUTABLES += $(wildcard presets)
 
 # Include the Rack plugin Makefile framework
 include $(RACK_DIR)/plugin.mk
+
+# Install to both standalone and Bitwig Flatpak directories
+BITWIG_PLUGINS_DIR := $(HOME)/.var/app/com.bitwig.BitwigStudio/data/Rack2/plugins-$(ARCH_OS)-$(ARCH_CPU)
+
+install-all: dist
+	mkdir -p "$(PLUGINS_DIR)"
+	cp dist/*.vcvplugin "$(PLUGINS_DIR)"/
+	@if [ -d "$(BITWIG_PLUGINS_DIR)" ]; then \
+		rm -rf "$(BITWIG_PLUGINS_DIR)/$(SLUG)"; \
+		cp -r dist/$(SLUG) "$(BITWIG_PLUGINS_DIR)/"; \
+		echo "Installed to Bitwig Flatpak: $(BITWIG_PLUGINS_DIR)/$(SLUG)"; \
+	else \
+		echo "Bitwig Flatpak dir not found, skipped"; \
+	fi

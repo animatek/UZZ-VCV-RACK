@@ -1,78 +1,142 @@
-# Animatek – UZZ (VCV Rack Plugin)
+# Animatek VCV Rack Plugin
 
-UZZ (Ultimate Ztep Zequencer) is a step sequencer originally created as a Max for Live device, designed for immediate control, clear visual feedback, and fluid musical flow.
+Three modules for VCV Rack 2.x by **Javier Melgar (Animatek)**.
+
+- **UZZ** — Ultimate Ztep Zequencer: a 16-step sequencer with per-row shift, probability, accumulator, and flexible clock.
+- **OXI-CV** — 6HP MIDI-to-CV interface designed for the Oxi One controller.
+- **OXI-CV EXPANSOR** — 10HP expander for OXI-CV with 8 configurable multi-track outputs.
+
+---
+
+## UZZ — Ultimate Ztep Zequencer
+
+UZZ is a step sequencer originally created as a Max for Live device, designed for immediate control, clear visual feedback, and fluid musical flow.
 
 This repository is a port to VCV Rack 2.x, aiming to preserve the original philosophy: precise timing, structured improvisation, and modular flexibility.
 
+### Features
+
+- 16 steps with per-step **Pitch**, **Octave**, **Duration**, **Mod1**, **Mod2**, and **Probability**
+- Per-step **step mode**: Play, Mute, Skip, Accum Up, Accum Down
+- **Active window**: configurable Start and Step count with wrap-around
+- **Clock ratios**: ÷8 to ×8 and beyond, with swing
+- **Direction modes**: Forward, Backward, Ping-Pong, Random, Drunk
+- **Global glide (slew)** on pitch output
+- **Accumulator**: semitone offset that accumulates on ACCUM steps
+- **Per-row Randomize** buttons with CV trig inputs (Pitch, Oct, Mode, Dur, Mod1, Mod2, Prob)
+- **Per-row Shift** up/down arrows for all rows including Probability
+- **Per-step Probability** (0–100%) and **Global Probability** knob — multiplicative, gate only
+- Polyphonic step-gate output (one channel per active step)
+- EOC output, transpose input, reset input
+
+---
+
+## OXI-CV
+
+A 6HP MIDI-to-CV converter designed for the **Oxi One** sequencer/controller, covering all its output modes.
+
+### Features
+
+- **V/Oct**, **Gate**, **Velocity** outputs
+- **8× CC outputs** (configurable CC numbers per slot)
+- **Clock output** and **CLK/n divisions** (÷1 to ÷32)
+- **Run output**
+- Supports **Mono, Poly, Chord, Multitrack and Matriceal** Oxi One modes
+- Channel-selectable MIDI input (Omni or specific channel)
+- Compact 6HP panel
+
+---
+
+## OXI-CV EXPANSOR
+
+A 10HP expander for **OXI-CV** that unlocks its multi-track capabilities.
+
+### Features
+
+- **8 configurable tracks** with independent **V/Oct**, **Gate**, and **Velocity** outputs
+- Works alongside OXI-CV in Multitrack and Matriceal modes
+- Must be placed immediately to the right of OXI-CV
+
+---
+
 ## Changelog
+
+### 2.4.1 — Probability, New Modules & Label Polish
+*(2026-04)*
+
+#### UZZ: Per-Step and Global Probability
+* Added **PROB row**: 16 Trimpot knobs (0–100 %, default 100 %) placed above the Pitch row, one per step.
+* Added **Global PROB knob** in the bottom panel (bottom-right position, replaces old EOC slot).
+* Probability is **multiplicative**: `p_final = p_step × p_global`. Only the gate is silenced on failure; pitch, Mod1/Mod2 and accumulator continue unaffected.
+* Probability is evaluated **on every step arrival** using `random::uniform()`.
+* Full row support: **Randomize PROB** button + CV trig input, **Shift PROB up/down** arrows (10 % per click), right-click **Reset PROB** to 100 %.
+* New params appended at end of enum — existing patches default PROB to 100 % and play back unmodified.
+
+#### UZZ: Bottom Panel Reorganisation
+* STEP_GATES (poly) output moved to the **step 11 column** (bottom row).
+* EOC output moved to the **step 13 column** (bottom row).
+* Global PROB knob placed at **step 15 column** (bottom row) with PROB label at step 14.
+
+#### UZZ: Label Rendering
+* All panel labels now use `APP->window->uiFont` (Rack's system UI proportional font) rendered in `drawLayer(1)`, matching the look of OXI-CV.
+* Fake-bold via 0.15 px horizontal pass, uppercase enforced at construction.
+* Row labels (MODE, PITCH, OCT, DUR, MOD1, MOD2, PROB) repositioned above their trig input ports with consistent 3 px gap.
+
+#### New Modules
+* **OXI-CV**: 6HP MIDI-to-CV for Oxi One — V/Oct, Gate, Velocity, 8× CC, Clock, CLK divisions, Run. Mono/Poly/Chord/Multitrack/Matriceal modes.
+* **OXI-CV EXPANSOR**: 10HP expander — 8 configurable tracks with V/Oct, Gate, Velocity outputs.
+
+---
+
 ### 2.3.0 — Stability & Host Reload Fixes
 *(2025-11)*
 
 #### Core Fixes
 * Fixed critical crash when reloading the Rack plugin inside Bitwig or other hosts.
-* `dataToJson()` no longer assumes a valid base object from `Module::dataToJson()`.
-    * It now creates its own `json_object()` when the base is `nullptr`, preventing null writes that previously killed the plugin sandbox (“plugin host died / end of stream”).
-* `dataFromJson()` now calls the base method before applying stored values for a clean restore.
-* UI asset safety during headless scans.
-    * Constructors that previously called `APP->window->loadSvg()` unconditionally now guard against a null `APP->window`.
-    * When the host runs Rack without a window (typical during VST scans), custom graphics are skipped or replaced with system fallbacks instead of crashing.
+* `dataToJson()` now creates its own `json_object()` when the base is `nullptr`.
+* `dataFromJson()` calls the base method before applying stored values.
+* UI asset safety during headless scans — constructors guard against null `APP->window`.
 
 #### Timing & Clock Behavior
 * Default clock ratio set to ×1.
-* `RATIO_DEFAULT_INDEX` now points to the ×1 entry so new instances and resets start at unity speed. Existing projects keep their saved ratio.
-* Virtual clock rewrite for long gates.
-    * Added `needsVirtualClock` so the internal oscillator only runs when the ratio differs from ×1.
-    * At ×1, the module waits for a new rising edge to advance, eliminating runaway ticks caused by held gates.
-* `havePhase` is forced off at ×1 to prevent the scheduler from enqueuing extra steps while an external gate is high.
+* Virtual clock rewrite: internal oscillator only runs when ratio ≠ ×1.
+* `havePhase` forced off at ×1 to prevent extra steps during held gates.
 
 #### UI & Font Rendering
-* Improved note LED readability.
-* Font loading now uses `asset::system("res/fonts/ShareTechMono-Regular.ttf")` with `APP && APP->window` guards to avoid headless crashes.
-* Text rendering tuned for clarity: centered alignment, pixel-rounded coordinates, and an optimal 9 px size.
-* Optional monospace fallback retained for hosts running without system fonts.
+* Font loading uses `asset::system("res/fonts/ShareTechMono-Regular.ttf")` with `APP && APP->window` guards.
+* Text rendering tuned: centered alignment, pixel-rounded coordinates, 9 px size.
 
 #### SVG Loading Refactor
-* Unified safe SVG loader (`loadSvgFile()`).
-* All plugin and system assets now route through this helper, which performs a single `system::exists()` check and prefers `APP->window->loadSvg()` when available, falling back to a non-window loader in headless mode.
-* Step-mode icons and row-shift arrows now render correctly after VST project reloads.
+* Unified safe SVG loader routing all assets through a single helper.
+* Step-mode icons and row-shift arrows render correctly after VST project reloads.
 
-#### Internal Changes
-* Hardened JSON read/write path with null-checks and index clamping.
-* Moved sample-rate dependent initialization to `onSampleRateChange()`.
-* Improved fallbacks for missing UI assets and fonts.
-* Minor cleanups in button constructors and naming.
+---
 
 ### 2.1.0 — Per-Row Shift & Menu Enhancements
 *(2025-10-03)*
 
-* Added per-row shift controls for Pitch, Octave, Duration, Mod1, and Mod2 with wrap-free behavior and step-size tweaks (Mod rows now move 10% per click).
-* Introduced contextual menu refinements: dedicated submenus for Direction mode, Range Mod1, Range Mod2, and an EOC-on-reset toggle.
+* Added per-row shift controls for Pitch, Octave, Duration, Mod1, and Mod2.
+* Contextual menu: submenus for Direction mode, Range Mod1/Mod2, EOC-on-reset toggle.
 * Implemented optional EOC trigger on external reset with persistence.
-* Refined reset handling so the active step still fires before jumping back to the start window.
-* Added custom input/output port widgets with 10% scale reduction and optional recolored SVGs.
-* Tuned slew response to a logarithmic curve (fixed).
-* Cleaned up random button light logic while retaining smoothing.
-* Fixed malformed plugin.json version field.
+* Refined reset handling: active step fires before jumping to start window.
+* Custom input/output port widgets (10 % scale reduction).
+* Tuned slew to logarithmic curve.
+
+---
 
 ### 2.0.5 — Clock Multipliers & Stability Fixes
 *(2025-09-23)*
 
-#### Fixed
-* Clock multipliers now trigger the first sub-tick correctly (×2, ×3, ×4… no longer skip).
-* Gate/Trigger handling improved for more consistent behavior.
-* Removed unused variables and resolved compilation warnings.
+* Clock multipliers now trigger the first sub-tick correctly.
+* Limited maximum multiplier to ×48.
+* Old patches with ×64/×96 clamp to ×48 automatically.
 
-#### Changed
-* Limited maximum multiplier to ×48 (removed ×64 and ×96, which produced continuous gates).
-* Old patches saved with ×64/×96 automatically clamp to ×48 for compatibility.
+---
 
-#### Notes
-* Tested with VCV Rack 2.5 SDK.
+## Links
 
-#### Info and website
-
-- Website: <https://animatek.net>  
-- Manual: <https://animatek.net/uzz-en-vcvrack/>  
-- Youtube: <https://www.youtube.com/@animatek>  
-- Author: **Javier Melgar (Animatek)**  
+- Website: <https://animatek.net>
+- Manual: <https://animatek.net/ultimate-ztep-zequencer-vcvrack/>
+- YouTube: <https://www.youtube.com/@animatek>
+- Author: **Javier Melgar (Animatek)**
 - License: **GPL-3.0-or-later**

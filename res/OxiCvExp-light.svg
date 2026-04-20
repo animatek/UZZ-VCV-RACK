@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="50.8mm" height="128.5mm" viewBox="0 0 50.8 128.5" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <rect fill="#e6e6e6" width="50.8" height="128.5"/>
+
+  <!-- Top/bottom accent bars -->
+  <rect x="0" y="0"     width="50.8" height="0.8" fill="#2C7FFF"/>
+  <rect x="0" y="127.7" width="50.8" height="0.8" fill="#2C7FFF"/>
+
+  <!-- Header (title drawn in code — SVG text not rendered by Rack) -->
+  <line x1="5" y1="10.0" x2="45.8" y2="10.0" stroke="#222222" stroke-width="0.3" opacity="0.85"/>
+
+  <!-- Rows -->
+  <g transform="translate(0, 18)">
+    <!-- 8 track lines -->
+    <text x="3" y="4" font-family="Outfit, sans-serif" font-size="2.5" fill="#666666">T1</text>
+    <text x="3" y="17" font-family="Outfit, sans-serif" font-size="2.5" fill="#666666">T2</text>
+    <text x="3" y="30" font-family="Outfit, sans-serif" font-size="2.5" fill="#666666">T3</text>
+    <text x="3" y="43" font-family="Outfit, sans-serif" font-size="2.5" fill="#666666">T4</text>
+    <text x="3" y="56" font-family="Outfit, sans-serif" font-size="2.5" fill="#666666">T5</text>
+    <text x="3" y="69" font-family="Outfit, sans-serif" font-size="2.5" fill="#666666">T6</text>
+    <text x="3" y="82" font-family="Outfit, sans-serif" font-size="2.5" fill="#666666">T7</text>
+    <text x="3" y="95" font-family="Outfit, sans-serif" font-size="2.5" fill="#666666">T8</text>
+
+    <!-- Dividers (subtle) -->
+    <g stroke="#cccccc" stroke-width="0.2">
+      <line x1="5" y1="7.5" x2="45.8" y2="7.5"/>
+      <line x1="5" y1="20.5" x2="45.8" y2="20.5"/>
+      <line x1="5" y1="33.5" x2="45.8" y2="33.5"/>
+      <line x1="5" y1="46.5" x2="45.8" y2="46.5"/>
+      <line x1="5" y1="59.5" x2="45.8" y2="59.5"/>
+      <line x1="5" y1="72.5" x2="45.8" y2="72.5"/>
+      <line x1="5" y1="85.5" x2="45.8" y2="85.5"/>
+    </g>
+  </g>
+
+  <!-- Logo (Bottom Branding) -->
+  <g id="Logo" transform="translate(25.4, 123.0) scale(0.0007) translate(-4386, -4369)">
+    <path d="M3953,4248.31L3953,1873.04C3953,1769.02 4022.35,1699.67 4126.38,1699.67L4663.84,1699.67C4767.87,1699.67 4837.22,1769.02 4837.22,1873.04L4837.22,4248.31C4837.22,4352.34 4767.87,4421.69 4663.84,4421.69L4126.38,4421.69C4022.35,4421.69 3953,4352.34 3953,4248.31ZM3953,8565.4L3953,6536.89C3953,6432.86 4022.35,6363.51 4126.38,6363.51L4663.84,6363.51C4767.87,6363.51 4837.22,6432.86 4837.22,6536.89L4837.22,8565.4C4837.22,8669.43 4906.57,8756.11 5027.94,8738.78C7143.14,8426.7 8772.88,6588.9 8772.88,4369.67C8772.88,1959.73 6796.38,0.57 4386.44,0.57C1959.16,0.57 0,1959.73 0,4369.67C0,6606.24 1647.08,8426.7 3762.28,8738.78C3883.65,8756.11 3953,8669.43 3953,8565.4Z"
+          style="fill:#2C7FFF;fill-rule:nonzero;"/>
+  </g>
+</svg>

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="40.64mm" height="128.5mm"
+     viewBox="0 0 40.64 128.5">
+
+  <!-- Background -->
+  <rect width="40.64" height="128.5" fill="#212121"/>
+
+  <!-- Top/bottom accent bars -->
+  <rect x="0" y="0"     width="40.64" height="0.8" fill="#2C7FFF"/>
+  <rect x="0" y="127.7" width="40.64" height="0.8" fill="#2C7FFF"/>
+
+  <!-- Retro console display (y 3.5..14.5) -->
+  <rect x="3.0" y="3.5" width="34.64" height="11.0" rx="1.5"
+        fill="#000000" stroke="#1a1a2e" stroke-width="0.4"/>
+  <rect x="3.9" y="4.3" width="32.84" height="9.4" rx="0.8"
+        fill="#000000" stroke="#101e14" stroke-width="0.25"/>
+  <circle cx="5.5"   cy="6.0" r="0.4" fill="#2a6a42" opacity="0.7"/>
+  <circle cx="35.14" cy="6.0" r="0.4" fill="#2a6a42" opacity="0.7"/>
+  <rect x="3.9" y="9.0" width="32.84" height="0.08" fill="#1a3a25" opacity="0.3"/>
+
+  <!-- Brand footer icons -->
+  <!-- Logo centered under CLK/n port (x=20.32) -->
+  <!-- Adjusting Y to find the perfect middle ground -->
+  <g id="Logo" transform="translate(20.32, 123.0) scale(0.0007) translate(-4386, -4369)">
+    <path d="M3953,4248.31L3953,1873.04C3953,1769.02 4022.35,1699.67 4126.38,1699.67L4663.84,1699.67C4767.87,1699.67 4837.22,1769.02 4837.22,1873.04L4837.22,4248.31C4837.22,4352.34 4767.87,4421.69 4663.84,4421.69L4126.38,4421.69C4022.35,4421.69 3953,4352.34 3953,4248.31ZM3953,8565.4L3953,6536.89C3953,6432.86 4022.35,6363.51 4126.38,6363.51L4663.84,6363.51C4767.87,6363.51 4837.22,6432.86 4837.22,6536.89L4837.22,8565.4C4837.22,8669.43 4906.57,8756.11 5027.94,8738.78C7143.14,8426.7 8772.88,6588.9 8772.88,4369.67C8772.88,1959.73 6796.38,0.57 4386.44,0.57C1959.16,0.57 0,1959.73 0,4369.67C0,6606.24 1647.08,8426.7 3762.28,8738.78C3883.65,8756.11 3953,8669.43 3953,8565.4Z"
+          style="fill:#2C7FFF;fill-rule:nonzero;"/>
+  </g>
+</svg>

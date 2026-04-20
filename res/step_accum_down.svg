@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
-  <title>UZZ Step: Mute</title>
+  <title>UZZ Step: Accumulator Down</title>
   <g fill="none" stroke="#2170F5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="4" y1="4" x2="12" y2="12"/>
-    <line x1="12" y1="4" x2="4" y2="12"/>
+    <polyline points="4,6 8,11 12,6" />
   </g>
 </svg>

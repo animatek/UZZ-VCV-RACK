@@ -532,6 +532,7 @@ struct UZZ : Module {
     RND_PROB_PARAM,
     PROB_SHIFT_DOWN_PARAM,
     PROB_SHIFT_UP_PARAM,
+    ACCUM_CLIP_PARAM,
 
     NUM_PARAMS
   };
@@ -600,6 +601,7 @@ struct UZZ : Module {
   bool eocOnReset = false;
 
   int accumOffset[16] = {};
+  int accumGlobalCount = 0;
 
   int m1Range = UZZRanges::MR_0_10;
   int m2Range = UZZRanges::MR_0_10;
@@ -662,6 +664,8 @@ struct UZZ : Module {
     configParam(SLEW_PARAM, 0.f, 2.0f, 0.f, "Glide (slew)", " s");
     configParam(ACCUM_AMT_PARAM, 0.f, 24.f, 1.f, "Accumulator amount", " st");
     paramQuantities[ACCUM_AMT_PARAM]->snapEnabled = true;
+    configParam(ACCUM_CLIP_PARAM, 0.f, 16.f, 0.f, "Accumulator clip (reset every N sums, 0=OFF)");
+    paramQuantities[ACCUM_CLIP_PARAM]->snapEnabled = true;
 
     configParam(RND_PITCH_PARAM, 0.f, 1.f, 0.f, "Randomize pitch");
     configParam(RND_OCTAVE_PARAM, 0.f, 1.f, 0.f, "Randomize octave");
@@ -727,6 +731,7 @@ struct UZZ : Module {
 
     for (int i = 0; i < 16; ++i)
       accumOffset[i] = 0;
+    accumGlobalCount = 0;
   }
 
   void setPitchRange(int maxSemis, bool scaleValues = true) {
@@ -768,23 +773,21 @@ struct UZZ : Module {
     }
   }
 
-  void resetPitchRow() {
-    for (int i = 0; i < 16; ++i)
-      params[PITCH_PARAMS + i].setValue(0.f);
+  void fillRow(int base, float value) {
+    for (int i = 0; i < 16; ++i) params[base + i].setValue(value);
   }
-  void resetOctaveRow() {
-    for (int i = 0; i < 16; ++i)
-      params[OCT_PARAMS + i].setValue(0.f);
-  }
-  void resetStepModeRow() {
-    for (int i = 0; i < 16; ++i)
-      params[STEP_MODE_PARAMS + i].setValue(0.f);
-  }
+
+  void resetPitchRow()    { fillRow(PITCH_PARAMS,     0.f);    }
+  void resetOctaveRow()   { fillRow(OCT_PARAMS,       0.f);    }
+  void resetStepModeRow() { fillRow(STEP_MODE_PARAMS, 0.f);    }
+  void resetDurRow()      { fillRow(DUR_PARAMS,       0.100f); }
+  void resetM1Row()       { fillRow(M1_PARAMS,        0.f);    }
+  void resetM2Row()       { fillRow(M2_PARAMS,        0.f);    }
+  void resetProbRow()     { fillRow(PROB_PARAMS,      100.f);  }
 
   void randomizeDurations() {
     for (int i = 0; i < 16; ++i)
-      params[DUR_PARAMS + i].setValue(0.005f +
-                                      random::uniform() * (2.0f - 0.005f));
+      params[DUR_PARAMS + i].setValue(0.005f + random::uniform() * (2.0f - 0.005f));
   }
   void randomizeM1() {
     for (int i = 0; i < 16; ++i)
@@ -796,25 +799,7 @@ struct UZZ : Module {
   }
   void randomizeProb() {
     for (int i = 0; i < 16; ++i)
-      params[PROB_PARAMS + i].setValue(
-          (int)std::floor(random::uniform() * 101.f));
-  }
-
-  void resetDurRow() {
-    for (int i = 0; i < 16; ++i)
-      params[DUR_PARAMS + i].setValue(0.100f);
-  }
-  void resetM1Row() {
-    for (int i = 0; i < 16; ++i)
-      params[M1_PARAMS + i].setValue(0.f);
-  }
-  void resetM2Row() {
-    for (int i = 0; i < 16; ++i)
-      params[M2_PARAMS + i].setValue(0.f);
-  }
-  void resetProbRow() {
-    for (int i = 0; i < 16; ++i)
-      params[PROB_PARAMS + i].setValue(100.f);
+      params[PROB_PARAMS + i].setValue((int)std::floor(random::uniform() * 101.f));
   }
 
   static float quantize_to_step(float value, float min_val, float step) {
@@ -1095,6 +1080,7 @@ struct UZZ : Module {
 
       for (int i = 0; i < 16; ++i)
         accumOffset[i] = 0;
+      accumGlobalCount = 0;
 
       gatePulse.reset();
       eocPulse.reset();
@@ -1169,12 +1155,20 @@ struct UZZ : Module {
         eocPulse.trigger(TRIG_LEN);
 
       if (prevMode == SM_ACCUM_UP || prevMode == SM_ACCUM_DOWN) {
-        int amt = (int)std::round(params[ACCUM_AMT_PARAM].getValue());
+        int amt  = (int)std::round(params[ACCUM_AMT_PARAM].getValue());
+        int clip = (int)std::round(params[ACCUM_CLIP_PARAM].getValue());
         int signedAmt = (prevMode == SM_ACCUM_UP) ? amt : -amt;
         int v = accumOffset[prevStep] + signedAmt;
-        const int range = 25; // -12..+12 inclusive
-        v = ((v + 12) % range + range) % range - 12;
+        static constexpr int ACCUM_RANGE = 25; // -12..+12 inclusive
+        v = ((v + 12) % ACCUM_RANGE + ACCUM_RANGE) % ACCUM_RANGE - 12;
         accumOffset[prevStep] = v;
+        if (clip > 0) {
+          accumGlobalCount++;
+          if (accumGlobalCount >= clip) {
+            for (int i = 0; i < 16; ++i) accumOffset[i] = 0;
+            accumGlobalCount = 0;
+          }
+        }
       }
 
       bool muteGlobal = false;
@@ -1185,7 +1179,7 @@ struct UZZ : Module {
         for (int k = 0; k < steps; ++k) {
           int sIdx = wrap16(start + k);
           if ((int)std::round(params[STEP_MODE_PARAMS + sIdx].getValue()) !=
-              2) {
+              SM_SKIP) {
             anyPlayable = true;
             break;
           }
@@ -1495,6 +1489,10 @@ struct ParamDisplay : TransparentWidget {
       int st = (int)std::round(v);
       return std::to_string(st) + "st";
     }
+    case UZZ::ACCUM_CLIP_PARAM: {
+      int n = (int)std::round(v);
+      return (n > 0) ? std::to_string(n) + "x" : "OFF";
+    }
     case UZZ::GATE_MODE_PARAM:
       return (v < 0.5f) ? "GATE" : "TRIG";
     default:
@@ -1524,6 +1522,44 @@ struct ParamDisplay : TransparentWidget {
     float cx = box.size.x * 0.5f;
     float cy = box.size.y * 0.5f;
     nvgText(args.vg, cx, cy, txt.c_str(), nullptr);
+  }
+};
+
+// Muestra en dos líneas: semitones (arriba) y clip count (abajo).
+struct AccumDisplay : TransparentWidget {
+  UZZ* module;
+
+  AccumDisplay(Vec pos, Vec size, UZZ* m) : module(m) {
+    box.pos = pos;
+    box.size = size;
+  }
+
+  void drawLayer(const DrawArgs& args, int layer) override {
+    if (layer != 1) return;
+    std::shared_ptr<Font> font = APP->window->uiFont;
+    if (!font) return;
+
+    nvgBeginPath(args.vg);
+    nvgRoundedRect(args.vg, 0, 0, box.size.x, box.size.y, 2.5f);
+    nvgFillColor(args.vg, nvgRGBA(0, 0, 0, 180));
+    nvgFill(args.vg);
+
+    std::string stTxt   = "--";
+    std::string clipTxt = "OFF";
+    if (module) {
+      int st   = (int)std::round(module->params[UZZ::ACCUM_AMT_PARAM].getValue());
+      int clip = (int)std::round(module->params[UZZ::ACCUM_CLIP_PARAM].getValue());
+      stTxt   = std::to_string(st) + "st";
+      clipTxt = (clip > 0) ? std::to_string(clip) + "x" : "OFF";
+    }
+
+    nvgFontFaceId(args.vg, font->handle);
+    nvgFillColor(args.vg, nvgRGB(0x5D, 0xB7, 0xFF));
+    nvgTextAlign(args.vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
+    float cx = box.size.x * 0.5f;
+    nvgFontSize(args.vg, 8.5f);
+    nvgText(args.vg, cx, box.size.y * 0.30f, stTxt.c_str(), nullptr);
+    nvgText(args.vg, cx, box.size.y * 0.72f, clipTxt.c_str(), nullptr);
   }
 };
 
@@ -1844,8 +1880,10 @@ struct UZZWidget : ModuleWidget {
                                              UZZ::DIR_MODE_PARAM));
     addParam(createParamCentered<UzzArcKnob>(Vec(UI::X_CTRL2, yMid), module,
                                              UZZ::SWING_PARAM));
-    addParam(createParamCentered<UzzArcKnob>(Vec(UI::X_CTRL2, yBot), module,
-                                             UZZ::ACCUM_AMT_PARAM));
+    addParam(createParamCentered<Trimpot>(Vec(UI::X_CTRL2 - 10.f, yBot), module,
+                                          UZZ::ACCUM_AMT_PARAM));
+    addParam(createParamCentered<Trimpot>(Vec(UI::X_CTRL2 + 10.f, yBot), module,
+                                          UZZ::ACCUM_CLIP_PARAM));
 
     // ── Param displays (dark rect + blue text, like OxiCvExp channel label) ──
     {
@@ -1862,26 +1900,11 @@ struct UZZWidget : ModuleWidget {
       addDispAt(xStep5, yBot, UZZ::START_PARAM);
       addDispAt(xStep8, yTop, UZZ::DIR_MODE_PARAM);
       addDispAt(xStep8, yMid, UZZ::SWING_PARAM);
-      addDispAt(xStep8, yBot, UZZ::ACCUM_AMT_PARAM);
+      addChild(new AccumDisplay(
+          Vec(xStep8 - dW * .5f, yBot - dH * .5f), Vec(dW, dH), module));
     }
 
     // — Bottom section labels —
-    // Knob labels (X_CTRL1, X_CTRL2, X_SWITCH) go ABOVE the control.
-    // Port labels (X_IN, X_OUT1, X_OUT2) go to the LEFT, vertically centered.
-    auto addLabelAbove = [&](float cx, float cy, const char *text) {
-      const float w = 60.f, h = 10.f;
-      auto *lbl = new TextLabel(text, Vec(cx - w * .5f, cy - 14.f), Vec(w, h));
-      lbl->fontSize = 8.5f;
-      addChild(lbl);
-    };
-    auto addLabelLeft = [&](float cx, float cy, const char *text,
-                            float gap = 22.f, float w = 60.f) {
-      const float h = 12.f;
-      auto *lbl =
-          new TextLabel(text, Vec(cx - gap - w, cy - h), Vec(w, h));
-      lbl->fontSize = 11.f;
-      addChild(lbl);
-    };
     // CLK / RESET / XPOSE → label centered on step 1's column,
     // with a thin gray connector line running to the input port.
     auto addInputLabel = [&](float cy, const char *text) {
@@ -2129,28 +2152,18 @@ struct UZZWidget : ModuleWidget {
       }
     }));
 
-    menu->addChild(createSubmenuItem("Range Mod 1", "", [m](ui::Menu *sub) {
-      for (int r = 0; r < UZZRanges::MR_COUNT; ++r) {
-        sub->addChild(createCheckMenuItem(
-            UZZRanges::RANGE_DEFS[r].label, "",
-            [m, r]() { return m && m->m1Range == r; },
-            [m, r]() {
-              if (m)
-                m->m1Range = r;
-            }));
-      }
-    }));
-    menu->addChild(createSubmenuItem("Range Mod 2", "", [m](ui::Menu *sub) {
-      for (int r = 0; r < UZZRanges::MR_COUNT; ++r) {
-        sub->addChild(createCheckMenuItem(
-            UZZRanges::RANGE_DEFS[r].label, "",
-            [m, r]() { return m && m->m2Range == r; },
-            [m, r]() {
-              if (m)
-                m->m2Range = r;
-            }));
-      }
-    }));
+    auto addRangeMenu = [&](const char* label, int* rangePtr) {
+      menu->addChild(createSubmenuItem(label, "", [m, rangePtr](ui::Menu* sub) {
+        for (int r = 0; r < UZZRanges::MR_COUNT; ++r) {
+          sub->addChild(createCheckMenuItem(
+              UZZRanges::RANGE_DEFS[r].label, "",
+              [m, rangePtr, r]() { return m && *rangePtr == r; },
+              [m, rangePtr, r]() { if (m) *rangePtr = r; }));
+        }
+      }));
+    };
+    addRangeMenu("Range Mod 1", &m->m1Range);
+    addRangeMenu("Range Mod 2", &m->m2Range);
   }
 };
 

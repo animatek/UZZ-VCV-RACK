@@ -601,7 +601,6 @@ struct UZZ : Module {
   bool eocOnReset = false;
 
   int accumOffset[16] = {};
-  int accumGlobalCount = 0;
 
   int m1Range = UZZRanges::MR_0_10;
   int m2Range = UZZRanges::MR_0_10;
@@ -664,7 +663,7 @@ struct UZZ : Module {
     configParam(SLEW_PARAM, 0.f, 2.0f, 0.f, "Glide (slew)", " s");
     configParam(ACCUM_AMT_PARAM, 0.f, 24.f, 1.f, "Accumulator amount", " st");
     paramQuantities[ACCUM_AMT_PARAM]->snapEnabled = true;
-    configParam(ACCUM_CLIP_PARAM, 0.f, 16.f, 0.f, "Accumulator clip (reset every N sums, 0=OFF)");
+    configParam(ACCUM_CLIP_PARAM, 0.f, 12.f, 0.f, "Accumulator wrap (semitones, 0=OFF = full ±12 range)");
     paramQuantities[ACCUM_CLIP_PARAM]->snapEnabled = true;
 
     configParam(RND_PITCH_PARAM, 0.f, 1.f, 0.f, "Randomize pitch");
@@ -731,7 +730,6 @@ struct UZZ : Module {
 
     for (int i = 0; i < 16; ++i)
       accumOffset[i] = 0;
-    accumGlobalCount = 0;
   }
 
   void setPitchRange(int maxSemis, bool scaleValues = true) {
@@ -1080,7 +1078,6 @@ struct UZZ : Module {
 
       for (int i = 0; i < 16; ++i)
         accumOffset[i] = 0;
-      accumGlobalCount = 0;
 
       gatePulse.reset();
       eocPulse.reset();
@@ -1156,19 +1153,18 @@ struct UZZ : Module {
 
       if (prevMode == SM_ACCUM_UP || prevMode == SM_ACCUM_DOWN) {
         int amt  = (int)std::round(params[ACCUM_AMT_PARAM].getValue());
-        int clip = (int)std::round(params[ACCUM_CLIP_PARAM].getValue());
+        int wrap = (int)std::round(params[ACCUM_CLIP_PARAM].getValue());
         int signedAmt = (prevMode == SM_ACCUM_UP) ? amt : -amt;
         int v = accumOffset[prevStep] + signedAmt;
-        static constexpr int ACCUM_RANGE = 25; // -12..+12 inclusive
-        v = ((v + 12) % ACCUM_RANGE + ACCUM_RANGE) % ACCUM_RANGE - 12;
-        accumOffset[prevStep] = v;
-        if (clip > 0) {
-          accumGlobalCount++;
-          if (accumGlobalCount >= clip) {
-            for (int i = 0; i < 16; ++i) accumOffset[i] = 0;
-            accumGlobalCount = 0;
-          }
+        if (wrap > 0) {
+          // Módulo sobre el rango: cicla 0..wrap-1 (ACCUM_UP) o 0..-wrap+1 (ACCUM_DOWN)
+          v = v % wrap;
+        } else {
+          // Sin wrap configurado: rango completo ±12
+          static constexpr int ACCUM_RANGE = 25; // -12..+12 inclusive
+          v = ((v + 12) % ACCUM_RANGE + ACCUM_RANGE) % ACCUM_RANGE - 12;
         }
+        accumOffset[prevStep] = v;
       }
 
       bool muteGlobal = false;
@@ -1491,7 +1487,7 @@ struct ParamDisplay : TransparentWidget {
     }
     case UZZ::ACCUM_CLIP_PARAM: {
       int n = (int)std::round(v);
-      return (n > 0) ? std::to_string(n) + "x" : "OFF";
+      return (n > 0) ? std::to_string(n) + "st" : "OFF";
     }
     case UZZ::GATE_MODE_PARAM:
       return (v < 0.5f) ? "GATE" : "TRIG";
@@ -1550,7 +1546,7 @@ struct AccumDisplay : TransparentWidget {
       int st   = (int)std::round(module->params[UZZ::ACCUM_AMT_PARAM].getValue());
       int clip = (int)std::round(module->params[UZZ::ACCUM_CLIP_PARAM].getValue());
       stTxt   = std::to_string(st) + "st";
-      clipTxt = (clip > 0) ? std::to_string(clip) + "x" : "OFF";
+      clipTxt = (clip > 0) ? std::to_string(clip) + "st" : "OFF";
     }
 
     nvgFontFaceId(args.vg, font->handle);

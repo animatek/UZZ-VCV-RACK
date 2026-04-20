@@ -61,6 +61,26 @@ A 10HP expander for **OXI-CV** that unlocks its multi-track capabilities.
 
 ## Changelog
 
+### 2.4.2 — Accumulator Wrap & Code Quality
+*(2026-04)*
+
+#### UZZ: Accumulator Wrap (modulo)
+* Added **ACCUM WRAP** Trimpot (0–12 st) alongside the existing ACCUM AMT knob.
+* When WRAP > 0, the accumulated pitch offset loops via **modulo**: e.g. WRAP=6 cycles the offset 0→1→2→3→4→5→0→... (50 % of an octave).
+* WRAP=12 gives a full-octave cycle; WRAP=0 (default) preserves the original ±12 semitone behaviour.
+* Works symmetrically for **ACCUM UP** and **ACCUM DOWN**.
+* The **AccumDisplay** panel widget shows both values: semitone amount (top line) and wrap point or "OFF" (bottom line).
+* Existing patches are unaffected (WRAP defaults to 0 = OFF).
+
+#### Code quality (refactor, no behaviour change)
+* Slug comparisons in `process()` replaced with model-pointer comparisons (avoids `std::string` allocation at audio rate).
+* `noteToVoct()` helper added to `plugin.hpp`, removing 3 duplicated inline expressions across OXI-CV and OXI-CV EXPANSOR.
+* `silenceAllVoices()` extracted in OXI-CV, replacing two copy-paste blocks.
+* `fillRow()` helper added to UZZ, simplifying 7 `reset*Row()` methods.
+* Dead code removed: unused lambdas and constants.
+
+---
+
 ### 2.4.1 — Probability, New Modules & Label Polish
 *(2026-04)*
 

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 870 380" width="870" height="380">
+  <g id="connectors" fill="none" stroke="#9AA2B5" stroke-width="0.4" stroke-linecap="round" stroke-opacity="0.63">
+    <line x1="92.656" y1="298" x2="105.969" y2="298" />
+    <line x1="92.656" y1="328" x2="105.969" y2="328" />
+    <line x1="92.656" y1="358" x2="105.969" y2="358" />
+    <line x1="199.281" y1="298" x2="209.594" y2="298" />
+    <line x1="199.281" y1="328" x2="209.594" y2="328" />
+    <line x1="199.281" y1="358" x2="209.594" y2="358" />
+    <line x1="353.219" y1="298" x2="363.531" y2="298" />
+    <line x1="353.219" y1="328" x2="363.531" y2="328" />
+    <line x1="353.219" y1="358" x2="363.531" y2="358" />
+    <line x1="558.469" y1="298" x2="568.781" y2="298" />
+    <line x1="604.781" y1="298" x2="615.094" y2="298" />
+    <line x1="558.469" y1="328" x2="568.781" y2="328" />
+    <line x1="604.781" y1="328" x2="614.094" y2="328" />
+    <line x1="662.094" y1="328" x2="674.406" y2="328" />
+    <line x1="558.469" y1="358" x2="568.781" y2="358" />
+    <line x1="657.094" y1="298" x2="674.406" y2="298" />
+    <line x1="657.094" y1="358" x2="674.406" y2="358" />
+    <line x1="759.719" y1="298" x2="777.031" y2="298" />
+    <line x1="759.719" y1="328" x2="777.031" y2="328" />
+    <line x1="759.719" y1="358" x2="777.031" y2="358" />
+  </g>
+  <g id="bottom_separators" fill="none" stroke="#9AA2B5" stroke-width="0.4" stroke-linecap="round" stroke-opacity="0.31">
+    <line x1="0" y1="313" x2="458.5" y2="313" />
+    <line x1="48" y1="343" x2="458.5" y2="343" />
+    <line x1="509.812" y1="313" x2="817.688" y2="313" />
+    <line x1="509.812" y1="343" x2="817.688" y2="343" />
+    <line x1="612.438" y1="346" x2="612.438" y2="370" />
+  </g>
+  <g id="labels" font-family="Arial, Helvetica, sans-serif" font-weight="700" text-anchor="middle" fill="#C8D4E3">
+    <g font-size="11">
+      <text x="124.969" y="304">CLK</text>
+      <text x="124.969" y="334">RESET</text>
+      <text x="124.969" y="364">XPOSE</text>
+      <text x="176.281" y="304">RATIO</text>
+      <text x="176.281" y="334">STEPS</text>
+      <text x="176.281" y="364">START</text>
+      <text x="330.219" y="304">DIR</text>
+      <text x="330.219" y="334">SWING</text>
+      <text x="330.219" y="364">ACUMM</text>
+      <text x="535.469" y="304">SLEW</text>
+      <text x="535.469" y="334">MODE</text>
+      <text x="535.469" y="364">POLY</text>
+      <text x="638.094" y="304">V/OCT</text>
+      <text x="638.094" y="364">EOC</text>
+      <text x="740.719" y="304">MOD1</text>
+      <text x="740.719" y="334">MOD2</text>
+      <text x="740.719" y="364">PROB</text>
+    </g>
+    <g font-size="9">
+      <text x="15" y="15">MODE</text>
+      <text x="15" y="59">PITCH</text>
+      <text x="15" y="107">OCT</text>
+      <text x="15" y="155">DUR</text>
+      <text x="15" y="203">MOD1</text>
+      <text x="15" y="251">MOD2</text>
+      <text x="15" y="330">PROB</text>
+    </g>
+    <text x="484.156" y="304" font-size="16" fill="#2C7FFF">UZZ</text>
+  </g>
+</svg>

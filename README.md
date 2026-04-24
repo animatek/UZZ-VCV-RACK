@@ -8,6 +8,28 @@ Three modules for VCV Rack 2.x by **Javier Melgar (Animatek)**.
 
 ---
 
+## Build
+
+Build against the VCV Rack 2 SDK:
+
+```bash
+RACK_DIR=/path/to/Rack-SDK make
+```
+
+Install the plugin into your local Rack setup:
+
+```bash
+RACK_DIR=/path/to/Rack-SDK make install
+```
+
+Create a distributable package:
+
+```bash
+RACK_DIR=/path/to/Rack-SDK make dist
+```
+
+---
+
 ## UZZ — Ultimate Ztep Zequencer
 
 UZZ is a step sequencer originally created as a Max for Live device, designed for immediate control, clear visual feedback, and fluid musical flow.
@@ -16,7 +38,7 @@ This repository is a port to VCV Rack 2.x, aiming to preserve the original philo
 
 ### Features
 
-- 16 steps with per-step **Pitch**, **Octave**, **Duration**, **Mod1**, **Mod2**, and bipolar **Prob/Pulse**
+- 16 steps with per-step **Pitch**, **Octave**, tempo-relative **Duration**, **Mod1**, **Mod2**, and bipolar **Prob/Pulse**
 - Per-step **step mode**: Play, Mute, Skip, Accum Up, Accum Down, Pulse, Gated, Hold
 - **Active window**: configurable Start and Step count with wrap-around
 - **Clock ratios**: ÷8 to ×8 and beyond, with swing
@@ -57,13 +79,16 @@ A 10HP expander for **OXI-CV** that unlocks its multi-track capabilities.
 - **8 configurable tracks** with independent **V/Oct**, **Gate**, and **Velocity** outputs
 - Works alongside OXI-CV in Multitrack and Matriceal modes
 - Must be placed immediately to the right of OXI-CV
+- Mirrors the current OXI-CV track configuration through the expander link
 
 ---
 
 ## Changelog
 
-### 3.0 — UZZ Pulse Modes & Advanced Directions
+### 2.5.0 — UZZ Pulse Modes & Advanced Directions
 *(2026-04)*
+
+> Kept as a Rack 2.x-compatible `2.x` release so VCV Rack 2 loads the plugin.
 
 #### UZZ: New Step Modes
 * Added three per-step modes: **Pulse**, **Gated**, and **Hold**.
@@ -88,9 +113,16 @@ A 10HP expander for **OXI-CV** that unlocks its multi-track capabilities.
 * Sequencer state now stores the advanced direction position so patches resume consistently.
 
 #### UZZ: Gate/Timing Behavior
+* The **Duration** row is now tempo-relative duty, displayed as percent of the clock step instead of independent seconds.
 * Gate length calculation was centralized to keep pulses and gated playback consistent across ratios.
+* In **Gate** mode, ratcheted repeats now use the repeat interval as their timing window so each repeat has a clear low gap before the next gate.
 * Ratchet sub-pulses are scheduled inside the audio process loop rather than treated as separate steps.
 * Hold/gated states are cleared cleanly on hard stop and reset.
+
+#### UZZ: Panel Polish
+* Group guide lines now sit between steps **4/5**, **8/9**, and **12/13**.
+* Group guide lines use the Animatek logo blue with reduced opacity.
+* The row label for the bipolar probability/pulse controls is shown as **PROB** to fit the panel.
 
 ### 2.4.2 — Accumulator Wrap & Code Quality
 *(2026-04)*

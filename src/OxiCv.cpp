@@ -4,7 +4,13 @@
 // Modes: Mono, Poly, Chord, Multitrack, Matriceal
 // ============================================================================
 #include "plugin.hpp"
+#include "ui/CommonWidgets.hpp"
 #include <array>
+
+using AnimatekUI::HorizontalSeparator;
+using AnimatekUI::TextLabel;
+using AnimatekUI::displayBlue;
+using AnimatekUI::panelTextColor;
 
 // ============================================================================
 // Constants
@@ -258,6 +264,13 @@ struct OxiCv : Module {
         return CLK_DIV_VALUES[clamp(clkDivIdx, 0, NUM_DIVS - 1)];
     }
 
+    void silenceAllVoices() {
+        allocator.allNotesOff();
+        for (auto& t : tracks)      t.gate = false;
+        for (auto& t : allChannels) t.gate = false;
+        monoGate = false;
+    }
+
     // -------------------------------------------------------------------------
     void onReset() override {
         midiInput.reset();
@@ -301,10 +314,7 @@ struct OxiCv : Module {
         if (raw == 0xFB) { running = true; return; }   // Continue
         if (raw == 0xFC) {                              // Stop
             running = false;
-            allocator.allNotesOff();
-            for (auto& t : tracks) t.gate = false;
-            for (auto& t : allChannels) t.gate = false;
-            monoGate = false;
+            silenceAllVoices();
             return;
         }
 
@@ -355,10 +365,7 @@ struct OxiCv : Module {
         }
         else if (type == 0xB0) {
             if (data1 == 123) {
-                allocator.allNotesOff();
-                for (auto& t : tracks) t.gate = false;
-                for (auto& t : allChannels) t.gate = false;
-                monoGate = false;
+                silenceAllVoices();
             } else {
                 for (int i = 0; i < NUM_CC; i++) {
                     if (data1 == (uint8_t)ccNumbers[i])
@@ -382,8 +389,7 @@ struct OxiCv : Module {
             outputs[VEL_OUTPUT ].setChannels(n);
             for (int i = 0; i < n; i++) {
                 const VoiceState& v = tracks[i];
-                float pitch = (v.note >= 0) ? (v.note - 60) / 12.f : 0.f;
-                outputs[VOCT_OUTPUT].setVoltage(pitch + pitchBend, i);
+                outputs[VOCT_OUTPUT].setVoltage(noteToVoct(v.note) + pitchBend, i);
                 outputs[GATE_OUTPUT].setVoltage(v.gate ? 10.f : 0.f,  i);
                 outputs[VEL_OUTPUT ].setVoltage((v.vel / 127.f) * 10.f, i);
             }
@@ -402,8 +408,7 @@ struct OxiCv : Module {
 
             for (int i = 0; i < MAX_VOICES; i++) {
                 const VoiceState& v = allocator.voices[i];
-                float pitch = (v.note >= 0) ? (v.note - 60) / 12.f : 0.f;
-                outputs[VOCT_OUTPUT].setVoltage(pitch + pitchBend, i);
+                outputs[VOCT_OUTPUT].setVoltage(noteToVoct(v.note) + pitchBend, i);
                 outputs[GATE_OUTPUT].setVoltage((unison ? anyGate : v.gate) ? 10.f : 0.f, i);
                 outputs[VEL_OUTPUT ].setVoltage((v.vel / 127.f) * 10.f, i);
             }
@@ -430,7 +435,7 @@ struct OxiCv : Module {
         lights[MIDI_LIGHT].setBrightness(midiLightLevel);
 
         // ── Expander ──────────────────────────────────────────────────────────
-        if (rightExpander.module && rightExpander.module->model->slug == "OxiCvExp") {
+        if (rightExpander.module && rightExpander.module->model == modelOxiCvExp) {
             memcpy(expanderMsg.channels, allChannels, sizeof(allChannels));
             expanderMsg.pitchBend = pitchBend;
             rightExpander.module->leftExpander.consumerMessage = &expanderMsg;
@@ -583,33 +588,7 @@ static void appendOxiContextMenu(ui::Menu* menu, OxiCv* m) {
 // Custom UI widgets
 // ============================================================================
 
-// Text color adapts to panel theme (Use dark panels when available)
-static NVGcolor panelTextColor() {
-    return settings::preferDarkPanels ? nvgRGB(230, 230, 240) : nvgRGB(25, 25, 35);
-}
-static NVGcolor panelSeparatorColor() {
-    return settings::preferDarkPanels ? nvgRGBA(230, 230, 240, 180)
-                                      : nvgRGBA(40, 40, 65, 220);
-}
-
-struct StaticLabel : widget::TransparentWidget {
-    std::string text;
-    float fontSize = 9.0f;
-
-    void drawLayer(const DrawArgs& args, int layer) override {
-        if (layer != 1) return;
-        std::shared_ptr<Font> font = APP->window->uiFont;
-        if (!font) return;
-        nvgFontSize(args.vg, fontSize);
-        nvgFontFaceId(args.vg, font->handle);
-        nvgFillColor(args.vg, panelTextColor());
-        nvgTextAlign(args.vg, NVG_ALIGN_CENTER | NVG_ALIGN_BOTTOM);
-        std::string upper = text;
-        for (auto & c: upper) c = toupper((unsigned char)c);
-        nvgText(args.vg, box.size.x / 2.f, box.size.y, upper.c_str(), NULL);
-        nvgText(args.vg, box.size.x / 2.f + 0.15f, box.size.y, upper.c_str(), NULL); // Fake bold
-    }
-};
+using StaticLabel = TextLabel;
 
 struct DynamicModeLabel : widget::TransparentWidget {
     OxiCv* module;
@@ -634,14 +613,14 @@ struct DynamicModeLabel : widget::TransparentWidget {
         // Top line — mode (large lighter corporate blue, simulated bold)
         nvgFontSize(args.vg, 13.0f);
         nvgTextLetterSpacing(args.vg, 1.2f);
-        nvgFillColor(args.vg, nvgRGB(0x5D, 0xB7, 0xFF)); // Lighter Corporate Blue
+        nvgFillColor(args.vg, displayBlue()); // Lighter Corporate Blue
         nvgText(args.vg, cx, box.size.y * 0.38f, topTxt.c_str(), NULL);
         nvgText(args.vg, cx + 0.2f, box.size.y * 0.38f, topTxt.c_str(), NULL); // Fake bold
 
         // Bottom line — MIDI channel (small, dimmer lighter corporate blue, simulated bold)
         nvgFontSize(args.vg, 7.0f);
         nvgTextLetterSpacing(args.vg, 0.6f);
-        nvgFillColor(args.vg, nvgRGBA(0x5D, 0xB7, 0xFF, 210));
+        nvgFillColor(args.vg, displayBlue(210));
         nvgText(args.vg, cx, box.size.y * 0.78f, botTxt.c_str(), NULL);
         nvgText(args.vg, cx + 0.15f, box.size.y * 0.78f, botTxt.c_str(), NULL); // Fake bold
 
@@ -656,13 +635,13 @@ struct DynamicModeLabel : widget::TransparentWidget {
 
             nvgBeginPath(args.vg);
             nvgCircle(args.vg, dotX, dotY, 1.8f);
-            nvgFillColor(args.vg, nvgRGBA(0x5D, 0xB7, 0xFF, (uint8_t)(255 * light)));
+            nvgFillColor(args.vg, displayBlue((uint8_t)(255 * light)));
             nvgFill(args.vg);
 
             // Subtle glow
             nvgBeginPath(args.vg);
             nvgCircle(args.vg, dotX, dotY, 3.0f);
-            nvgFillColor(args.vg, nvgRGBA(0x5D, 0xB7, 0xFF, (uint8_t)(80 * light)));
+            nvgFillColor(args.vg, displayBlue((uint8_t)(80 * light)));
             nvgFill(args.vg);
         }
 
@@ -711,17 +690,7 @@ struct DynamicClkDivLabel : widget::TransparentWidget {
     }
 };
 
-struct SeparatorLine : widget::TransparentWidget {
-    void drawLayer(const DrawArgs& args, int layer) override {
-        if (layer != 1) return;
-        nvgBeginPath(args.vg);
-        nvgMoveTo(args.vg, 0.f, box.size.y / 2.f);
-        nvgLineTo(args.vg, box.size.x, box.size.y / 2.f);
-        nvgStrokeColor(args.vg, panelSeparatorColor());
-        nvgStrokeWidth(args.vg, 1.0f);
-        nvgStroke(args.vg);
-    }
-};
+using SeparatorLine = HorizontalSeparator;
 
 
 // ============================================================================
@@ -735,8 +704,6 @@ struct OxiCvWidget : ModuleWidget {
             asset::plugin(pluginInstance, "res/OxiCv.svg")));
 
         // Panel is 8HP = 40.64 mm wide (see res/OxiCv.svg)
-        static constexpr float PANEL_W = 40.64f;
-        static constexpr float CX = PANEL_W / 2.f;   // 20.32
         static constexpr float LX = 12.0f;
         static constexpr float RX = 28.64f;
 

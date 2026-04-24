@@ -1,490 +1,20 @@
 #include "plugin.hpp"
+#include "ui/CommonWidgets.hpp"
+#include "uzz/ClockProcessor.hpp"
+#include "uzz/StepNavigator.hpp"
+#include "uzz/UzzLayout.hpp"
+#include "uzz/UzzTypes.hpp"
 
-// ============================================================================
-// LAYOUT
-// ============================================================================
-namespace UI {
-static constexpr int COLS = 16;
+using AnimatekUI::ConnectorLine;
+using AnimatekUI::DisplayBox;
+using AnimatekUI::drawScaled;
+using AnimatekUI::loadPluginSvg;
+using AnimatekUI::panelTextColor;
+using AnimatekUI::TextLabel;
 
-// — Panel margins —
-static constexpr float LEFT = 48.f;
-static constexpr float RIGHT = 1.f;
-static constexpr float BOTTOM_MARGIN = 28.f;
-
-// — Top section —
-static constexpr float Y_STEP_LED = 10.f;
-static constexpr float Y_STEP_MODE = 10.f;
-static constexpr float Y_NOTE = 30.f;
-static constexpr float Y_PROB = 52.f;
-
-// — Knob rows (5 rows, 48px apart) —
-static constexpr float ROW_START = 72.f;
-static constexpr float ROW_SPACE = 48.f;
-static constexpr float Y_PITCH = ROW_START;
-static constexpr float Y_OCT = ROW_START + ROW_SPACE;
-static constexpr float Y_DUR = ROW_START + ROW_SPACE * 2;
-static constexpr float Y_C1 = ROW_START + ROW_SPACE * 3;
-static constexpr float Y_C2 = ROW_START + ROW_SPACE * 4;
-
-// — Left-side: randomize buttons —
-static constexpr float RAND_X = LEFT - 10.f;
-static constexpr float RAND_BTN_SCALE = 0.90f;
-static constexpr float RAND_BTN_X_OFFSET =
-    1.f; // shift rand buttons right (was -3)
-
-// — Left-side: shift buttons —
-static constexpr float SHIFT_X = RAND_X - 18.f;
-static constexpr float SHIFT_X_OFFSET = 19.f; // shift arrows right (was 15)
-static constexpr float SHIFT_Y_DELTA = 14.f;
-static constexpr float SHIFT_Y_FINE = -1.f;
-static constexpr float ROW_SHIFT_SCALE = 0.85f;
-
-// — Trigger inputs / ports —
-static constexpr float TRIG_LEFT_GAP = 23.f;
-static constexpr float TRIG_RIGHT_PAD = 14.f;
-static constexpr float PORT_SCALE = 0.90f;
-
-// — Bottom panel —
-// X positions aligned to step-column centers (user-facing 1-indexed step).
-//   X_IN     = step 2 (idx 1)
-//   X_CTRL1  = step 4 (idx 3)
-//   X_CTRL2  = step 7 (idx 6)
-//   X_SWITCH = step 10 (idx 9)
-//   X_OUT1   = step 13 (idx 12)
-//   X_OUT2   = step 15 (idx 14)
-// Values = LEFT + (idx + 0.5) * ((WIDTH - LEFT - RIGHT) / COLS), with
-// WIDTH=870, LEFT=48, RIGHT=1, COLS=16 → colW = 51.3125.
-// 3 rows, equal 30 px spacing
-static constexpr float BOT_DY_TOP = -54.f; // y = 298
-static constexpr float BOT_DY_MID = -24.f; // y = 328
-static constexpr float BOT_DY_BOT = 6.f;   // y = 358
-static constexpr float X_IN = 124.96875f;
-static constexpr float X_CTRL1 = 227.59375f;
-static constexpr float X_CTRL2 = 381.53125f;  // step 7 (idx 6)
-static constexpr float X_SWITCH = 586.78125f; // step 11 (idx 10)
-static constexpr float X_OUT1 = 689.40625f;   // step 13 (idx 12)
-static constexpr float X_OUT2 = 792.03125f;   // step 15 (idx 14)
-
-// — Helpers —
-inline float trigLeftX() { return RAND_X - TRIG_LEFT_GAP; }
-inline float rowShiftX() { return SHIFT_X + SHIFT_X_OFFSET; }
-inline float rowShiftYUp(float cy) { return cy - SHIFT_Y_DELTA + SHIFT_Y_FINE; }
-inline float rowShiftYDown(float cy) {
-  return cy + SHIFT_Y_DELTA - SHIFT_Y_FINE;
-}
-inline float randButtonX() { return RAND_X + RAND_BTN_X_OFFSET; }
-inline float usable(float boxW) { return boxW - LEFT - RIGHT; }
-inline float colW(float boxW) { return usable(boxW) / float(COLS); }
-inline float colCenter(float boxW, int i) {
-  return LEFT + (i + 0.5f) * colW(boxW);
-}
-inline float trigX(float boxW) {
-  return colCenter(boxW, 15) + colW(boxW) * 0.5f + TRIG_RIGHT_PAD;
-}
-} // namespace UI
-
-template <typename F>
-static inline void drawScaled(NVGcontext *vg, Vec boxSize, float scale, F fn) {
-  nvgSave(vg);
-  Vec c = boxSize.mult(0.5f);
-  nvgTranslate(vg, c.x * (1.f - scale), c.y * (1.f - scale));
-  nvgScale(vg, scale, scale);
-  fn();
-  nvgRestore(vg);
-}
-
-// ============================================================================
-// Helpers
-// ============================================================================
-static inline int wrap16(int x) { return x & 15; }
-
-enum StepMode {
-  SM_PLAY = 0,
-  SM_MUTE = 1,
-  SM_SKIP = 2,
-  SM_ACCUM_UP = 3,
-  SM_ACCUM_DOWN = 4
-};
-
-static constexpr int NUM_RND_BANKS = 7;
-static constexpr int NUM_SHIFT_ROWS = 6;
-static constexpr float TRIG_LEN = 0.010f;
-
-static std::shared_ptr<window::Svg> loadPluginSvg(const char *relPath) {
-  std::string path = asset::plugin(pluginInstance, relPath);
-  return system::exists(path) ? Svg::load(path) : nullptr;
-}
-
-// ============================================================================
-// CLOCK RATIO
-// ============================================================================
-static constexpr float RATIO_TABLE[] = {
-    1.f / 48.f, 1.f / 32.f, 1.f / 24.f, 1.f / 16.f, 1.f / 12.f, 1.f / 10.f,
-    1.f / 8.f,  1.f / 6.f,  1.f / 5.f,  1.f / 4.f,  1.f / 3.f,  1.f / 2.5f,
-    1.f / 2.f,  1.f / 1.5f, 1.f,        1.5f,       2.f,        2.5f,
-    3.f,        4.f,        5.f,        6.f,        8.f,        10.f,
-    12.f,       16.f,       24.f,       32.f,       48.f};
-static constexpr int NUM_RATIOS =
-    (int)(sizeof(RATIO_TABLE) / sizeof(RATIO_TABLE[0]));
-static constexpr int RATIO_DEFAULT_INDEX = 14;
-
-static constexpr const char *RATIO_LABELS[NUM_RATIOS] = {
-    "÷48", "÷32",  "÷24", "÷16",  "÷12", "÷10",  "÷8",  "÷6",   "÷5", "÷4",
-    "÷3",  "÷2.5", "÷2",  "÷1.5", "×1",  "×1.5", "×2",  "×2.5", "×3", "×4",
-    "×5",  "×6",   "×8",  "×10",  "×12", "×16",  "×24", "×32",  "×48"};
-
-struct RatioQuantity : ParamQuantity {
-  std::string getDisplayValueString() override {
-    int idx = clamp((int)std::round(getValue()), 0, NUM_RATIOS - 1);
-    return RATIO_LABELS[idx];
-  }
-  std::string getUnit() override { return ""; }
-};
-
-// ============================================================================
-// Direction
-// ============================================================================
-enum DirectionMode {
-  DIR_PINGPONG = -2,
-  DIR_REV = -1,
-  DIR_FWD = 0,
-  DIR_RANDOM = 1,
-  DIR_DRUNK = 2
-};
-
-static const char *dirLabel(int v) {
-  switch (clamp(v, -2, 2)) {
-  case -2:
-    return "Ping-Pong";
-  case -1:
-    return "Backward";
-  case 0:
-    return "Forward";
-  case 1:
-    return "Random";
-  default:
-    return "Drunk";
-  }
-}
-
-struct DirModeQuantity : ParamQuantity {
-  std::string getDisplayValueString() override {
-    return dirLabel((int)std::round(getValue()));
-  }
-  std::string getUnit() override { return ""; }
-};
-
-// ============================================================================
-// Mod Ranges
-// ============================================================================
-namespace UZZRanges {
-enum ModRange {
-  MR_PM10,
-  MR_PM5,
-  MR_PM3,
-  MR_PM2,
-  MR_PM1,
-  MR_0_10,
-  MR_0_5,
-  MR_0_3,
-  MR_0_2,
-  MR_0_1,
-  MR_COUNT
-};
-struct RangeDef {
-  const char *label;
-  float minV;
-  float maxV;
-};
-
-static const RangeDef RANGE_DEFS[MR_COUNT] = {
-    {"+/-10V", -10.f, 10.f}, {"+/-5V", -5.f, 5.f}, {"+/-3V", -3.f, 3.f},
-    {"+/-2V", -2.f, 2.f},    {"+/-1V", -1.f, 1.f}, {"0V-10V", 0.f, 10.f},
-    {"0V-5V", 0.f, 5.f},     {"0V-3V", 0.f, 3.f},  {"0V-2V", 0.f, 2.f},
-    {"0V-1V", 0.f, 1.f},
-};
-
-inline float mapMod0_10ToRange(float raw0_10, int r) {
-  const RangeDef &d = RANGE_DEFS[clamp(r, 0, MR_COUNT - 1)];
-  float t = clamp(raw0_10, 0.f, 10.f) / 10.f;
-  return d.minV + (d.maxV - d.minV) * t;
-}
-} // namespace UZZRanges
-
-// ============================================================================
-// Clock Processor
-// ============================================================================
-struct ClockProcessor {
-  float timeSinceClk = 0.f;
-  float lastPeriod = 0.f;
-  float virtTimer = 0.f;
-  float virtPeriod = 0.125f;
-  float sinceLastEdge = 0.f;
-  float sinceLastTick = 1e9f;
-
-  bool clockWasConnected = false;
-  bool havePhase = false;
-  bool prevClkConnected = false;
-
-  int swingPhase = 0;
-  int queuedBaseTicks = 0;
-  bool tickPending = false;
-  float pendingDelay = 0.f;
-  float pendingTimer = 0.f;
-
-  dsp::SchmittTrigger clkTrig;
-
-  void reset() {
-    timeSinceClk = 0.f;
-    lastPeriod = 0.f;
-    virtTimer = 0.f;
-    virtPeriod = 0.125f;
-    clockWasConnected = false;
-    havePhase = false;
-    sinceLastEdge = 0.f;
-    prevClkConnected = false;
-    swingPhase = 0;
-    queuedBaseTicks = 0;
-    tickPending = false;
-    pendingDelay = 0.f;
-    pendingTimer = 0.f;
-    sinceLastTick = 1e9f;
-    clkTrig.reset();
-  }
-
-  void onDisconnect() {
-    timeSinceClk = 0.f;
-    lastPeriod = 0.f;
-    virtTimer = 0.f;
-    havePhase = false;
-    sinceLastEdge = 0.f;
-    clockWasConnected = false;
-    queuedBaseTicks = 0;
-    tickPending = false;
-    pendingDelay = 0.f;
-    pendingTimer = 0.f;
-  }
-
-  float getVirtPeriod() const { return virtPeriod; }
-
-  bool process(const rack::engine::Module::ProcessArgs &args, Input &clkInput,
-               float ratio, float swing, bool isConnected) {
-    if (isConnected) {
-      timeSinceClk += args.sampleTime;
-      sinceLastEdge += args.sampleTime;
-    } else {
-      timeSinceClk = 0.f;
-    }
-    sinceLastTick += args.sampleTime;
-
-    bool needsVirtualClock = std::fabs(ratio - 1.f) > 1e-6f;
-    if (!needsVirtualClock)
-      havePhase = false;
-
-    bool extPulse = clkTrig.process(clkInput.getVoltage());
-    if (extPulse) {
-      lastPeriod = timeSinceClk;
-      timeSinceClk = 0.f;
-      sinceLastEdge = 0.f;
-
-      if (lastPeriod > 1e-4f)
-        virtPeriod = lastPeriod / std::max(ratio, 1e-6f);
-
-      bool isIntMultiplier =
-          (ratio >= 1.f) && (std::fabs(ratio - std::round(ratio)) < 1e-4f);
-
-      if (ratio >= 1.f) {
-        virtTimer = 0.f;
-        if (isIntMultiplier)
-          queuedBaseTicks++;
-      }
-
-      clockWasConnected = true;
-      havePhase = needsVirtualClock;
-    }
-
-    float timeout = 0.5f;
-    if (lastPeriod > 1e-4f)
-      timeout = clamp(lastPeriod * 2.f, 0.1f, 1.0f);
-
-    if (havePhase && sinceLastEdge > timeout) {
-      havePhase = false;
-      virtTimer = 0.f;
-    }
-
-    if (needsVirtualClock && havePhase && virtPeriod > 0.f) {
-      virtTimer += args.sampleTime;
-      while (virtTimer >= virtPeriod) {
-        virtTimer -= virtPeriod;
-        queuedBaseTicks++;
-      }
-    }
-
-    bool clockNow = false;
-
-    if (tickPending) {
-      pendingTimer += args.sampleTime;
-      if (pendingTimer >= pendingDelay) {
-        tickPending = false;
-        pendingTimer = 0.f;
-        clockNow = true;
-        swingPhase++;
-        sinceLastTick = 0.f;
-      }
-    }
-
-    if (!tickPending && !clockNow && queuedBaseTicks > 0) {
-      float s = (1.f / 3.f) * swing;
-      bool isOdd = (swingPhase & 1) == 1;
-      pendingDelay = isOdd ? (s * virtPeriod) : 0.f;
-
-      if (pendingDelay <= 1e-9f) {
-        if (sinceLastTick < 0.0005f) {
-          queuedBaseTicks--;
-        } else {
-          queuedBaseTicks--;
-          clockNow = true;
-          swingPhase++;
-          sinceLastTick = 0.f;
-        }
-      } else {
-        tickPending = true;
-        pendingTimer = 0.f;
-        queuedBaseTicks--;
-      }
-    }
-
-    prevClkConnected = isConnected;
-    return clockNow;
-  }
-};
-
-// ============================================================================
-// Step Navigator
-// ============================================================================
-struct StepNavigator {
-  int pingDir = 0;
-  int drunkDir = 1;
-
-  void reset() {
-    pingDir = 0;
-    drunkDir = 1;
-  }
-
-  template <typename GetStepModeFn>
-  int findNextPlayable(int start, int len, int currentRel, int direction,
-                       GetStepModeFn getStepMode, bool &allSkip) {
-    allSkip = true;
-    int rel = currentRel;
-
-    for (int tries = 0; tries < len; ++tries) {
-      rel = (direction > 0) ? (rel + 1) % len : (rel - 1 + len) % len;
-      int cand = wrap16(start + rel);
-
-      if ((int)std::round(getStepMode(cand)) != SM_SKIP) {
-        allSkip = false;
-        return cand;
-      }
-    }
-
-    int relTheo =
-        (direction > 0) ? (currentRel + 1) % len : (currentRel - 1 + len) % len;
-    return wrap16(start + relTheo);
-  }
-
-  template <typename GetStepModeFn>
-  int getNextStep(int currentStep, int start, int steps, int dirMode,
-                  GetStepModeFn getStepMode, bool playCurrentStep,
-                  bool &wrapped, bool &allSkip) {
-
-    int relBefore = (currentStep - start + 16) & 15;
-    int nextStep = currentStep;
-    wrapped = false;
-    allSkip = false;
-
-    if (playCurrentStep) {
-      allSkip = ((int)std::round(getStepMode(currentStep)) == SM_SKIP);
-      return currentStep;
-    }
-
-    if (dirMode == DIR_FWD || dirMode == DIR_REV) {
-      int direction = (dirMode == DIR_FWD) ? 1 : -1;
-      nextStep = findNextPlayable(start, steps, relBefore, direction,
-                                  getStepMode, allSkip);
-
-      int relAfter = (nextStep - start + 16) & 15;
-      wrapped =
-          (direction > 0) ? (relAfter < relBefore) : (relAfter > relBefore);
-    } else if (dirMode == DIR_PINGPONG) {
-      int direction = (pingDir == 0) ? 1 : -1;
-      bool all1 = false;
-      int cand1 = findNextPlayable(start, steps, relBefore, direction,
-                                   getStepMode, all1);
-      int relAfter1 = (cand1 - start + 16) & 15;
-      bool wouldWrap =
-          (direction > 0) ? (relAfter1 < relBefore) : (relAfter1 > relBefore);
-
-      if (!all1 && !wouldWrap) {
-        nextStep = cand1;
-        wrapped = false;
-      } else {
-        pingDir = 1 - pingDir;
-        int direction2 = (pingDir == 0) ? 1 : -1;
-        bool all2 = false;
-        int cand2 = findNextPlayable(start, steps, relBefore, direction2,
-                                     getStepMode, all2);
-        nextStep = cand2;
-        wrapped = true;
-      }
-    }
-    // Random (no heap allocation)
-    else if (dirMode == DIR_RANDOM) {
-      int pool[16];
-      int poolSize = 0;
-
-      for (int k = 0; k < steps; ++k) {
-        int sIdx = wrap16(start + k);
-        int m = (int)std::round(getStepMode(sIdx));
-        if (m != SM_SKIP)
-          pool[poolSize++] = sIdx;
-      }
-
-      if (poolSize > 0) {
-        int idx = (int)std::floor(random::uniform() * poolSize);
-        idx = clamp(idx, 0, poolSize - 1);
-        nextStep = pool[idx];
-      } else {
-        bool dummy = false;
-        nextStep =
-            findNextPlayable(start, steps, relBefore, 1, getStepMode, dummy);
-      }
-      wrapped = false;
-    }
-    // Drunk (random walk)
-    else {
-      drunkDir = (random::uniform() < 0.5f) ? -1 : 1;
-
-      bool allA = false;
-      int candA = findNextPlayable(start, steps, relBefore, drunkDir,
-                                   getStepMode, allA);
-
-      if (!allA) {
-        nextStep = candA;
-      } else {
-        bool allB = false;
-        int candB = findNextPlayable(start, steps, relBefore, -drunkDir,
-                                     getStepMode, allB);
-        nextStep = candB;
-      }
-
-      int relAfter = (nextStep - start + 16) & 15;
-      wrapped = (relBefore == 0 && relAfter == (steps - 1)) ||
-                (relBefore == (steps - 1) && relAfter == 0);
-    }
-
-    return nextStep;
-  }
-};
+#ifndef UZZ_USE_CODE_LABELS
+#define UZZ_USE_CODE_LABELS 1
+#endif
 
 // ============================================================================
 // Module
@@ -602,12 +132,45 @@ struct UZZ : Module {
 
   int accumOffset[16] = {};
 
+  // Pulse mode
+  enum PulseMode { PM_PULSE = 0, PM_GATED = 1, PM_HOLD = 2 };
+  int pulseMode = PM_PULSE;
+
+  // Ratchet sub-pulse state (PM_RATCHET)
+  int pulsesRemaining = 0;
+  float pulseTimer = 0.f;
+  float pulseInterval = 0.f;
+  float pulseGLen = 0.f;
+  int pulseStepK = 0;
+
+  // Hold state (PM_HOLD)
+  int holdPulsesLeft = 0;
+  bool holdPlaying = false;
+
   int m1Range = UZZRanges::MR_0_10;
   int m2Range = UZZRanges::MR_0_10;
   int pitchRangeSemis = 11; // 11 = 1 octave, 23 = 2 octaves
+  int jumpN = 2;
 
   float capiFlash = 0.f;
   dsp::SchmittTrigger capiTrig;
+
+  float getGateLength(int gateMode, float duty, float period, float sampleTime,
+                      float maxWindow = 0.f) const {
+    if (gateMode != 0)
+      return TRIG_LEN;
+
+    float window = (maxWindow > 0.f) ? maxWindow : period;
+    if (window <= 0.f)
+      return TRIG_LEN;
+
+    float minOff = std::max(0.001f, 2.f * sampleTime);
+    float gLen = window * clamp(duty, 0.01f, 0.95f);
+    float maxLen = std::max(TRIG_LEN, window - minOff);
+    if (gLen > maxLen)
+      gLen = maxLen;
+    return gLen;
+  }
 
   UZZ() {
     config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
@@ -622,20 +185,20 @@ struct UZZ : Module {
                   " oct");
       paramQuantities[OCT_PARAMS + i]->snapEnabled = true;
 
-      configParam(STEP_MODE_PARAMS + i, 0.f, 4.f, 0.f,
+      configParam(STEP_MODE_PARAMS + i, 0.f, 7.f, 0.f,
                   string::f("Step mode %d", i + 1));
       paramQuantities[STEP_MODE_PARAMS + i]->snapEnabled = true;
 
-      configParam(DUR_PARAMS + i, 0.005f, 2.0f, 0.100f,
-                  string::f("Duration %d", i + 1), " s");
+      configParam<DurationQuantity>(DUR_PARAMS + i, 0.01f, 0.95f, 0.50f,
+                                    string::f("Duration %d", i + 1));
 
       configParam(M1_PARAMS + i, 0.f, 10.f, 0.f, string::f("Mod 1 %d", i + 1),
                   " (0..10)");
       configParam(M2_PARAMS + i, 0.f, 10.f, 0.f, string::f("Mod 2 %d", i + 1),
                   " (0..10)");
 
-      configParam(PROB_PARAMS + i, 0.f, 100.f, 100.f,
-                  string::f("Probability %d", i + 1), " %");
+      configParam<ProbPulseQuantity>(PROB_PARAMS + i, -100.f, 7.f, 0.f,
+                                     string::f("Prob/Pulse %d", i + 1));
       paramQuantities[PROB_PARAMS + i]->snapEnabled = true;
     }
 
@@ -648,8 +211,8 @@ struct UZZ : Module {
     configParam(START_PARAM, 1.f, 16.f, 1.f, "Start");
     paramQuantities[START_PARAM]->snapEnabled = true;
 
-    configParam<DirModeQuantity>(DIR_MODE_PARAM, -2.f, 2.f, 0.f,
-                                 "Direction mode");
+    configParam<DirModeQuantity>(DIR_MODE_PARAM, (float)DIR_MODE_MIN,
+                                 (float)DIR_MODE_MAX, 0.f, "Direction mode");
     paramQuantities[DIR_MODE_PARAM]->snapEnabled = true;
 
     configParam(GATE_MODE_PARAM, 0.f, 1.f, 0.f, "Gate mode (0=Gate,1=Trig)");
@@ -663,7 +226,8 @@ struct UZZ : Module {
     configParam(SLEW_PARAM, 0.f, 2.0f, 0.f, "Glide (slew)", " s");
     configParam(ACCUM_AMT_PARAM, 0.f, 24.f, 1.f, "Accumulator amount", " st");
     paramQuantities[ACCUM_AMT_PARAM]->snapEnabled = true;
-    configParam(ACCUM_CLIP_PARAM, 0.f, 12.f, 0.f, "Accumulator wrap (semitones, 0=OFF = full ±12 range)");
+    configParam(ACCUM_CLIP_PARAM, 0.f, 12.f, 0.f,
+                "Accumulator wrap (semitones, 0=OFF = full ±12 range)");
     paramQuantities[ACCUM_CLIP_PARAM]->snapEnabled = true;
 
     configParam(RND_PITCH_PARAM, 0.f, 1.f, 0.f, "Randomize pitch");
@@ -730,6 +294,10 @@ struct UZZ : Module {
 
     for (int i = 0; i < 16; ++i)
       accumOffset[i] = 0;
+
+    pulsesRemaining = 0;
+    holdPulsesLeft = 0;
+    holdPlaying = false;
   }
 
   void setPitchRange(int maxSemis, bool scaleValues = true) {
@@ -760,32 +328,43 @@ struct UZZ : Module {
   void randomizeStepMode() {
     for (int i = 0; i < 16; ++i) {
       float r = random::uniform();
-      int m = (r < 0.55f)
-                  ? SM_PLAY
-                  : ((r < 0.75f)
-                         ? SM_MUTE
-                         : ((r < 0.88f)
-                                ? SM_SKIP
-                                : ((r < 0.94f) ? SM_ACCUM_UP : SM_ACCUM_DOWN)));
+      int m;
+      if (r < 0.55f)
+        m = SM_PLAY;
+      else if (r < 0.70f)
+        m = SM_MUTE;
+      else if (r < 0.82f)
+        m = SM_SKIP;
+      else if (r < 0.88f)
+        m = SM_ACCUM_UP;
+      else if (r < 0.93f)
+        m = SM_ACCUM_DOWN;
+      else if (r < 0.96f)
+        m = SM_PULSE;
+      else if (r < 0.98f)
+        m = SM_GATED;
+      else
+        m = SM_HOLD;
       params[STEP_MODE_PARAMS + i].setValue((float)m);
     }
   }
 
   void fillRow(int base, float value) {
-    for (int i = 0; i < 16; ++i) params[base + i].setValue(value);
+    for (int i = 0; i < 16; ++i)
+      params[base + i].setValue(value);
   }
 
-  void resetPitchRow()    { fillRow(PITCH_PARAMS,     0.f);    }
-  void resetOctaveRow()   { fillRow(OCT_PARAMS,       0.f);    }
-  void resetStepModeRow() { fillRow(STEP_MODE_PARAMS, 0.f);    }
-  void resetDurRow()      { fillRow(DUR_PARAMS,       0.100f); }
-  void resetM1Row()       { fillRow(M1_PARAMS,        0.f);    }
-  void resetM2Row()       { fillRow(M2_PARAMS,        0.f);    }
-  void resetProbRow()     { fillRow(PROB_PARAMS,      100.f);  }
+  void resetPitchRow() { fillRow(PITCH_PARAMS, 0.f); }
+  void resetOctaveRow() { fillRow(OCT_PARAMS, 0.f); }
+  void resetStepModeRow() { fillRow(STEP_MODE_PARAMS, 0.f); }
+  void resetDurRow() { fillRow(DUR_PARAMS, 0.50f); }
+  void resetM1Row() { fillRow(M1_PARAMS, 0.f); }
+  void resetM2Row() { fillRow(M2_PARAMS, 0.f); }
+  void resetProbRow() { fillRow(PROB_PARAMS, 0.f); }
 
   void randomizeDurations() {
     for (int i = 0; i < 16; ++i)
-      params[DUR_PARAMS + i].setValue(0.005f + random::uniform() * (2.0f - 0.005f));
+      params[DUR_PARAMS + i].setValue(0.10f + random::uniform() * 0.80f);
   }
   void randomizeM1() {
     for (int i = 0; i < 16; ++i)
@@ -796,8 +375,17 @@ struct UZZ : Module {
       params[M2_PARAMS + i].setValue(random::uniform() * 10.f);
   }
   void randomizeProb() {
-    for (int i = 0; i < 16; ++i)
-      params[PROB_PARAMS + i].setValue((int)std::floor(random::uniform() * 101.f));
+    for (int i = 0; i < 16; ++i) {
+      float r = random::uniform();
+      int v;
+      if (r < 0.65f)
+        v = -(int)std::floor(random::uniform() * 101.f); // prob 0–100%
+      else if (r < 0.75f)
+        v = 0; // default (100%/×1)
+      else
+        v = 1 + (int)std::floor(random::uniform() * 7.f); // pulse ×2–×8
+      params[PROB_PARAMS + i].setValue((float)v);
+    }
   }
 
   static float quantize_to_step(float value, float min_val, float step) {
@@ -858,7 +446,7 @@ struct UZZ : Module {
   void shift_dur_row(int dir) {
     int s, c;
     get_active_window(s, c);
-    shift_row_float(DUR_PARAMS, dir, s, c, 0.1f, 0.005f, 2.0f, true);
+    shift_row_float(DUR_PARAMS, dir, s, c, 0.05f, 0.01f, 0.95f, true);
   }
   void shift_m1_row(int dir) {
     int s, c;
@@ -873,7 +461,7 @@ struct UZZ : Module {
   void shift_prob_row(int dir) {
     int s, c;
     get_active_window(s, c);
-    shift_row_float(PROB_PARAMS, dir, s, c, 10.f, 0.f, 100.f, true);
+    shift_row_float(PROB_PARAMS, dir, s, c, 1.f, -100.f, 7.f, true);
   }
 
   json_t *dataToJson() override {
@@ -887,6 +475,8 @@ struct UZZ : Module {
     json_object_set_new(rootJ, "currentStep", json_integer(step));
     json_object_set_new(rootJ, "pingDir", json_integer(navigator.pingDir));
     json_object_set_new(rootJ, "drunkDir", json_integer(navigator.drunkDir));
+    json_object_set_new(rootJ, "seqPos", json_integer(navigator.seqPos));
+    json_object_set_new(rootJ, "jumpN", json_integer(jumpN));
 
     json_t *accArr = json_array();
     for (int i = 0; i < 16; ++i)
@@ -943,6 +533,10 @@ struct UZZ : Module {
       int dir = clamp((int)json_integer_value(j), -1, 1);
       navigator.drunkDir = (dir == 0) ? 1 : dir;
     }
+    if (json_t *j = json_object_get(rootJ, "seqPos"))
+      navigator.seqPos = clamp((int)json_integer_value(j), 0, 31);
+    if (json_t *j = json_object_get(rootJ, "jumpN"))
+      jumpN = clamp((int)json_integer_value(j), 2, 7);
 
     if (json_t *accArr = json_object_get(rootJ, "accumOffset")) {
       if (json_is_array(accArr)) {
@@ -965,6 +559,8 @@ struct UZZ : Module {
         cachedSlewSec = slewSec;
         cachedSampleTime = sampleTime;
         float tau = std::max(1e-5f, slewSec);
+        // sqrt() compresses the 1-pole alpha: snappier attack, shorter tail —
+        // intentionally more musical than a pure exponential glide.
         cachedSlewAlpha =
             std::sqrt(std::min(1.f - std::exp(-sampleTime / tau), 1.f));
       }
@@ -978,6 +574,9 @@ struct UZZ : Module {
   }
 
   void hardStop(int steps) {
+    pulsesRemaining = 0;
+    holdPulsesLeft = 0;
+    holdPlaying = false;
     gatePulse.reset();
     eocPulse.reset();
     for (int ch = 0; ch < 16; ++ch)
@@ -1000,6 +599,7 @@ struct UZZ : Module {
     float ratio = RATIO_TABLE[ratioIdx];
     float swing = clamp(params[SWING_PARAM].getValue(), 0.f, 0.6f);
 
+    bool wasClkConnected = clock.prevClkConnected;
     bool clockNow =
         clock.process(args, inputs[CLK_INPUT], ratio, swing, clkConnected);
 
@@ -1011,7 +611,7 @@ struct UZZ : Module {
       capiFlash = std::max(0.f, capiFlash - 15.f * args.sampleTime);
     }
 
-    if (!clkConnected && clock.prevClkConnected)
+    if (!clkConnected && wasClkConnected)
       clock.onDisconnect();
 
     // Random buttons + lights + CV triggers
@@ -1104,23 +704,20 @@ struct UZZ : Module {
         xposeSemis = clamp((int)std::round(v * 12.f), -48, 48);
     }
 
-    // Pitch (pre-slew)
-    float semis = params[PITCH_PARAMS + step].getValue();
-    int octIv = (int)std::round(params[OCT_PARAMS + step].getValue());
-    int accum = accumOffset[step];
-    float pitchV =
-        ((semis + (float)xposeSemis + (float)accum) / 12.f) + (float)octIv;
-
-    // Mod outputs (always active)
-    outputs[M1_OUTPUT].setVoltage(UZZRanges::mapMod0_10ToRange(
-        params[M1_PARAMS + step].getValue(), m1Range));
-    outputs[M2_OUTPUT].setVoltage(UZZRanges::mapMod0_10ToRange(
-        params[M2_PARAMS + step].getValue(), m2Range));
-
     if (!clkConnected) {
-      if (clock.prevClkConnected) {
+      float semis = params[PITCH_PARAMS + step].getValue();
+      int octIv = (int)std::round(params[OCT_PARAMS + step].getValue());
+      int accum = accumOffset[step];
+      float pitchV =
+          ((semis + (float)xposeSemis + (float)accum) / 12.f) + (float)octIv;
+
+      outputs[M1_OUTPUT].setVoltage(UZZRanges::mapMod0_10ToRange(
+          params[M1_PARAMS + step].getValue(), m1Range));
+      outputs[M2_OUTPUT].setVoltage(UZZRanges::mapMod0_10ToRange(
+          params[M2_PARAMS + step].getValue(), m2Range));
+
+      if (wasClkConnected) {
         hardStop(steps);
-        clock.prevClkConnected = false;
       }
       applySlew(pitchV, args.sampleTime);
       if (updateLights) {
@@ -1133,98 +730,190 @@ struct UZZ : Module {
 
     // Clock tick
     if (clockNow) {
-      int modeDir =
-          clamp((int)std::round(params[DIR_MODE_PARAM].getValue()), -2, 2);
+      pulsesRemaining = 0; // cancel ratchet sub-pulses
 
-      bool allSkip = false;
-      bool wrapped = false;
-      int nextStep = navigator.getNextStep(
-          step, start, steps, modeDir,
-          [this](int idx) { return params[STEP_MODE_PARAMS + idx].getValue(); },
-          playCurrentOnNextTick, wrapped, allSkip);
+      // Determine effective pulse mode for the current step
+      // (per-step modes SM_PULSE/SM_GATED/SM_HOLD override the global
+      // pulseMode)
+      auto stepEffMode = [&](int smode) -> int {
+        if (smode == SM_PULSE)
+          return PM_PULSE;
+        if (smode == SM_GATED)
+          return PM_GATED;
+        if (smode == SM_HOLD)
+          return PM_HOLD;
+        return pulseMode;
+      };
+      int curStepMode =
+          (int)std::round(params[STEP_MODE_PARAMS + step].getValue());
+      int effMode = stepEffMode(curStepMode);
 
-      playCurrentOnNextTick = false;
-      int prevStep = step;
-      int prevMode =
-          (int)std::round(params[STEP_MODE_PARAMS + prevStep].getValue());
-      step = nextStep;
-      if (wrapped)
-        eocPulse.trigger(TRIG_LEN);
-
-      if (prevMode == SM_ACCUM_UP || prevMode == SM_ACCUM_DOWN) {
-        int amt  = (int)std::round(params[ACCUM_AMT_PARAM].getValue());
-        int wrap = (int)std::round(params[ACCUM_CLIP_PARAM].getValue());
-        int signedAmt = (prevMode == SM_ACCUM_UP) ? amt : -amt;
-        int v = accumOffset[prevStep] + signedAmt;
-        if (wrap > 0) {
-          // Módulo sobre el rango: cicla 0..wrap-1 (ACCUM_UP) o 0..-wrap+1 (ACCUM_DOWN)
-          v = v % wrap;
+      // PM_HOLD / PM_GATED: consume held ticks before advancing to the next
+      // step
+      bool holdFired = false;
+      if ((effMode == PM_HOLD || effMode == PM_GATED) && holdPulsesLeft > 0) {
+        if (resetPending) {
+          holdPulsesLeft = 0; // reset interrupts hold
         } else {
-          // Sin wrap configurado: rango completo ±12
-          static constexpr int ACCUM_RANGE = 25; // -12..+12 inclusive
-          v = ((v + 12) % ACCUM_RANGE + ACCUM_RANGE) % ACCUM_RANGE - 12;
+          --holdPulsesLeft;
+          if (effMode == PM_HOLD && holdPlaying) {
+            // PM_HOLD: re-fire a gate on each tick
+            int hk = (step - start + 16) & 15;
+            int gateMode = (int)std::round(params[GATE_MODE_PARAM].getValue());
+            float duty =
+                clamp(params[DUR_PARAMS + step].getValue(), 0.01f, 0.95f);
+            float period = clock.getVirtPeriod();
+            float gLen = getGateLength(gateMode, duty, period, args.sampleTime);
+            gatePulse.trigger(gLen);
+            stepGateTrig[hk].trigger(gLen);
+          }
+          // PM_GATED: gate is already running long — nothing to do here
+          holdFired = true;
         }
-        accumOffset[prevStep] = v;
       }
 
-      bool muteGlobal = false;
-      if (modeDir == DIR_FWD || modeDir == DIR_REV) {
-        muteGlobal = allSkip;
-      } else {
-        bool anyPlayable = false;
-        for (int k = 0; k < steps; ++k) {
-          int sIdx = wrap16(start + k);
-          if ((int)std::round(params[STEP_MODE_PARAMS + sIdx].getValue()) !=
-              SM_SKIP) {
-            anyPlayable = true;
-            break;
+      if (!holdFired) {
+        int modeDir = clamp((int)std::round(params[DIR_MODE_PARAM].getValue()),
+                            DIR_MODE_MIN, DIR_MODE_MAX);
+
+        bool allSkip = false;
+        bool wrapped = false;
+        int nextStep = navigator.getNextStep(
+            step, start, steps, modeDir,
+            [this](int idx) {
+              return params[STEP_MODE_PARAMS + idx].getValue();
+            },
+            playCurrentOnNextTick, wrapped, allSkip, jumpN);
+
+        playCurrentOnNextTick = false;
+        step = nextStep;
+        if (wrapped)
+          eocPulse.trigger(TRIG_LEN);
+
+        bool muteGlobal = false;
+        if (modeDir == DIR_FWD || modeDir == DIR_REV) {
+          muteGlobal = allSkip;
+        } else {
+          bool anyPlayable = false;
+          for (int ki = 0; ki < steps; ++ki) {
+            int sIdx = wrap16(start + ki);
+            if ((int)std::round(params[STEP_MODE_PARAMS + sIdx].getValue()) !=
+                SM_SKIP) {
+              anyPlayable = true;
+              break;
+            }
+          }
+          muteGlobal = !anyPlayable;
+        }
+
+        int mode = (int)std::round(params[STEP_MODE_PARAMS + step].getValue());
+        int k = (step - start + 16) & 15;
+
+        bool resetFiresAfterGate = resetPending;
+        bool playing =
+            !muteGlobal &&
+            (mode == SM_PLAY || mode == SM_ACCUM_UP || mode == SM_ACCUM_DOWN ||
+             mode == SM_PULSE || mode == SM_GATED || mode == SM_HOLD);
+        if (playing) {
+          // Bipolar prob/pulse knob: >=0 = probability, <0 = pulse count
+          float ppVal = params[PROB_PARAMS + step].getValue();
+          float pGlobal =
+              clamp(params[PROB_GLOBAL_PARAM].getValue(), 0.f, 100.f) / 100.f;
+          if (mode == SM_PLAY || mode == SM_ACCUM_UP || mode == SM_ACCUM_DOWN) {
+            // Left side (<=0): probability 0–100%; right side (>0): 100% prob
+            float pStep =
+                (ppVal <= 0.f) ? clamp((100.f + ppVal) / 100.f, 0.f, 1.f) : 1.f;
+            if (pStep * pGlobal < 1.f && random::uniform() >= pStep * pGlobal)
+              playing = false;
+          } else {
+            // SM_PULSE/GATED/HOLD: only global probability applies
+            if (pGlobal < 1.f && random::uniform() >= pGlobal)
+              playing = false;
           }
         }
-        muteGlobal = !anyPlayable;
-      }
+        if (playing) {
+          if (mode == SM_ACCUM_UP || mode == SM_ACCUM_DOWN) {
+            int amt = (int)std::round(params[ACCUM_AMT_PARAM].getValue());
+            int wrap = (int)std::round(params[ACCUM_CLIP_PARAM].getValue());
+            int signedAmt = (mode == SM_ACCUM_UP) ? amt : -amt;
+            int v = accumOffset[step] + signedAmt;
+            if (wrap > 0) {
+              // Módulo sobre el rango configurado alrededor de 0.
+              int span = wrap * 2 + 1;
+              v = ((v + wrap) % span + span) % span - wrap;
+            } else {
+              // Sin wrap configurado: rango completo ±12.
+              static constexpr int ACCUM_RANGE = 25; // -12..+12 inclusive
+              v = ((v + 12) % ACCUM_RANGE + ACCUM_RANGE) % ACCUM_RANGE - 12;
+            }
+            accumOffset[step] = v;
+          }
 
-      int mode = (int)std::round(params[STEP_MODE_PARAMS + step].getValue());
-      int k = (step - start + 16) & 15;
+          int gateMode = (int)std::round(params[GATE_MODE_PARAM].getValue());
+          float duty =
+              clamp(params[DUR_PARAMS + step].getValue(), 0.01f, 0.95f);
+          float period = clock.getVirtPeriod();
+          float gLen = getGateLength(gateMode, duty, period, args.sampleTime);
 
-      bool resetFiresAfterGate = resetPending;
-      bool playing = !muteGlobal && (mode == SM_PLAY || mode == SM_ACCUM_UP ||
-                                     mode == SM_ACCUM_DOWN);
-      if (playing) {
-        float pStep =
-            clamp(params[PROB_PARAMS + step].getValue(), 0.f, 100.f) / 100.f;
-        float pGlobal =
-            clamp(params[PROB_GLOBAL_PARAM].getValue(), 0.f, 100.f) / 100.f;
-        float pFinal = pStep * pGlobal;
-        if (pFinal < 1.f && random::uniform() >= pFinal)
-          playing = false;
-      }
-      if (playing) {
-        int gateMode = (int)std::round(params[GATE_MODE_PARAM].getValue());
-        float userDur =
-            clamp(params[DUR_PARAMS + step].getValue(), 0.001f, 10.0f);
-        float gLen = (gateMode == 0) ? userDur : TRIG_LEN;
+          // Pulse count: right side (<0) of bipolar knob, only for pulse modes
+          // PLAY/ACCUM always use a single gate regardless of knob position
+          float ppVal = params[PROB_PARAMS + step].getValue();
+          int pulseCount = 1;
+          if (mode == SM_PULSE || mode == SM_GATED || mode == SM_HOLD) {
+            pulseCount =
+                (ppVal > 0.f) ? clamp(1 + (int)std::round(ppVal), 2, 8) : 1;
+          }
+          int newEffMode =
+              stepEffMode(mode); // effective mode for this new step
 
-        if (gateMode == 0 && ratio > 1.f && clock.getVirtPeriod() > 0.f) {
-          float maxDuty = clock.getVirtPeriod() * 0.90f;
-          if (gLen > maxDuty)
-            gLen = maxDuty;
-
-          float minOff = std::max(0.001f, 2.f * args.sampleTime);
-          float maxLen = clock.getVirtPeriod() - minOff;
-          if (gLen > maxLen)
-            gLen = std::max(TRIG_LEN, maxLen);
+          if (newEffMode == PM_HOLD) {
+            holdPulsesLeft = pulseCount - 1;
+            holdPlaying = true;
+            gatePulse.trigger(gLen);
+            stepGateTrig[k].trigger(gLen);
+          } else if (newEffMode == PM_GATED && period > 0.f && pulseCount > 1) {
+            // Gate sustained for N clock periods; ends TRIG_LEN before next
+            // tick so the gate goes LOW briefly, allowing retrigger on the next
+            // step
+            float sustainLen =
+                std::max(TRIG_LEN, (float)pulseCount * period - TRIG_LEN);
+            holdPulsesLeft = pulseCount - 1;
+            holdPlaying = false;
+            gatePulse.trigger(sustainLen);
+            stepGateTrig[k].trigger(sustainLen);
+          } else {
+            // PM_PULSE (or PM_GATED with pulseCount==1): sub-gates within one
+            // period
+            holdPulsesLeft = 0;
+            holdPlaying = false;
+            if (pulseCount > 1 && period > 0.f) {
+              float interval = period / (float)pulseCount;
+              float pGLen = getGateLength(gateMode, duty, period,
+                                          args.sampleTime, interval);
+              pulseInterval = interval;
+              pulseGLen = pGLen;
+              pulseStepK = k;
+              pulsesRemaining = pulseCount - 1;
+              pulseTimer = interval;
+              gatePulse.trigger(pGLen);
+              stepGateTrig[k].trigger(pGLen);
+            } else {
+              gatePulse.trigger(gLen);
+              stepGateTrig[k].trigger(gLen);
+            }
+          }
+        } else {
+          holdPulsesLeft = 0;
+          holdPlaying = false;
+          pulsesRemaining = 0;
+          gatePulse.reset();
         }
 
-        gatePulse.trigger(gLen);
-        stepGateTrig[k].trigger(gLen);
-      } else {
-        gatePulse.reset();
-      }
-
-      if (resetFiresAfterGate) {
-        step = resetTargetStep;
-        playCurrentOnNextTick = true;
-        resetPending = false;
+        if (resetFiresAfterGate) {
+          step = resetTargetStep;
+          playCurrentOnNextTick = true;
+          resetPending = false;
+        }
       }
     }
 
@@ -1232,6 +921,17 @@ struct UZZ : Module {
       step = resetTargetStep;
       playCurrentOnNextTick = true;
       resetPending = false;
+    }
+
+    // Ratchet sub-pulses
+    if (pulsesRemaining > 0) {
+      pulseTimer -= args.sampleTime;
+      if (pulseTimer <= 0.f) {
+        gatePulse.trigger(pulseGLen);
+        stepGateTrig[pulseStepK].trigger(pulseGLen);
+        --pulsesRemaining;
+        pulseTimer += pulseInterval;
+      }
     }
 
     // Gate output
@@ -1248,6 +948,17 @@ struct UZZ : Module {
     outputs[EOC_OUTPUT].setVoltage(eocPulse.process(args.sampleTime) ? 10.f
                                                                      : 0.f);
 
+    float semis = params[PITCH_PARAMS + step].getValue();
+    int octIv = (int)std::round(params[OCT_PARAMS + step].getValue());
+    int accum = accumOffset[step];
+    float pitchV =
+        ((semis + (float)xposeSemis + (float)accum) / 12.f) + (float)octIv;
+
+    outputs[M1_OUTPUT].setVoltage(UZZRanges::mapMod0_10ToRange(
+        params[M1_PARAMS + step].getValue(), m1Range));
+    outputs[M2_OUTPUT].setVoltage(UZZRanges::mapMod0_10ToRange(
+        params[M2_PARAMS + step].getValue(), m2Range));
+
     applySlew(pitchV, args.sampleTime);
 
     if (updateLights) {
@@ -1255,509 +966,10 @@ struct UZZ : Module {
         lights[STEP_LIGHTS + i].setSmoothBrightness(i == step ? 1.f : 0.f,
                                                     lightDt);
     }
-
-    clock.prevClkConnected = true;
   }
 };
 
-// ============================================================================
-// Widgets
-// ============================================================================
-
-// Generic Random Button Template
-template <void (UZZ::*ResetFunc)(), int SkipIdx> struct RndButton : TL1105 {
-  void draw(const DrawArgs &args) override {
-    drawScaled(args.vg, box.size, UI::RAND_BTN_SCALE,
-               [&] { SvgSwitch::draw(args); });
-  }
-  void drawLayer(const DrawArgs &args, int layer) override {
-    drawScaled(args.vg, box.size, UI::RAND_BTN_SCALE,
-               [&] { SvgSwitch::drawLayer(args, layer); });
-  }
-  void onDoubleClick(const event::DoubleClick &e) override {
-    if (auto q = getParamQuantity()) {
-      if (auto m = dynamic_cast<UZZ *>(q->module)) {
-        (m->*ResetFunc)();
-        m->skipNextRandom[SkipIdx] = true;
-      }
-    }
-    e.consume(this);
-  }
-};
-
-using RndPitchButton = RndButton<&UZZ::resetPitchRow, 0>;
-using RndOctButton = RndButton<&UZZ::resetOctaveRow, 1>;
-using RndStepButton = RndButton<&UZZ::resetStepModeRow, 2>;
-using RndDurButton = RndButton<&UZZ::resetDurRow, 3>;
-using RndM1Button = RndButton<&UZZ::resetM1Row, 4>;
-using RndM2Button = RndButton<&UZZ::resetM2Row, 5>;
-using RndProbButton = RndButton<&UZZ::resetProbRow, 6>;
-
-// Custom ports with optional SVG and scaling
-enum class PortType { INPUT, OUTPUT };
-
-template <PortType Type> struct UzzPort : PJ301MPort {
-  UzzPort() {
-    const char *svgPath = (Type == PortType::INPUT) ? "res/port_input.svg"
-                                                    : "res/port_output.svg";
-    if (auto svg = loadPluginSvg(svgPath))
-      setSvg(svg);
-  }
-
-  void draw(const DrawArgs &args) override {
-    drawScaled(args.vg, box.size, UI::PORT_SCALE,
-               [&] { PJ301MPort::draw(args); });
-  }
-  void drawLayer(const DrawArgs &args, int layer) override {
-    drawScaled(args.vg, box.size, UI::PORT_SCALE,
-               [&] { PJ301MPort::drawLayer(args, layer); });
-  }
-};
-
-using UzzInputPort = UzzPort<PortType::INPUT>;
-using UzzOutputPort = UzzPort<PortType::OUTPUT>;
-
-// Row shift buttons (unified base class)
-struct RowShiftButton : app::SvgSwitch {
-  RowShiftButton() {
-    momentary = true;
-    shadow->visible = false;
-  }
-
-  void loadFrames(const char *pluginPath, const char *fallbackPath) {
-    auto svg = loadPluginSvg(pluginPath);
-    if (!svg)
-      svg = Svg::load(asset::system(fallbackPath));
-    if (svg) {
-      addFrame(svg);
-      addFrame(svg);
-    }
-  }
-
-  void draw(const DrawArgs &args) override {
-    drawScaled(args.vg, box.size, UI::ROW_SHIFT_SCALE,
-               [&] { SvgSwitch::draw(args); });
-  }
-  void drawLayer(const DrawArgs &args, int layer) override {
-    drawScaled(args.vg, box.size, UI::ROW_SHIFT_SCALE,
-               [&] { SvgSwitch::drawLayer(args, layer); });
-  }
-};
-
-struct RowShiftUpButton : RowShiftButton {
-  RowShiftUpButton() {
-    loadFrames("res/step_accum.svg", "res/ComponentLibrary/TL1105_0.svg");
-  }
-};
-
-struct RowShiftDownButton : RowShiftButton {
-  RowShiftDownButton() {
-    loadFrames("res/step_accum_down.svg", "res/ComponentLibrary/TL1105_1.svg");
-  }
-};
-
-// Arc knob — a RoundSmallBlackKnob with a value-indicator arc around it.
-// Matches the "ring of progress" look from the original UZZ.
-struct UzzArcKnob : RoundSmallBlackKnob {
-  void draw(const DrawArgs &args) override {
-    // 1) Draw the value arc BEHIND the knob body.
-    if (auto q = getParamQuantity()) {
-      float minV = q->getMinValue();
-      float maxV = q->getMaxValue();
-      if (maxV > minV) {
-        float val = q->getValue();
-        NVGcontext *vg = args.vg;
-        float cx = box.size.x * 0.5f;
-        float cy = box.size.y * 0.5f;
-        float r = box.size.x * 0.5f + 2.0f;
-
-        // Knob sweep in NanoVG coords (Y-down): bottom-left → bottom-right CW,
-        // 270°.
-        const float a0 = 0.75f * (float)M_PI;
-        const float sweep = 1.5f * (float)M_PI;
-
-        // Track (faint full arc).
-        nvgBeginPath(vg);
-        nvgArc(vg, cx, cy, r, a0, a0 + sweep, NVG_CW);
-        nvgStrokeColor(vg, settings::preferDarkPanels
-                               ? nvgRGBA(0xFF, 0xFF, 0xFF, 40)
-                               : nvgRGBA(0x00, 0x00, 0x00, 50));
-        nvgStrokeWidth(vg, 1.4f);
-        nvgLineCap(vg, NVG_ROUND);
-        nvgStroke(vg);
-
-        // Value arc.
-        bool bipolar = (minV < 0.f && maxV > 0.f);
-        float t0, t1;
-        if (bipolar) {
-          float zeroT = (0.f - minV) / (maxV - minV);
-          float curT = (val - minV) / (maxV - minV);
-          t0 = std::min(zeroT, curT);
-          t1 = std::max(zeroT, curT);
-        } else {
-          t0 = 0.f;
-          t1 = (val - minV) / (maxV - minV);
-        }
-        if (t1 > t0 + 1e-4f) {
-          nvgBeginPath(vg);
-          nvgArc(vg, cx, cy, r, a0 + t0 * sweep, a0 + t1 * sweep, NVG_CW);
-          nvgStrokeColor(vg, nvgRGBA(0x2C, 0x7F, 0xFF, 230));
-          nvgStrokeWidth(vg, 1.8f);
-          nvgLineCap(vg, NVG_ROUND);
-          nvgStroke(vg);
-        }
-      }
-    }
-    // 2) Draw the knob on top.
-    RoundSmallBlackKnob::draw(args);
-  }
-};
-
-// Step mode button (play/mute/skip)
-struct StepModeButton : app::SvgSwitch {
-  StepModeButton() {
-    momentary = false;
-    shadow->visible = false;
-
-    auto loadFrame = [&](const char *pluginPath, const char *fallbackPath) {
-      if (auto svg = loadPluginSvg(pluginPath))
-        addFrame(svg);
-      else
-        addFrame(Svg::load(asset::system(fallbackPath)));
-    };
-
-    loadFrame("res/step_play.svg", "res/ComponentLibrary/TL1105_0.svg");
-    loadFrame("res/step_mute.svg", "res/ComponentLibrary/TL1105_1.svg");
-    loadFrame("res/step_skip.svg", "res/ComponentLibrary/TL1105_2.svg");
-    loadFrame("res/step_accum.svg", "res/ComponentLibrary/TL1105_0.svg");
-    loadFrame("res/step_accum_down.svg", "res/ComponentLibrary/TL1105_0.svg");
-  }
-};
-
-// Short direction label for the display (fits narrow rect)
-static const char *dirShort(int v) {
-  switch (clamp(v, -2, 2)) {
-  case -2:
-    return "P.P";
-  case -1:
-    return "BWD";
-  case 0:
-    return "FWD";
-  case 1:
-    return "RND";
-  default:
-    return "DRK";
-  }
-}
-
-// ─── ParamDisplay ──────────────────────────────────────────────────────────
-// Styled like OxiCvExp's ExpChannelLabel: dark rounded rect + blue #5DB7FF
-// text. Reads and formats the value of one param from the UZZ module.
-struct ParamDisplay : TransparentWidget {
-  UZZ *module = nullptr;
-  int paramId = 0;
-
-  ParamDisplay(Vec pos, Vec size, UZZ *m, int pid) : module(m), paramId(pid) {
-    box.pos = pos;
-    box.size = size;
-  }
-
-  std::string formatValue() const {
-    if (!module)
-      return "--";
-    float v = module->params[paramId].getValue();
-    switch (paramId) {
-    case UZZ::RATIO_IDX_PARAM: {
-      int idx = clamp((int)std::round(v), 0, NUM_RATIOS - 1);
-      return RATIO_LABELS[idx];
-    }
-    case UZZ::STEPS_PARAM:
-      return std::to_string(clamp((int)std::round(v), 1, 16));
-    case UZZ::START_PARAM:
-      return std::to_string(clamp((int)std::round(v), 1, 16));
-    case UZZ::DIR_MODE_PARAM:
-      return dirShort((int)std::round(v));
-    case UZZ::SWING_PARAM: {
-      int pct = (int)std::round(v * 100.f);
-      return std::to_string(pct) + "%";
-    }
-    case UZZ::ACCUM_AMT_PARAM: {
-      int st = (int)std::round(v);
-      return std::to_string(st) + "st";
-    }
-    case UZZ::ACCUM_CLIP_PARAM: {
-      int n = (int)std::round(v);
-      return (n > 0) ? std::to_string(n) + "st" : "OFF";
-    }
-    case UZZ::GATE_MODE_PARAM:
-      return (v < 0.5f) ? "GATE" : "TRIG";
-    default:
-      return std::to_string((int)std::round(v));
-    }
-  }
-
-  void drawLayer(const DrawArgs &args, int layer) override {
-    if (layer != 1)
-      return;
-    std::shared_ptr<Font> font = APP->window->uiFont;
-    if (!font)
-      return;
-
-    // Background rect
-    nvgBeginPath(args.vg);
-    nvgRoundedRect(args.vg, 0, 0, box.size.x, box.size.y, 2.5f);
-    nvgFillColor(args.vg, nvgRGBA(0, 0, 0, 180));
-    nvgFill(args.vg);
-
-    // Value text
-    std::string txt = formatValue();
-    nvgFontFaceId(args.vg, font->handle);
-    nvgFontSize(args.vg, 9.5f);
-    nvgTextAlign(args.vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
-    nvgFillColor(args.vg, nvgRGB(0x5D, 0xB7, 0xFF));
-    float cx = box.size.x * 0.5f;
-    float cy = box.size.y * 0.5f;
-    nvgText(args.vg, cx, cy, txt.c_str(), nullptr);
-  }
-};
-
-// Muestra en dos líneas: semitones (arriba) y clip count (abajo).
-struct AccumDisplay : TransparentWidget {
-  UZZ* module;
-
-  AccumDisplay(Vec pos, Vec size, UZZ* m) : module(m) {
-    box.pos = pos;
-    box.size = size;
-  }
-
-  void drawLayer(const DrawArgs& args, int layer) override {
-    if (layer != 1) return;
-    std::shared_ptr<Font> font = APP->window->uiFont;
-    if (!font) return;
-
-    nvgBeginPath(args.vg);
-    nvgRoundedRect(args.vg, 0, 0, box.size.x, box.size.y, 2.5f);
-    nvgFillColor(args.vg, nvgRGBA(0, 0, 0, 180));
-    nvgFill(args.vg);
-
-    std::string stTxt   = "--";
-    std::string clipTxt = "OFF";
-    if (module) {
-      int st   = (int)std::round(module->params[UZZ::ACCUM_AMT_PARAM].getValue());
-      int clip = (int)std::round(module->params[UZZ::ACCUM_CLIP_PARAM].getValue());
-      stTxt   = std::to_string(st) + "st";
-      clipTxt = (clip > 0) ? std::to_string(clip) + "st" : "OFF";
-    }
-
-    nvgFontFaceId(args.vg, font->handle);
-    nvgFillColor(args.vg, nvgRGB(0x5D, 0xB7, 0xFF));
-    nvgTextAlign(args.vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
-    float cx = box.size.x * 0.5f;
-    nvgFontSize(args.vg, 8.5f);
-    nvgText(args.vg, cx, box.size.y * 0.30f, stTxt.c_str(), nullptr);
-    nvgText(args.vg, cx, box.size.y * 0.72f, clipTxt.c_str(), nullptr);
-  }
-};
-
-// Panel-theme-aware text color (white-ish on dark panels, black on light).
-static NVGcolor panelTextColor() {
-  return settings::preferDarkPanels ? nvgRGB(0xC8, 0xD4, 0xE3)
-                                    : nvgRGB(0x14, 0x18, 0x22);
-}
-
-// Static text label
-struct TextLabel : TransparentWidget {
-    std::string text;
-    float fontSize = 9.f;
-    NVGcolor color = nvgRGBA(0, 0, 0, 0); // alpha==0 → use panelTextColor()
-
-    TextLabel(const char* t, Vec pos, Vec size = Vec(40.f, 12.f)) : text(t) {
-        box.pos  = pos;
-        box.size = size;
-        for (auto& c : text) c = toupper((unsigned char)c);
-    }
-
-    void drawLayer(const DrawArgs& args, int layer) override {
-        if (layer != 1) return;
-        std::shared_ptr<Font> font = APP->window->uiFont;
-        if (!font) return;
-        nvgFontSize(args.vg, fontSize);
-        nvgFontFaceId(args.vg, font->handle);
-        nvgFillColor(args.vg, color.a > 0.f ? color : panelTextColor());
-        nvgTextAlign(args.vg, NVG_ALIGN_CENTER | NVG_ALIGN_BOTTOM);
-        float cx = box.size.x * .5f;
-        float by = box.size.y;
-        nvgText(args.vg, cx, by, text.c_str(), nullptr);
-        nvgText(args.vg, cx + 0.15f, by, text.c_str(), nullptr); // fake bold
-    }
-};
-
-// Thin horizontal connector line between a label and a port.
-struct ConnectorLine : TransparentWidget {
-  float x1, y1, x2, y2;
-  int alpha;
-  ConnectorLine(float ax1, float ay1, float ax2, float ay2, int a = -1)
-      : x1(ax1), y1(ay1), x2(ax2), y2(ay2) {
-    if (a < 0)
-      alpha = settings::preferDarkPanels ? 160 : 180;
-    else
-      alpha = a;
-    box.pos = Vec(std::min(x1, x2) - 2.f, std::min(y1, y2) - 2.f);
-    box.size = Vec(std::abs(x2 - x1) + 4.f, std::abs(y2 - y1) + 4.f);
-  }
-  void draw(const DrawArgs &args) override {
-    NVGcolor c = settings::preferDarkPanels ? nvgRGBA(0x9A, 0xA2, 0xB5, alpha)
-                                            : nvgRGBA(0x55, 0x5A, 0x6A, alpha);
-    nvgBeginPath(args.vg);
-    nvgMoveTo(args.vg, x1 - box.pos.x, y1 - box.pos.y);
-    nvgLineTo(args.vg, x2 - box.pos.x, y2 - box.pos.y);
-    nvgStrokeColor(args.vg, c);
-    nvgStrokeWidth(args.vg, 0.4f);
-    nvgLineCap(args.vg, NVG_ROUND);
-    nvgStroke(args.vg);
-  }
-};
-
-// Note label
-struct NoteLabel : TransparentWidget {
-  UZZ *module = nullptr;
-  int stepIndex = 0;
-  std::string fontPath;
-
-  NoteLabel(UZZ *m, int i) : module(m), stepIndex(i) {
-    box.size = Vec(24.f, 12.f);
-    fontPath = asset::system("res/fonts/ShareTechMono-Regular.ttf");
-  }
-
-  void draw(const DrawArgs &args) override {
-    if (!module)
-      return;
-    std::shared_ptr<Font> font = APP->window->loadFont(fontPath);
-    if (!font)
-      return;
-
-    int s = (int)std::round(
-        module->params[UZZ::PITCH_PARAMS + stepIndex].getValue());
-    int oct = (int)std::round(
-                  module->params[UZZ::OCT_PARAMS + stepIndex].getValue()) +
-              4;
-    static const char *N[12] = {"C",  "C#", "D",  "D#", "E",  "F",
-                                "F#", "G",  "G#", "A",  "A#", "B"};
-    std::string txt = string::f("%s%d", N[(s % 12 + 12) % 12], oct);
-
-    nvgFontSize(args.vg, 10.f);
-    nvgFontFaceId(args.vg, font->handle);
-    nvgFillColor(args.vg, panelTextColor());
-    nvgTextAlign(args.vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
-    nvgText(args.vg, box.size.x * .5f, box.size.y * .5f, txt.c_str(), nullptr);
-  }
-};
-
-struct CapybaraWidget : Widget {
-  UZZ *module;
-  CapybaraWidget(UZZ *module) : module(module) {}
-
-  void draw(const DrawArgs &args) override {
-    if (!module)
-      return;
-    nvgSave(args.vg);
-    // Reduced scale by another 15% (X: 0.285->0.242, Y: 0.3135->0.266)
-    nvgScale(args.vg, -0.242f, 0.266f);
-
-    nvgBeginPath(args.vg);
-    nvgMoveTo(args.vg, -33.617f, -32.668f);
-    nvgBezierTo(args.vg, -35.069f, -32.305f, -35.7f, -30.087f, -39.453f, -28.211f);
-    nvgBezierTo(args.vg, -40.758f, -27.557f, -43.168f, -26.883f, -46.456f, -25.24f);
-    nvgBezierTo(args.vg, -48.044f, -24.445f, -56.305f, -22.731f, -58.022f, -19.297f);
-    nvgBezierTo(args.vg, -59.027f, -17.287f, -60.858f, -10.142f, -57.704f, -6.988f);
-    nvgBezierTo(args.vg, -53.272f, -2.556f, -52.279f, -5.715f, -44.652f, -5.715f);
-    nvgBezierTo(args.vg, -40.382f, -5.715f, -40.194f, -7.306f, -36.376f, -5.396f);
-    nvgBezierTo(args.vg, -34.067f, -4.242f, -28.591f, 0.621f, -28.204f, 1.395f);
-    nvgBezierTo(args.vg, -27.953f, 1.899f, -27.703f, 1.654f, -27.462f, 2.138f);
-    nvgBezierTo(args.vg, -27.291f, 2.478f, -27.48f, 2.526f, -26.507f, 4.472f);
-    nvgBezierTo(args.vg, -24.656f, 8.173f, -23.758f, 9.549f, -24.703f, 17.1f);
-    nvgBezierTo(args.vg, -25.319f, 22.023f, -26.511f, 21.455f, -29.266f, 24.21f);
-    nvgBezierTo(args.vg, -30.343f, 25.287f, -32.314f, 26.275f, -32.661f, 26.969f);
-    nvgBezierTo(args.vg, -32.956f, 27.557f, -34.662f, 28.141f, -33.085f, 28.666f);
-    nvgBezierTo(args.vg, -30.983f, 29.367f, -30.962f, 28.815f, -28.734f, 28.666f);
-    nvgBezierTo(args.vg, -28.365f, 28.642f, -25.057f, 28.421f, -24.385f, 27.075f);
-    nvgBezierTo(args.vg, -21.899f, 22.105f, -20.24f, 21.86f, -19.715f, 20.283f);
-    nvgBezierTo(args.vg, -19.638f, 20.049f, -19.614f, 20.079f, -18.335f, 17.524f);
-    nvgBezierTo(args.vg, -18.305f, 17.465f, -17.414f, 14.464f, -15.682f, 13.598f);
-    nvgBezierTo(args.vg, -11.796f, 11.655f, -10.243f, 12.145f, -10.058f, 13.068f);
-    nvgBezierTo(args.vg, -9.697f, 14.877f, -9.553f, 14.846f, -6.663f, 17.737f);
-    nvgBezierTo(args.vg, -5.155f, 19.245f, -3.512f, 26.046f, -5.071f, 27.605f);
-    nvgBezierTo(args.vg, -5.394f, 27.928f, -8.468f, 31.001f, -9.316f, 31.425f);
-    nvgBezierTo(args.vg, -9.669f, 31.602f, -0.201f, 32.614f, 0.553f, 31.107f);
-    nvgBezierTo(args.vg, 0.641f, 30.931f, 1.9f, 29.778f, 1.931f, 28.985f);
-    nvgBezierTo(args.vg, 1.976f, 27.891f, 1.931f, 27.896f, 1.931f, 15.296f);
-    nvgBezierTo(args.vg, 1.931f, 13.057f, 5.332f, 13.172f, 6.177f, 12.749f);
-    nvgBezierTo(args.vg, 7.719f, 11.978f, 11.297f, 11.772f, 13.71f, 11.37f);
-    nvgBezierTo(args.vg, 23.072f, 9.81f, 23.126f, 10.272f, 25.065f, 9.884f);
-    nvgBezierTo(args.vg, 25.394f, 9.818f, 25.359f, 9.827f, 25.702f, 9.778f);
-    nvgBezierTo(args.vg, 27.506f, 9.52f, 28.739f, 9.91f, 27.929f, 8.292f);
-    nvgBezierTo(args.vg, 27.409f, 7.249f, 26.34f, 5.425f, 28.779f, 2.987f);
-    nvgBezierTo(args.vg, 29.026f, 2.739f, 28.885f, 3.199f, 28.249f, 3.836f);
-    nvgBezierTo(args.vg, 27.615f, 4.469f, 26.953f, 12.141f, 30.053f, 13.174f);
-    nvgBezierTo(args.vg, 32.483f, 13.984f, 32.909f, 15.809f, 33.236f, 16.463f);
-    nvgBezierTo(args.vg, 33.504f, 16.999f, 33.804f, 21.473f, 31.644f, 22.193f);
-    nvgBezierTo(args.vg, 31.525f, 22.233f, 29.898f, 24.181f, 29.203f, 24.528f);
-    nvgBezierTo(args.vg, 28.566f, 24.846f, 28.019f, 25.393f, 27.929f, 25.483f);
-    nvgBezierTo(args.vg, 26.59f, 26.822f, 24.547f, 26.414f, 21.988f, 31.531f);
-    nvgBezierTo(args.vg, 21.733f, 32.042f, 22.201f, 32.168f, 29.097f, 32.168f);
-    nvgBezierTo(args.vg, 30.536f, 32.168f, 31.93f, 32.667f, 30.901f, 31.638f);
-    nvgBezierTo(args.vg, 28.141f, 28.877f, 36.13f, 27.335f, 37.268f, 25.059f);
-    nvgBezierTo(args.vg, 37.482f, 24.632f, 38.665f, 23.54f, 38.965f, 22.936f);
-    nvgBezierTo(args.vg, 40.346f, 20.177f, 41.542f, 18.981f, 41.831f, 18.692f);
-    nvgBezierTo(args.vg, 43.147f, 17.376f, 42.364f, 13.122f, 44.59f, 14.235f);
-    nvgBezierTo(args.vg, 45.433f, 14.656f, 44.888f, 15.431f, 45.757f, 15.72f);
-    nvgBezierTo(args.vg, 46.614f, 16.006f, 52.694f, 19.067f, 52.761f, 20.071f);
-    nvgBezierTo(args.vg, 52.792f, 20.541f, 52.877f, 21.938f, 52.231f, 24.528f);
-    nvgBezierTo(args.vg, 51.828f, 26.134f, 52.191f, 26.734f, 48.941f, 27.817f);
-    nvgBezierTo(args.vg, 48.489f, 27.968f, 45.441f, 29.514f, 43.74f, 30.364f);
-    nvgBezierTo(args.vg, 43.105f, 30.683f, 43.882f, 30.752f, 44.272f, 31.531f);
-    nvgBezierTo(args.vg, 44.507f, 32.004f, 52.552f, 32.061f, 52.972f, 31.956f);
-    nvgBezierTo(args.vg, 53.161f, 31.909f, 53.066f, 31.803f, 55.096f, 30.789f);
-    nvgBezierTo(args.vg, 55.732f, 30.47f, 56.1f, 29.734f, 56.156f, 29.621f);
-    nvgBezierTo(args.vg, 57.022f, 27.89f, 58.144f, 28.384f, 59.446f, 21.875f);
-    nvgBezierTo(args.vg, 60.731f, 15.454f, 60.858f, 12.675f, 59.233f, 11.051f);
-    nvgBezierTo(args.vg, 58.608f, 10.425f, 59.013f, 10.194f, 58.385f, 9.566f);
-    nvgBezierTo(args.vg, 56.546f, 7.726f, 55.691f, 3.113f, 50.638f, 5.64f);
-    nvgBezierTo(args.vg, 46.861f, 7.528f, 45.007f, 6.184f, 43.635f, 8.929f);
-    nvgBezierTo(args.vg, 42.702f, 10.796f, 42.078f, 11.088f, 42.786f, 13.917f);
-    nvgBezierTo(args.vg, 43.046f, 14.954f, 43.3f, 14.844f, 43.316f, 14.765f);
-    nvgBezierTo(args.vg, 43.784f, 12.429f, 40.367f, 11.454f, 43.74f, 8.08f);
-    nvgBezierTo(args.vg, 44.356f, 7.466f, 50.013f, 6.693f, 53.185f, 4.579f);
-    nvgBezierTo(args.vg, 53.588f, 4.31f, 55.536f, 3.537f, 56.05f, -2.637f);
-    nvgBezierTo(args.vg, 56.41f, -6.946f, 55.843f, -11.761f, 55.202f, -12.081f);
-    nvgBezierTo(args.vg, 54.923f, -12.22f, 54.969f, -12.782f, 53.822f, -13.355f);
-    nvgBezierTo(args.vg, 53.459f, -13.537f, 46.341f, -20.8f, 43.529f, -21.738f);
-    nvgBezierTo(args.vg, 38.082f, -23.554f, 38.125f, -23.646f, 35.571f, -24.285f);
-    nvgBezierTo(args.vg, 32.689f, -25.005f, 30.282f, -26.749f, 27.082f, -27.15f);
-    nvgBezierTo(args.vg, 26.673f, -27.201f, 19.488f, -28.488f, 18.38f, -28.529f);
-    nvgBezierTo(args.vg, 5.239f, -29.016f, 2.13f, -27.461f, 0.87f, -26.831f);
-    nvgBezierTo(args.vg, -0.029f, -26.382f, -17.334f, -21.53f, -22.263f, -24.815f);
-    nvgBezierTo(args.vg, -22.898f, -25.24f, -25.478f, -26.099f, -25.763f, -26.195f);
-    nvgBezierTo(args.vg, -28.091f, -26.97f, -28.893f, -29.829f, -30.538f, -30.651f);
-    nvgBezierTo(args.vg, -31.257f, -31.011f, -31.492f, -31.845f, -32.236f, -32.031f);
-    nvgBezierTo(args.vg, -33.103f, -32.248f, -33.066f, -32.272f, -33.934f, -32.561f);
-    nvgClosePath(args.vg);
-
-    // Theme-aware color interpolation
-    NVGcolor base = nvgRGB(0x2C, 0x7F, 0xFF);
-    NVGcolor flashTarget;
-    if (settings::preferDarkPanels) {
-      flashTarget = nvgRGB(0xFF, 0xFF, 0xFF); // Flash to White in Dark Mode
-    } else {
-      flashTarget = nvgRGB(0x00, 0x33, 0x66); // Flash to Dark Navy in Light Mode
-    }
-    nvgStrokeColor(args.vg, nvgLerpRGBA(base, flashTarget, module->capiFlash));
-    nvgStrokeWidth(args.vg, 2.2f);
-    nvgStroke(args.vg);
-
-    nvgRestore(args.vg);
-  }
-};
+#include "uzz/UzzWidgets.hpp"
 
 // ============================================================================
 // Module Widget
@@ -1767,6 +979,9 @@ struct UZZWidget : ModuleWidget {
     setModule(module);
     setPanel(createPanel(asset::plugin(pluginInstance, "res/UZZ-light.svg"),
                          asset::plugin(pluginInstance, "res/UZZ.svg")));
+
+    if (!UZZ_USE_CODE_LABELS)
+      addChild(new UzzStaticOverlay());
 
     const int cols = UI::COLS;
     auto Xc = [&](int i) { return UI::colCenter(box.size.x, i); };
@@ -1784,7 +999,7 @@ struct UZZWidget : ModuleWidget {
     }
 
     for (int i = 0; i < cols; ++i)
-      addParam(createParamCentered<Trimpot>(
+      addParam(createParamCentered<ProbPulseKnob>(
           Vec(Xc(i) + 14.f, UI::Y_PROB - 14.f), module, UZZ::PROB_PARAMS + i));
 
     for (int i = 0; i < cols; ++i)
@@ -1863,8 +1078,6 @@ struct UZZWidget : ModuleWidget {
     addShiftPair(UI::Y_C2, UZZ::M2_SHIFT_DOWN_PARAM, UZZ::M2_SHIFT_UP_PARAM);
     addShiftPair(ySep2, UZZ::PROB_SHIFT_DOWN_PARAM, UZZ::PROB_SHIFT_UP_PARAM);
 
-
-
     addParam(createParamCentered<UzzArcKnob>(Vec(UI::X_CTRL1, yBot), module,
                                              UZZ::START_PARAM));
     addParam(createParamCentered<UzzArcKnob>(Vec(UI::X_CTRL1, yMid), module,
@@ -1896,190 +1109,194 @@ struct UZZWidget : ModuleWidget {
       addDispAt(xStep5, yBot, UZZ::START_PARAM);
       addDispAt(xStep8, yTop, UZZ::DIR_MODE_PARAM);
       addDispAt(xStep8, yMid, UZZ::SWING_PARAM);
-      addChild(new AccumDisplay(
-          Vec(xStep8 - dW * .5f, yBot - dH * .5f), Vec(dW, dH), module));
+      addChild(new AccumDisplay(Vec(xStep8 - dW * .5f, yBot - dH * .5f),
+                                Vec(dW, dH), module));
     }
 
-    // — Bottom section labels —
-    // CLK / RESET / XPOSE → label centered on step 1's column,
-    // with a thin gray connector line running to the input port.
-    auto addInputLabel = [&](float cy, const char *text) {
-      const float w = 54.f, h = 12.f;
-      const float cx = UI::X_IN;
-      auto *lbl =
-          new TextLabel(text, Vec(cx - w * .5f, cy - h * .5f), Vec(w, h));
-      lbl->fontSize = 11.f;
-      addChild(lbl);
-      // Connector line: from port at step 1 to label at step 2.
-      const float gap = 5.f;
-      const float textLeft = cx - 14.f - gap;
-      const float dividerX = Xc(0) + 14.f; // port at step 1
-      const float lineStart = dividerX + gap;
-      if (textLeft > lineStart + 2.f)
-        addChild(new ConnectorLine(lineStart, cy, textLeft, cy));
-    };
-    addInputLabel(yTop, "CLK");
-    addInputLabel(yMid, "RESET");
-    addInputLabel(yBot, "XPOSE");
-
-    // Generic helper: label centered on a step column, connector line
-    // ending just before a target knob (knobX − knob radius − gap).
-    // lblHalfW: approx half-width of the text (tweak per label group).
-    // portR   : approx widget radius (knob ~13, port ~10).
-    auto addStepLabel = [&](int stepCol1Based, float knobX, float cy,
-                            const char *text, float lblHalfW = 18.f,
-                            float portR = 13.f) {
-      const float w = 54.f, h = 12.f;
-      const float cx = Xc(stepCol1Based - 1);
-      auto *lbl =
-          new TextLabel(text, Vec(cx - w * .5f, cy - h * .5f), Vec(w, h));
-      lbl->fontSize = 11.f;
-      addChild(lbl);
-      const float gap = 5.f;
-      const float textRight = cx + lblHalfW + gap;
-      const float lineEnd = knobX - portR - gap;
-      if (lineEnd > textRight + 2.f)
-        addChild(new ConnectorLine(textRight, cy, lineEnd, cy));
-    };
-
-    // RATIO / STEPS / START → aligned with step 3, connector to X_CTRL1 knobs.
-    addStepLabel(3, UI::X_CTRL1, yTop, "RATIO");
-    addStepLabel(3, UI::X_CTRL1, yMid, "STEPS");
-    addStepLabel(3, UI::X_CTRL1, yBot, "START");
-    // DIR / SWING / ACUMM → aligned with step 6, connector to X_CTRL2 knobs.
-    addStepLabel(6, UI::X_CTRL2, yTop, "DIR");
-    addStepLabel(6, UI::X_CTRL2, yMid, "SWING");
-    addStepLabel(6, UI::X_CTRL2, yBot, "ACUMM");
-
-    // — UZZ logo text —
-    // Placed at Xc(8) (column index 8 = step 9), midway between the param
-    // displays and SLEW label. It resides right above the SVG logo.
-    {
-      const float w = 54.f, h = 12.f;
-      auto *lbl =
-          new TextLabel("UZZ", Vec(Xc(8) - w * .5f, yTop - h * .5f), Vec(w, h));
-      lbl->fontSize = 16.f;
-      lbl->color = nvgRGB(0x2C, 0x7F, 0xFF);
-      addChild(lbl);
-    }
-
-    // SLEW / MODE → label at step 10, widget at step 11 (X_SWITCH).
-    // Double connector: label ── widget ── next label (PITCH/GATE).
-    {
-      const float gap = 5.f;
-      const float wRadius = 13.f;     // approx widget half-width
-      const float lblHalfW = 18.f;    // approx text half-width
-      const float xLbl10 = Xc(9);     // step 10 centre
-      const float xPitchLbl = Xc(11); // step 12 centre (PITCH/GATE labels)
-
-      // Struct: text label at step 10
-      auto addSwitchLabel = [&](float cy, const char *text) {
+    if (UZZ_USE_CODE_LABELS) {
+      // — Bottom section labels —
+      // CLK / RESET / XPOSE → label centered on step 1's column,
+      // with a thin gray connector line running to the input port.
+      auto addInputLabel = [&](float cy, const char *text) {
         const float w = 54.f, h = 12.f;
+        const float cx = UI::X_IN;
         auto *lbl =
-            new TextLabel(text, Vec(xLbl10 - w * .5f, cy - h * .5f), Vec(w, h));
+            new TextLabel(text, Vec(cx - w * .5f, cy - h * .5f), Vec(w, h));
         lbl->fontSize = 11.f;
         addChild(lbl);
+        // Connector line: from port at step 1 to label at step 2.
+        const float gap = 5.f;
+        const float textLeft = cx - 14.f - gap;
+        const float dividerX = Xc(0) + 14.f; // port at step 1
+        const float lineStart = dividerX + gap;
+        if (textLeft > lineStart + 2.f)
+          addChild(new ConnectorLine(lineStart, cy, textLeft, cy));
+      };
+      addInputLabel(yTop, "CLK");
+      addInputLabel(yMid, "RESET");
+      addInputLabel(yBot, "XPOSE");
+
+      // Generic helper: label centered on a step column, connector line
+      // ending just before a target knob (knobX − knob radius − gap).
+      // lblHalfW: approx half-width of the text (tweak per label group).
+      // portR   : approx widget radius (knob ~13, port ~10).
+      auto addStepLabel = [&](int stepCol1Based, float knobX, float cy,
+                              const char *text, float lblHalfW = 18.f,
+                              float portR = 13.f) {
+        const float w = 54.f, h = 12.f;
+        const float cx = Xc(stepCol1Based - 1);
+        auto *lbl =
+            new TextLabel(text, Vec(cx - w * .5f, cy - h * .5f), Vec(w, h));
+        lbl->fontSize = 11.f;
+        addChild(lbl);
+        const float gap = 5.f;
+        const float textRight = cx + lblHalfW + gap;
+        const float lineEnd = knobX - portR - gap;
+        if (lineEnd > textRight + 2.f)
+          addChild(new ConnectorLine(textRight, cy, lineEnd, cy));
       };
 
-      // Connector helper: from x1 to x2 at height cy (with gap on each side)
-      auto seg = [&](float x1, float x2, float cy) {
-        if (x2 - gap > x1 + gap)
-          addChild(new ConnectorLine(x1 + gap, cy, x2 - gap, cy));
-      };
+      // RATIO / STEPS / START → aligned with step 3, connector to X_CTRL1
+      // knobs.
+      addStepLabel(3, UI::X_CTRL1, yTop, "RATIO");
+      addStepLabel(3, UI::X_CTRL1, yMid, "STEPS");
+      addStepLabel(3, UI::X_CTRL1, yBot, "START");
+      // DIR / SWING / ACUMM → aligned with step 6, connector to X_CTRL2 knobs.
+      addStepLabel(6, UI::X_CTRL2, yTop, "DIR");
+      addStepLabel(6, UI::X_CTRL2, yMid, "SWING");
+      addStepLabel(6, UI::X_CTRL2, yBot, "ACUMM");
 
-      // SLEW: label(step10) ─── Trimpot(step11) ─── PITCH label(step12)
-      addSwitchLabel(yTop, "SLEW");
-      seg(xLbl10 + lblHalfW, UI::X_SWITCH - wRadius, yTop); // label → trimpot
-      seg(UI::X_SWITCH + wRadius, xPitchLbl - lblHalfW,
-          yTop); // trimpot → PITCH lbl
-
-      // MODE: label(step10) ─── CKSS(step11) ─── GATE/TRIG Display(step12) ───
-      // GATE Output(step13)
-      addSwitchLabel(yMid, "MODE");
-      seg(xLbl10 + lblHalfW, UI::X_SWITCH - wRadius, yMid);
-
-      const float dW = 38.f, dH = 14.f;
-      addChild(new ParamDisplay(Vec(xPitchLbl - dW * .5f, yMid - dH * .5f),
-                                Vec(dW, dH), module, UZZ::GATE_MODE_PARAM));
-      // Line from switch to display
-      seg(UI::X_SWITCH + wRadius, xPitchLbl - (dW * .5f), yMid);
-      // Line from display to output port (X_OUT1)
+      // — UZZ logo text —
+      // Placed at Xc(8) (column index 8 = step 9), midway between the param
+      // displays and SLEW label. It resides right above the SVG logo.
       {
-        const float lineStart = xPitchLbl + (dW * .5f) + gap;
-        const float lineEnd = UI::X_OUT1 - 10.f - gap;
-        if (lineEnd > lineStart + 2.f)
-          addChild(new ConnectorLine(lineStart, yMid, lineEnd, yMid));
+        const float w = 54.f, h = 12.f;
+        auto *lbl = new TextLabel("UZZ", Vec(Xc(8) - w * .5f, yTop - h * .5f),
+                                  Vec(w, h));
+        lbl->fontSize = 16.f;
+        lbl->color = nvgRGB(0x2C, 0x7F, 0xFF);
+        addChild(lbl);
       }
 
-      // POLY: label(step10) ─── UzzOutputPort(step11)
-      addSwitchLabel(yBot, "POLY");
-      seg(xLbl10 + lblHalfW, UI::X_SWITCH - wRadius, yBot);
-    }
-    // PITCH / GATE / EOC → label at step 12, output at step 13.
-    addStepLabel(12, UI::X_OUT1, yTop, "V/OCT", 14.f, 10.f);
-    addStepLabel(12, UI::X_OUT1, yBot, "EOC", 14.f, 10.f);
-    // M1 / M2 / GLB.P → label at step 14, output at step 15.
-    addStepLabel(14, UI::X_OUT2, yTop, "MOD1", 14.f, 10.f);
-    addStepLabel(14, UI::X_OUT2, yMid, "MOD2", 14.f, 10.f);
-    addStepLabel(14, UI::X_OUT2, yBot, "PROB", 14.f, 10.f);
+      // SLEW / MODE → label at step 10, widget at step 11 (X_SWITCH).
+      // Double connector: label ── widget ── next label (PITCH/GATE).
+      {
+        const float gap = 5.f;
+        const float wRadius = 13.f;     // approx widget half-width
+        const float lblHalfW = 18.f;    // approx text half-width
+        const float xLbl10 = Xc(9);     // step 10 centre
+        const float xPitchLbl = Xc(11); // step 12 centre (PITCH/GATE labels)
 
-    // — Row labels (centered above each trigger input on the left column) —
-    auto addRowLabel = [&](float cy, const char *text) {
-      const float w = 50.f, h = 10.f;
-      // ALIGN_BOTTOM: text renders at box.pos.y + h.
-      // Target baseline: cy - 13  (3 px gap above port top edge ~cy-10).
-      // So box.pos.y = cy - 13 - h.
-      float cx = UI::trigLeftX();
-      auto *lbl = new TextLabel(text, Vec(cx - w * .5f, cy - 13.f - h), Vec(w, h));
-      lbl->fontSize = 9.f;
-      addChild(lbl);
-    };
-    addRowLabel(UI::Y_STEP_MODE + 18.f, "MODE");
-    addRowLabel(ySep2, "PROB");
-    addRowLabel(UI::Y_PITCH, "PITCH");
-    addRowLabel(UI::Y_OCT, "OCT");
-    addRowLabel(UI::Y_DUR, "DUR");
-    addRowLabel(UI::Y_C1, "MOD1");
-    addRowLabel(UI::Y_C2, "MOD2");
+        // Struct: text label at step 10
+        auto addSwitchLabel = [&](float cy, const char *text) {
+          const float w = 54.f, h = 12.f;
+          auto *lbl = new TextLabel(text, Vec(xLbl10 - w * .5f, cy - h * .5f),
+                                    Vec(w, h));
+          lbl->fontSize = 11.f;
+          addChild(lbl);
+        };
 
-    addInput(createInputCentered<UzzInputPort>(Vec(Xc(0), yTop), module,
-                                               UZZ::CLK_INPUT));
-    addInput(createInputCentered<UzzInputPort>(Vec(Xc(0), yMid), module,
-                                               UZZ::RESET_INPUT));
-    addInput(createInputCentered<UzzInputPort>(Vec(Xc(0), yBot), module,
-                                               UZZ::XPOSE_INPUT));
+        // Connector helper: from x1 to x2 at height cy (with gap on each side)
+        auto seg = [&](float x1, float x2, float cy) {
+          if (x2 - gap > x1 + gap)
+            addChild(new ConnectorLine(x1 + gap, cy, x2 - gap, cy));
+        };
 
-    addOutput(createOutputCentered<UzzOutputPort>(Vec(UI::X_OUT2, yTop), module,
-                                                  UZZ::M1_OUTPUT));
-    addOutput(createOutputCentered<UzzOutputPort>(Vec(UI::X_OUT2, yMid), module,
-                                                  UZZ::M2_OUTPUT));
-    addParam(createParamCentered<UzzArcKnob>(Vec(UI::X_OUT2, yBot), module,
-                                             UZZ::PROB_GLOBAL_PARAM));
+        // SLEW: label(step10) ─── Trimpot(step11) ─── PITCH label(step12)
+        addSwitchLabel(yTop, "SLEW");
+        seg(xLbl10 + lblHalfW, UI::X_SWITCH - wRadius, yTop); // label → trimpot
+        seg(UI::X_SWITCH + wRadius, xPitchLbl - lblHalfW,
+            yTop); // trimpot → PITCH lbl
 
-    addOutput(createOutputCentered<UzzOutputPort>(Vec(UI::X_OUT1, yTop), module,
-                                                  UZZ::PITCH_OUTPUT));
-    addOutput(createOutputCentered<UzzOutputPort>(Vec(UI::X_OUT1, yMid), module,
-                                                  UZZ::GATE_OUTPUT));
-    addOutput(createOutputCentered<UzzOutputPort>(Vec(UI::X_OUT1, yBot), module,
-                                                  UZZ::EOC_OUTPUT));
+        // MODE: label(step10) ─── CKSS(step11) ─── GATE/TRIG Display(step12)
+        // ─── GATE Output(step13)
+        addSwitchLabel(yMid, "MODE");
+        seg(xLbl10 + lblHalfW, UI::X_SWITCH - wRadius, yMid);
 
-    // Separator lines between bottom rows (Step 0 to 8)
-    {
-      float x0 = UI::LEFT;
-      float x8 = UI::LEFT + 8.f * UI::colW(box.size.x);
-      addChild(new ConnectorLine(0.f, ySep1, x8, ySep1, 80));
-      addChild(new ConnectorLine(x0, ySep2, x8, ySep2, 80));
+        const float dW = 38.f, dH = 14.f;
+        addChild(new ParamDisplay(Vec(xPitchLbl - dW * .5f, yMid - dH * .5f),
+                                  Vec(dW, dH), module, UZZ::GATE_MODE_PARAM));
+        // Line from switch to display
+        seg(UI::X_SWITCH + wRadius, xPitchLbl - (dW * .5f), yMid);
+        // Line from display to output port (X_OUT1)
+        {
+          const float lineStart = xPitchLbl + (dW * .5f) + gap;
+          const float lineEnd = UI::X_OUT1 - 10.f - gap;
+          if (lineEnd > lineStart + 2.f)
+            addChild(new ConnectorLine(lineStart, yMid, lineEnd, yMid));
+        }
 
-      float x10 = UI::LEFT + 9.f * UI::colW(box.size.x);
-      float x15 = UI::LEFT + 15.f * UI::colW(box.size.x);
-      addChild(new ConnectorLine(x10, ySep1, x15, ySep1, 80));
-      addChild(new ConnectorLine(x10, ySep2, x15, ySep2, 80));
-    }
+        // POLY: label(step10) ─── UzzOutputPort(step11)
+        addSwitchLabel(yBot, "POLY");
+        seg(xLbl10 + lblHalfW, UI::X_SWITCH - wRadius, yBot);
+      }
+      // PITCH / GATE / EOC → label at step 12, output at step 13.
+      addStepLabel(12, UI::X_OUT1, yTop, "V/OCT", 14.f, 10.f);
+      addStepLabel(12, UI::X_OUT1, yBot, "EOC", 14.f, 10.f);
+      // M1 / M2 / GLB.P → label at step 14, output at step 15.
+      addStepLabel(14, UI::X_OUT2, yTop, "MOD1", 14.f, 10.f);
+      addStepLabel(14, UI::X_OUT2, yMid, "MOD2", 14.f, 10.f);
+      addStepLabel(14, UI::X_OUT2, yBot, "PROB", 14.f, 10.f);
 
-    // Vertical separator between POLY output and EOC label
-    {
-      float xMid = (UI::X_SWITCH + Xc(11)) * .5f;
-      addChild(new ConnectorLine(xMid, yBot - 12.f, xMid, yBot + 12.f, 80));
+      // — Row labels (centered above each trigger input on the left column) —
+      auto addRowLabel = [&](float cy, const char *text) {
+        const float w = 50.f, h = 10.f;
+        // ALIGN_BOTTOM: text renders at box.pos.y + h.
+        // Target baseline: cy - 13  (3 px gap above port top edge ~cy-10).
+        // So box.pos.y = cy - 13 - h.
+        float cx = UI::trigLeftX();
+        auto *lbl =
+            new TextLabel(text, Vec(cx - w * .5f, cy - 13.f - h), Vec(w, h));
+        lbl->fontSize = 9.f;
+        addChild(lbl);
+      };
+      addRowLabel(UI::Y_STEP_MODE + 18.f, "MODE");
+      addRowLabel(ySep2, "PROB");
+      addRowLabel(UI::Y_PITCH, "PITCH");
+      addRowLabel(UI::Y_OCT, "OCT");
+      addRowLabel(UI::Y_DUR, "DUR");
+      addRowLabel(UI::Y_C1, "MOD1");
+      addRowLabel(UI::Y_C2, "MOD2");
+
+      addInput(createInputCentered<UzzInputPort>(Vec(Xc(0), yTop), module,
+                                                 UZZ::CLK_INPUT));
+      addInput(createInputCentered<UzzInputPort>(Vec(Xc(0), yMid), module,
+                                                 UZZ::RESET_INPUT));
+      addInput(createInputCentered<UzzInputPort>(Vec(Xc(0), yBot), module,
+                                                 UZZ::XPOSE_INPUT));
+
+      addOutput(createOutputCentered<UzzOutputPort>(Vec(UI::X_OUT2, yTop),
+                                                    module, UZZ::M1_OUTPUT));
+      addOutput(createOutputCentered<UzzOutputPort>(Vec(UI::X_OUT2, yMid),
+                                                    module, UZZ::M2_OUTPUT));
+      addParam(createParamCentered<UzzArcKnob>(Vec(UI::X_OUT2, yBot), module,
+                                               UZZ::PROB_GLOBAL_PARAM));
+
+      addOutput(createOutputCentered<UzzOutputPort>(Vec(UI::X_OUT1, yTop),
+                                                    module, UZZ::PITCH_OUTPUT));
+      addOutput(createOutputCentered<UzzOutputPort>(Vec(UI::X_OUT1, yMid),
+                                                    module, UZZ::GATE_OUTPUT));
+      addOutput(createOutputCentered<UzzOutputPort>(Vec(UI::X_OUT1, yBot),
+                                                    module, UZZ::EOC_OUTPUT));
+
+      // Separator lines between bottom rows (Step 0 to 8)
+      {
+        float x0 = UI::LEFT;
+        float x8 = UI::LEFT + 8.f * UI::colW(box.size.x);
+        addChild(new ConnectorLine(0.f, ySep1, x8, ySep1, 80));
+        addChild(new ConnectorLine(x0, ySep2, x8, ySep2, 80));
+
+        float x10 = UI::LEFT + 9.f * UI::colW(box.size.x);
+        float x15 = UI::LEFT + 15.f * UI::colW(box.size.x);
+        addChild(new ConnectorLine(x10, ySep1, x15, ySep1, 80));
+        addChild(new ConnectorLine(x10, ySep2, x15, ySep2, 80));
+      }
+
+      // Vertical separator between POLY output and EOC label
+      {
+        float xMid = (UI::X_SWITCH + Xc(11)) * .5f;
+        addChild(new ConnectorLine(xMid, yBot - 12.f, xMid, yBot + 12.f, 80));
+      }
     }
 
     // Hand-drawn Capybara from backup
@@ -2087,7 +1304,8 @@ struct UZZWidget : ModuleWidget {
       auto *capi = new CapybaraWidget(module);
       // Centered in the sidebar (X=24)
       // Repositioned: Moved back to 308 as requested
-      capi->box.pos = Vec(24.f, 308.f);
+      capi->box.pos = Vec(1.f, 280.f);
+
       addChild(capi);
     }
 
@@ -2112,15 +1330,17 @@ struct UZZWidget : ModuleWidget {
         }));
 
     menu->addChild(createSubmenuItem("Direction mode", "", [m](ui::Menu *sub) {
-      for (int i = -2; i <= 2; ++i) {
+      for (int i = DIR_MODE_MIN; i <= DIR_MODE_MAX; ++i) {
+        std::string lbl = (i == DIR_JUMP && m)
+                              ? string::f("Jump \xc3\xb7%d", m->jumpN)
+                              : dirLabel(i);
         sub->addChild(createCheckMenuItem(
-            dirLabel(i), "",
+            lbl.c_str(), "",
             [m, i]() {
               if (!m)
                 return false;
-              int cur =
-                  (int)std::round(m->params[UZZ::DIR_MODE_PARAM].getValue());
-              return cur == i;
+              return (int)std::round(
+                         m->params[UZZ::DIR_MODE_PARAM].getValue()) == i;
             },
             [m, i]() {
               if (!m)
@@ -2128,9 +1348,26 @@ struct UZZWidget : ModuleWidget {
               m->params[UZZ::DIR_MODE_PARAM].setValue((float)i);
               m->navigator.pingDir = 0;
               m->navigator.drunkDir = 1;
+              m->navigator.seqPos = 0;
             }));
       }
     }));
+
+    menu->addChild(createSubmenuItem(
+        "Jump stride", m ? string::f("\xc3\xb7%d", m->jumpN) : "",
+        [m](ui::Menu *sub) {
+          for (int n = 2; n <= 7; ++n) {
+            sub->addChild(createCheckMenuItem(
+                string::f("\xc3\xb7%d", n).c_str(), "",
+                [m, n]() { return m && m->jumpN == n; },
+                [m, n]() {
+                  if (m) {
+                    m->jumpN = n;
+                    m->navigator.seqPos = 0;
+                  }
+                }));
+          }
+        }));
 
     menu->addChild(new ui::MenuSeparator());
     menu->addChild(createSubmenuItem("Pitch range", "", [m](ui::Menu *sub) {
@@ -2148,13 +1385,16 @@ struct UZZWidget : ModuleWidget {
       }
     }));
 
-    auto addRangeMenu = [&](const char* label, int* rangePtr) {
-      menu->addChild(createSubmenuItem(label, "", [m, rangePtr](ui::Menu* sub) {
+    auto addRangeMenu = [&](const char *label, int *rangePtr) {
+      menu->addChild(createSubmenuItem(label, "", [m, rangePtr](ui::Menu *sub) {
         for (int r = 0; r < UZZRanges::MR_COUNT; ++r) {
           sub->addChild(createCheckMenuItem(
               UZZRanges::RANGE_DEFS[r].label, "",
               [m, rangePtr, r]() { return m && *rangePtr == r; },
-              [m, rangePtr, r]() { if (m) *rangePtr = r; }));
+              [m, rangePtr, r]() {
+                if (m)
+                  *rangePtr = r;
+              }));
         }
       }));
     };

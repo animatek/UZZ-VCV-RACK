@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <title>UZZ Step: Gated</title>
+  <g fill="none" stroke="#2170F5" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter">
+    <polyline points="2,11 2,5 12,5 12,11 14,11" />
+  </g>
+</svg>

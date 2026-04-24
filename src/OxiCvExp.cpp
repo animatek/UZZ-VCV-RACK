@@ -1,4 +1,9 @@
 #include "plugin.hpp"
+#include "ui/CommonWidgets.hpp"
+
+using AnimatekUI::DisplayBox;
+using AnimatekUI::TextLabel;
+using AnimatekUI::displayBlue;
 
 // Layout constants (must match res/OxiCvExp.svg)
 static constexpr int   NUM_TRACKS    = 8;
@@ -39,15 +44,14 @@ struct OxiCvExp : Module {
 
     void process(const ProcessArgs& args) override {
         OxiCvExpMsg* msg = (OxiCvExpMsg*)leftExpander.consumerMessage;
-        if (leftExpander.module && leftExpander.module->model->slug != "OxiCv")
+        if (leftExpander.module && leftExpander.module->model != modelOxiCv)
             msg = nullptr;
 
         for (int i = 0; i < NUM_TRACKS; i++) {
             int chIdx = clamp((int)params[CH_PARAM + i].getValue() - 1, 0, MIDI_CHANNELS - 1);
             if (msg) {
                 const VoiceState& v = msg->channels[chIdx];
-                float pitch = (v.note >= 0) ? (v.note - 60) / 12.f : 0.f;
-                outputs[VOCT_OUTPUT + i].setVoltage(pitch + msg->pitchBend);
+                outputs[VOCT_OUTPUT + i].setVoltage(noteToVoct(v.note) + msg->pitchBend);
                 outputs[GATE_OUTPUT + i].setVoltage(v.gate ? 10.f : 0.f);
                 outputs[VEL_OUTPUT  + i].setVoltage((v.vel / 127.f) * 10.f);
             } else {
@@ -59,21 +63,7 @@ struct OxiCvExp : Module {
     }
 };
 
-struct ExpLabel : widget::TransparentWidget {
-    std::string text;
-    float fontSize = 7.5f;
-
-    void drawLayer(const DrawArgs& args, int layer) override {
-        if (layer != 1 || !APP->window->uiFont) return;
-        nvgFontFaceId(args.vg, APP->window->uiFont->handle);
-        nvgFontSize(args.vg, fontSize);
-        nvgFillColor(args.vg, settings::preferDarkPanels ? nvgRGB(220, 220, 230) : nvgRGB(35, 35, 45));
-        nvgTextAlign(args.vg, NVG_ALIGN_CENTER | NVG_ALIGN_BOTTOM);
-        std::string upper = text;
-        for (auto& c : upper) c = toupper((unsigned char)c);
-        nvgText(args.vg, box.size.x / 2.f, box.size.y, upper.c_str(), NULL);
-    }
-};
+using ExpLabel = TextLabel;
 
 struct ExpChannelLabel : widget::TransparentWidget {
     OxiCvExp* module = nullptr;
@@ -94,7 +84,7 @@ struct ExpChannelLabel : widget::TransparentWidget {
         nvgFontFaceId(args.vg, font->handle);
         nvgFontSize(args.vg, 9.0f);
         nvgTextAlign(args.vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
-        nvgFillColor(args.vg, nvgRGB(0x5D, 0xB7, 0xFF));
+        nvgFillColor(args.vg, displayBlue());
         nvgText(args.vg, box.size.x / 2.f, box.size.y / 2.f, std::to_string(ch).c_str(), nullptr);
     }
 };

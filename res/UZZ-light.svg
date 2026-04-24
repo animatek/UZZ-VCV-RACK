@@ -20,17 +20,18 @@
     <line x1="99.3125" y1="4.4" x2="99.3125" y2="281" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
     <line x1="150.625" y1="4.4" x2="150.625" y2="375.6" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
     <line x1="201.938" y1="4.4" x2="201.938" y2="281" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
-    <line x1="253.25" y1="4.4" x2="253.25" y2="281" stroke="#707890" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="253.25" y1="4.4" x2="253.25" y2="281" stroke="#2C7FFF" stroke-width="0.6" stroke-linecap="round" stroke-opacity="0.75" />
     <line x1="304.562" y1="4.4" x2="304.562" y2="375.6" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
     <line x1="355.875" y1="4.4" x2="355.875" y2="281" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
     <line x1="407.188" y1="4.4" x2="407.188" y2="281" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
-    <line x1="458.5" y1="4.4" x2="458.5" y2="375.6" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
-    <line x1="509.812" y1="4.4" x2="509.812" y2="281" stroke="#707890" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="458.5" y1="4.4" x2="458.5" y2="281" stroke="#2C7FFF" stroke-width="0.6" stroke-linecap="round" stroke-opacity="0.75" />
+    <line x1="458.5" y1="281" x2="458.5" y2="375.6" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="509.812" y1="4.4" x2="509.812" y2="281" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
     <line x1="509.812" y1="281" x2="509.812" y2="375.6" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
     <line x1="561.125" y1="4.4" x2="561.125" y2="281" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
     <line x1="612.438" y1="4.4" x2="612.438" y2="281" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
-    <line x1="663.75" y1="4.4" x2="663.75" y2="281" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
-    <line x1="715.062" y1="4.4" x2="715.062" y2="281" stroke="#707890" stroke-width="0.6" stroke-linecap="round" />
+    <line x1="663.75" y1="4.4" x2="663.75" y2="281" stroke="#2C7FFF" stroke-width="0.6" stroke-linecap="round" stroke-opacity="0.75" />
+    <line x1="715.062" y1="4.4" x2="715.062" y2="281" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
     <line x1="715.062" y1="281" x2="715.062" y2="375.6" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
     <line x1="766.375" y1="4.4" x2="766.375" y2="281" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />
     <line x1="817.688" y1="4.4" x2="817.688" y2="375.6" stroke="#9AA2B5" stroke-width="0.6" stroke-linecap="round" />

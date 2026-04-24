@@ -16,6 +16,11 @@ struct OxiCvExpMsg {
     float pitchBend = 0.f;
 };
 
+// Converts a MIDI note (int8_t, -1 = inactive) to V/Oct relative to C4 (60)
+static inline float noteToVoct(int8_t note) {
+    return (note >= 0) ? (note - 60) / 12.f : 0.f;
+}
+
 // Declare the Plugin, defined in plugin.cpp
 extern Plugin* pluginInstance;
 

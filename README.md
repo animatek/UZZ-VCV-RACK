@@ -16,16 +16,17 @@ This repository is a port to VCV Rack 2.x, aiming to preserve the original philo
 
 ### Features
 
-- 16 steps with per-step **Pitch**, **Octave**, **Duration**, **Mod1**, **Mod2**, and **Probability**
-- Per-step **step mode**: Play, Mute, Skip, Accum Up, Accum Down
+- 16 steps with per-step **Pitch**, **Octave**, **Duration**, **Mod1**, **Mod2**, and bipolar **Prob/Pulse**
+- Per-step **step mode**: Play, Mute, Skip, Accum Up, Accum Down, Pulse, Gated, Hold
 - **Active window**: configurable Start and Step count with wrap-around
 - **Clock ratios**: ÷8 to ×8 and beyond, with swing
-- **Direction modes**: Forward, Backward, Ping-Pong, Random, Drunk
+- **Direction modes**: Forward, Backward, Pendulum, Ping-Pong, Random, Drunk, Odd/Even, Jump, Converge, Diverge
 - **Global glide (slew)** on pitch output
-- **Accumulator**: semitone offset that accumulates on ACCUM steps
+- **Accumulator**: semitone offset that accumulates on ACCUM steps, with wrap control
 - **Per-row Randomize** buttons with CV trig inputs (Pitch, Oct, Mode, Dur, Mod1, Mod2, Prob)
-- **Per-row Shift** up/down arrows for all rows including Probability
-- **Per-step Probability** (0–100%) and **Global Probability** knob — multiplicative, gate only
+- **Per-row Shift** up/down arrows for all rows including Prob/Pulse
+- **Per-step Prob/Pulse** knob: probability on the left side, pulse multiplier on the right side
+- **Global Probability** knob — multiplicative on gate triggering
 - Polyphonic step-gate output (one channel per active step)
 - EOC output, transpose input, reset input
 
@@ -60,6 +61,36 @@ A 10HP expander for **OXI-CV** that unlocks its multi-track capabilities.
 ---
 
 ## Changelog
+
+### 3.0 — UZZ Pulse Modes & Advanced Directions
+*(2026-04)*
+
+#### UZZ: New Step Modes
+* Added three per-step modes: **Pulse**, **Gated**, and **Hold**.
+* **Pulse** generates ratcheted sub-gates inside the clock period.
+* **Gated** can stretch one step across multiple clock periods.
+* **Hold** can re-fire the current step across multiple incoming clocks before advancing.
+* Added dedicated panel icons for the new step modes.
+
+#### UZZ: Bipolar Prob/Pulse Row
+* The former **Probability** row is now **Prob/Pulse**.
+* Knob center (`0`) means normal playback: **100 % probability / ×1 pulse**.
+* Turning left sets per-step probability from **100 % down to 0 %**.
+* Turning right sets pulse multiplication from **×2 to ×8**.
+* Randomize, Shift and Reset for the row were updated to the new bipolar behavior.
+* For **Play** and **Accum** steps, the row acts as probability.
+* For **Pulse**, **Gated**, and **Hold** steps, the row acts as pulse count while **Global Probability** still applies.
+
+#### UZZ: New Direction Modes
+* Added **Pendulum**, **Odd/Even**, **Jump**, **Converge**, and **Diverge** direction modes.
+* **Ping-Pong** now exists as its own mode, distinct from **Pendulum**.
+* **Jump** uses a configurable stride from the right-click context menu.
+* Sequencer state now stores the advanced direction position so patches resume consistently.
+
+#### UZZ: Gate/Timing Behavior
+* Gate length calculation was centralized to keep pulses and gated playback consistent across ratios.
+* Ratchet sub-pulses are scheduled inside the audio process loop rather than treated as separate steps.
+* Hold/gated states are cleared cleanly on hard stop and reset.
 
 ### 2.4.2 — Accumulator Wrap & Code Quality
 *(2026-04)*

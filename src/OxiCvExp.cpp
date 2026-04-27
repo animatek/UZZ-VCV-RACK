@@ -130,6 +130,11 @@ struct OxiCvExpWidget : ModuleWidget {
             addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(X_VEL,  y)), module, OxiCvExp::VEL_OUTPUT  + i));
         }
     }
+
+    void appendContextMenu(ui::Menu* menu) override {
+        ModuleWidget::appendContextMenu(menu);
+        appendPanelThemeMenu(menu);
+    }
 };
 
 Model* modelOxiCvExp = createModel<OxiCvExp, OxiCvExpWidget>("OxiCvExp");

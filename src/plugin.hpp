@@ -24,6 +24,23 @@ static inline float noteToVoct(int8_t note) {
 // Declare the Plugin, defined in plugin.cpp
 extern Plugin* pluginInstance;
 
+// Adds a "Panel" submenu (Light / Dark) that toggles the global
+// settings::preferDarkPanels, so each module can switch the Rack-wide
+// theme from its right-click menu.
+inline void appendPanelThemeMenu(ui::Menu* menu) {
+    menu->addChild(new ui::MenuSeparator);
+    menu->addChild(createSubmenuItem("Panel", "", [](ui::Menu* sub) {
+        sub->addChild(createCheckMenuItem(
+            "Light", "",
+            []() { return !settings::preferDarkPanels; },
+            []() { settings::preferDarkPanels = false; }));
+        sub->addChild(createCheckMenuItem(
+            "Dark", "",
+            []() { return settings::preferDarkPanels; },
+            []() { settings::preferDarkPanels = true; }));
+    }));
+}
+
 // Declare each Model, defined in each module source file
 // extern Model* modelMyModule;
 extern Model* modelUZZ;    // UZZ step sequencer

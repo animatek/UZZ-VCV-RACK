@@ -1324,6 +1324,8 @@ struct UZZWidget : ModuleWidget {
     ModuleWidget::appendContextMenu(menu);
     auto *m = dynamic_cast<UZZ *>(module);
 
+    appendPanelThemeMenu(menu);
+
     menu->addChild(new ui::MenuSeparator());
     menu->addChild(createCheckMenuItem(
         "EOC on reset", "", [m]() { return m && m->eocOnReset; },

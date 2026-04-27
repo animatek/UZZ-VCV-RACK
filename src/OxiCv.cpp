@@ -842,6 +842,7 @@ struct OxiCvWidget : ModuleWidget {
             app::appendMidiMenu(menu, &m->midiInput);
         }
         appendOxiContextMenu(menu, m);
+        appendPanelThemeMenu(menu);
     }
 };
 

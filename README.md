@@ -88,6 +88,10 @@ A 10HP expander for **OXI-CV** that unlocks its multi-track capabilities.
 ### 2.5.1 — UZZ Probability & Clock Robustness
 *(2026-04)*
 
+#### All modules: Panel theme menu
+* Added **Panel → Light / Dark** submenu to the right-click context menu of **UZZ**, **OXI-CV** and **OXI-CV EXPANSOR**.
+* Toggles VCV Rack's global `preferDarkPanels` setting directly from the module, so the theme can be switched without opening Rack's global preferences.
+
 #### UZZ: Probability in Pulse/Gated/Hold
 * The per-step **Prob/Pulse** knob now applies probability on its **left side** (negative values) for **Pulse**, **Gated** and **Hold** steps too — previously these modes only honoured the global probability.
 * Right side of the knob keeps its meaning: pulse count, always at 100 % probability per repetition.

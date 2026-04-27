@@ -13,6 +13,7 @@ struct ClockProcessor {
   bool clockWasConnected = false;
   bool havePhase = false;
   bool prevClkConnected = false;
+  bool havePrevEdge = false;
 
   int swingPhase = 0;
   int queuedBaseTicks = 0;
@@ -37,6 +38,7 @@ struct ClockProcessor {
     pendingDelay = 0.f;
     pendingTimer = 0.f;
     sinceLastTick = 1e9f;
+    havePrevEdge = false;
     clkTrig.reset();
   }
 
@@ -51,6 +53,7 @@ struct ClockProcessor {
     tickPending = false;
     pendingDelay = 0.f;
     pendingTimer = 0.f;
+    havePrevEdge = false;
   }
 
   float getVirtPeriod() const { return virtPeriod; }
@@ -69,14 +72,28 @@ struct ClockProcessor {
     if (!needsVirtualClock)
       havePhase = false;
 
-    bool extPulse = clkTrig.process(clkInput.getVoltage());
+    // Explicit Schmitt thresholds (matches Fundamental SEQ3): 0.1 V low,
+    // 2 V high. More robust against signals that idle a bit above 0 V.
+    bool extPulse = clkTrig.process(clkInput.getVoltage(), 0.1f, 2.f);
     if (extPulse) {
-      lastPeriod = timeSinceClk;
+      // The first edge after connect/reset has a stale timeSinceClk (it has
+      // been accumulating since the cable was connected, possibly seconds).
+      // Using it as a period would produce a huge virtPeriod and a multi-second
+      // gate. Skip it: still queue the tick, but keep virtPeriod at its
+      // default until a real period can be measured from edge 2 onward.
+      // Only accept the measured period from the second edge onward AND
+      // when it falls within a plausible musical range (~12 BPM..very fast).
+      // A long timeSinceClk usually means stale state (cable connected long
+      // before play started, or upstream clock paused), not a real tempo.
+      bool acceptPeriod =
+          havePrevEdge && timeSinceClk > 1e-4f && timeSinceClk <= 5.f;
+      if (acceptPeriod) {
+        lastPeriod = timeSinceClk;
+        virtPeriod = lastPeriod / std::max(ratio, 1e-6f);
+      }
       timeSinceClk = 0.f;
       sinceLastEdge = 0.f;
-
-      if (lastPeriod > 1e-4f)
-        virtPeriod = lastPeriod / std::max(ratio, 1e-6f);
+      havePrevEdge = true;
 
       bool isIntMultiplier =
           (ratio >= 1.f) && (std::fabs(ratio - std::round(ratio)) < 1e-4f);
@@ -88,7 +105,7 @@ struct ClockProcessor {
       }
 
       clockWasConnected = true;
-      havePhase = needsVirtualClock;
+      havePhase = needsVirtualClock && lastPeriod > 1e-4f;
     }
 
     float timeout = 0.5f;

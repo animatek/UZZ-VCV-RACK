@@ -169,6 +169,11 @@ struct UZZ : Module {
     float maxLen = std::max(TRIG_LEN, window - minOff);
     if (gLen > maxLen)
       gLen = maxLen;
+    // Hard upper bound: a single step gate should never exceed 2 s, regardless
+    // of what the clock period reports. Guards against pathological state
+    // (stale period, paused upstream clock) producing a stuck gate.
+    if (gLen > 2.f)
+      gLen = 2.f;
     return gLen;
   }
 
@@ -819,17 +824,12 @@ struct UZZ : Module {
           float ppVal = params[PROB_PARAMS + step].getValue();
           float pGlobal =
               clamp(params[PROB_GLOBAL_PARAM].getValue(), 0.f, 100.f) / 100.f;
-          if (mode == SM_PLAY || mode == SM_ACCUM_UP || mode == SM_ACCUM_DOWN) {
-            // Left side (<=0): probability 0–100%; right side (>0): 100% prob
-            float pStep =
-                (ppVal <= 0.f) ? clamp((100.f + ppVal) / 100.f, 0.f, 1.f) : 1.f;
-            if (pStep * pGlobal < 1.f && random::uniform() >= pStep * pGlobal)
-              playing = false;
-          } else {
-            // SM_PULSE/GATED/HOLD: only global probability applies
-            if (pGlobal < 1.f && random::uniform() >= pGlobal)
-              playing = false;
-          }
+          // Left side (<=0): probability 0–100%; right side (>0): 100% prob
+          // (right side = pulse count for SM_PULSE/GATED/HOLD).
+          float pStep =
+              (ppVal <= 0.f) ? clamp((100.f + ppVal) / 100.f, 0.f, 1.f) : 1.f;
+          if (pStep * pGlobal < 1.f && random::uniform() >= pStep * pGlobal)
+            playing = false;
         }
         if (playing) {
           if (mode == SM_ACCUM_UP || mode == SM_ACCUM_DOWN) {
@@ -877,6 +877,9 @@ struct UZZ : Module {
             // step
             float sustainLen =
                 std::max(TRIG_LEN, (float)pulseCount * period - TRIG_LEN);
+            // Same hard upper bound as getGateLength: prevent stuck gates.
+            if (sustainLen > 8.f)
+              sustainLen = 8.f;
             holdPulsesLeft = pulseCount - 1;
             holdPlaying = false;
             gatePulse.trigger(sustainLen);

@@ -30,3 +30,8 @@
 .DS_Store
 Thumbs.db
 .codex
+
+# Claude Code / superpowers (local-only)
+.claude/
+docs/superpowers/
+.fuse_hidden*

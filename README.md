@@ -85,6 +85,21 @@ A 10HP expander for **OXI-CV** that unlocks its multi-track capabilities.
 
 ## Changelog
 
+### 2.5.1 — UZZ Probability & Clock Robustness
+*(2026-04)*
+
+#### UZZ: Probability in Pulse/Gated/Hold
+* The per-step **Prob/Pulse** knob now applies probability on its **left side** (negative values) for **Pulse**, **Gated** and **Hold** steps too — previously these modes only honoured the global probability.
+* Right side of the knob keeps its meaning: pulse count, always at 100 % probability per repetition.
+
+#### UZZ: Clock — fix stuck-gate at start
+* Fixed a case where the **Gate output** could stay high for several seconds (or indefinitely) when the upstream clock was held at 10 V or had been connected long before play started.
+* Internal clock now ignores the first edge's accumulated time and rejects implausibly long periods (>5 s ≈ 12 BPM) instead of feeding them into the gate-length calculation.
+* Schmitt trigger uses explicit `0.1 V / 2 V` thresholds (matching Fundamental SEQ3) for cleaner edge detection on signals that idle slightly above 0 V.
+* Added hard upper bounds: gate length capped at 2 s, Gated sustain capped at 8 s — even with pathological state the gate cannot stay open indefinitely.
+
+---
+
 ### 2.5.0 — UZZ Pulse Modes & Advanced Directions
 *(2026-04)*
 
@@ -104,7 +119,7 @@ A 10HP expander for **OXI-CV** that unlocks its multi-track capabilities.
 * Turning right sets pulse multiplication from **×2 to ×8**.
 * Randomize, Shift and Reset for the row were updated to the new bipolar behavior.
 * For **Play** and **Accum** steps, the row acts as probability.
-* For **Pulse**, **Gated**, and **Hold** steps, the row acts as pulse count while **Global Probability** still applies.
+* For **Pulse**, **Gated**, and **Hold** steps, the **left side** still acts as per-step probability and the **right side** as pulse count (always 100 %).
 
 #### UZZ: New Direction Modes
 * Added **Pendulum**, **Odd/Even**, **Jump**, **Converge**, and **Diverge** direction modes.

@@ -9,28 +9,6 @@ Four modules for VCV Rack 2.x by **Javier Melgar (Animatek)**.
 
 ---
 
-## Build
-
-Build against the VCV Rack 2 SDK:
-
-```bash
-RACK_DIR=/path/to/Rack-SDK make
-```
-
-Install the plugin into your local Rack setup:
-
-```bash
-RACK_DIR=/path/to/Rack-SDK make install
-```
-
-Create a distributable package:
-
-```bash
-RACK_DIR=/path/to/Rack-SDK make dist
-```
-
----
-
 ## UZZ — Ultimate Ztep Zequencer
 
 UZZ is a step sequencer originally created as a Max for Live device, designed for immediate control, clear visual feedback, and fluid musical flow.
@@ -266,6 +244,28 @@ A 13HP MIDI-to-CV bridge that captures every continuous controller of the **Akai
 * Clock multipliers now trigger the first sub-tick correctly.
 * Limited maximum multiplier to ×48.
 * Old patches with ×64/×96 clamp to ×48 automatically.
+
+---
+
+## Build
+
+Build against the VCV Rack 2 SDK:
+
+```bash
+RACK_DIR=/path/to/Rack-SDK make
+```
+
+Install the plugin into your local Rack setup:
+
+```bash
+RACK_DIR=/path/to/Rack-SDK make install
+```
+
+Create a distributable package:
+
+```bash
+RACK_DIR=/path/to/Rack-SDK make dist
+```
 
 ---
 

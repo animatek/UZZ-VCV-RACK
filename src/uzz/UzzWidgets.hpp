@@ -4,28 +4,11 @@
 #include "UzzLayout.hpp"
 #include "UzzTypes.hpp"
 
+using AnimatekUI::displayBlue;
 using AnimatekUI::drawScaled;
 using AnimatekUI::loadPluginSvg;
+using AnimatekUI::loadPluginSvgOr;
 using AnimatekUI::panelTextColor;
-
-struct UzzStaticOverlay : widget::SvgWidget {
-  std::shared_ptr<window::Svg> darkSvg;
-  std::shared_ptr<window::Svg> lightSvg;
-
-  UzzStaticOverlay() {
-    darkSvg = loadPluginSvg("res/UZZ-overlay.svg");
-    lightSvg = loadPluginSvg("res/UZZ-overlay-light.svg");
-    box.size = Vec(870.f, 380.f);
-  }
-
-  void draw(const DrawArgs &args) override {
-    auto active = settings::preferDarkPanels ? darkSvg : lightSvg;
-    if (!active)
-      active = darkSvg ? darkSvg : lightSvg;
-    if (active)
-      active->draw(args.vg);
-  }
-};
 
 // Generic Random Button Template
 template <void (UZZ::*ResetFunc)(), int SkipIdx>
@@ -72,10 +55,7 @@ struct RowShiftButton : app::SvgSwitch {
   }
 
   void loadFrames(const char *pluginPath, const char *fallbackPath) {
-    auto svg = loadPluginSvg(pluginPath);
-    if (!svg)
-      svg = Svg::load(asset::system(fallbackPath));
-    if (svg) {
+    if (auto svg = loadPluginSvgOr(pluginPath, fallbackPath)) {
       addFrame(svg);
       addFrame(svg);
     }
@@ -197,10 +177,8 @@ struct StepModeButton : app::SvgSwitch {
     shadow->visible = false;
 
     auto loadFrame = [&](const char *pluginPath, const char *fallbackPath) {
-      if (auto svg = loadPluginSvg(pluginPath))
+      if (auto svg = loadPluginSvgOr(pluginPath, fallbackPath))
         addFrame(svg);
-      else
-        addFrame(Svg::load(asset::system(fallbackPath)));
     };
 
     loadFrame("res/step_play.svg", "res/ComponentLibrary/TL1105_0.svg");
@@ -214,17 +192,42 @@ struct StepModeButton : app::SvgSwitch {
   }
 };
 
-// ─── ParamDisplay ──────────────────────────────────────────────────────────
-// Styled like OxiCvExp's ExpChannelLabel: dark rounded rect + blue #5DB7FF
-// text. Reads and formats the value of one param from the UZZ module.
-struct ParamDisplay : TransparentWidget {
+// Dark rounded-rect background + blue text. Subclasses override drawContent
+// to render text on top with the font/color/alignment already set.
+struct BasicDisplay : TransparentWidget {
   UZZ *module = nullptr;
-  int paramId = 0;
 
-  ParamDisplay(Vec pos, Vec size, UZZ *m, int pid) : module(m), paramId(pid) {
+  BasicDisplay(Vec pos, Vec size, UZZ *m) : module(m) {
     box.pos = pos;
     box.size = size;
   }
+
+  void drawLayer(const DrawArgs &args, int layer) override {
+    if (layer != 1)
+      return;
+    std::shared_ptr<Font> font = APP->window->uiFont;
+    if (!font)
+      return;
+
+    nvgBeginPath(args.vg);
+    nvgRoundedRect(args.vg, 0, 0, box.size.x, box.size.y, 2.5f);
+    nvgFillColor(args.vg, nvgRGBA(0, 0, 0, 180));
+    nvgFill(args.vg);
+
+    nvgFontFaceId(args.vg, font->handle);
+    nvgFillColor(args.vg, displayBlue());
+    nvgTextAlign(args.vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
+    drawContent(args.vg);
+  }
+
+  virtual void drawContent(NVGcontext *vg) = 0;
+};
+
+struct ParamDisplay : BasicDisplay {
+  int paramId = 0;
+
+  ParamDisplay(Vec pos, Vec size, UZZ *m, int pid)
+      : BasicDisplay(pos, size, m), paramId(pid) {}
 
   std::string formatValue() const {
     if (!module)
@@ -264,66 +267,31 @@ struct ParamDisplay : TransparentWidget {
     }
   }
 
-  void drawLayer(const DrawArgs &args, int layer) override {
-    if (layer != 1)
-      return;
-    std::shared_ptr<Font> font = APP->window->uiFont;
-    if (!font)
-      return;
-
-    // Background rect
-    nvgBeginPath(args.vg);
-    nvgRoundedRect(args.vg, 0, 0, box.size.x, box.size.y, 2.5f);
-    nvgFillColor(args.vg, nvgRGBA(0, 0, 0, 180));
-    nvgFill(args.vg);
-
-    // Value text
+  void drawContent(NVGcontext *vg) override {
+    nvgFontSize(vg, 9.5f);
     std::string txt = formatValue();
-    nvgFontFaceId(args.vg, font->handle);
-    nvgFontSize(args.vg, 9.5f);
-    nvgTextAlign(args.vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
-    nvgFillColor(args.vg, nvgRGB(0x5D, 0xB7, 0xFF));
-    float cx = box.size.x * 0.5f;
-    float cy = box.size.y * 0.5f;
-    nvgText(args.vg, cx, cy, txt.c_str(), nullptr);
+    nvgText(vg, box.size.x * 0.5f, box.size.y * 0.5f, txt.c_str(), nullptr);
   }
 };
 
 // Muestra en dos líneas: semitones (arriba) y clip count (abajo).
-struct AccumDisplay : TransparentWidget {
-  UZZ* module;
+struct AccumDisplay : BasicDisplay {
+  AccumDisplay(Vec pos, Vec size, UZZ *m) : BasicDisplay(pos, size, m) {}
 
-  AccumDisplay(Vec pos, Vec size, UZZ* m) : module(m) {
-    box.pos = pos;
-    box.size = size;
-  }
-
-  void drawLayer(const DrawArgs& args, int layer) override {
-    if (layer != 1) return;
-    std::shared_ptr<Font> font = APP->window->uiFont;
-    if (!font) return;
-
-    nvgBeginPath(args.vg);
-    nvgRoundedRect(args.vg, 0, 0, box.size.x, box.size.y, 2.5f);
-    nvgFillColor(args.vg, nvgRGBA(0, 0, 0, 180));
-    nvgFill(args.vg);
-
-    std::string stTxt   = "--";
+  void drawContent(NVGcontext *vg) override {
+    std::string stTxt = "--";
     std::string clipTxt = "OFF";
     if (module) {
-      int st   = (int)std::round(module->params[UZZ::ACCUM_AMT_PARAM].getValue());
-      int clip = (int)std::round(module->params[UZZ::ACCUM_CLIP_PARAM].getValue());
-      stTxt   = std::to_string(st) + "st";
+      int st = (int)std::round(module->params[UZZ::ACCUM_AMT_PARAM].getValue());
+      int clip =
+          (int)std::round(module->params[UZZ::ACCUM_CLIP_PARAM].getValue());
+      stTxt = std::to_string(st) + "st";
       clipTxt = (clip > 0) ? std::to_string(clip) + "st" : "OFF";
     }
-
-    nvgFontFaceId(args.vg, font->handle);
-    nvgFillColor(args.vg, nvgRGB(0x5D, 0xB7, 0xFF));
-    nvgTextAlign(args.vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
+    nvgFontSize(vg, 8.5f);
     float cx = box.size.x * 0.5f;
-    nvgFontSize(args.vg, 8.5f);
-    nvgText(args.vg, cx, box.size.y * 0.30f, stTxt.c_str(), nullptr);
-    nvgText(args.vg, cx, box.size.y * 0.72f, clipTxt.c_str(), nullptr);
+    nvgText(vg, cx, box.size.y * 0.30f, stTxt.c_str(), nullptr);
+    nvgText(vg, cx, box.size.y * 0.72f, clipTxt.c_str(), nullptr);
   }
 };
 

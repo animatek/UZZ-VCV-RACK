@@ -12,10 +12,6 @@ using AnimatekUI::loadPluginSvg;
 using AnimatekUI::panelTextColor;
 using AnimatekUI::TextLabel;
 
-#ifndef UZZ_USE_CODE_LABELS
-#define UZZ_USE_CODE_LABELS 1
-#endif
-
 // ============================================================================
 // Module
 // ============================================================================
@@ -983,9 +979,6 @@ struct UZZWidget : ModuleWidget {
     setPanel(createPanel(asset::plugin(pluginInstance, "res/UZZ-light.svg"),
                          asset::plugin(pluginInstance, "res/UZZ.svg")));
 
-    if (!UZZ_USE_CODE_LABELS)
-      addChild(new UzzStaticOverlay());
-
     const int cols = UI::COLS;
     auto Xc = [&](int i) { return UI::colCenter(box.size.x, i); };
 
@@ -1005,21 +998,16 @@ struct UZZWidget : ModuleWidget {
       addParam(createParamCentered<ProbPulseKnob>(
           Vec(Xc(i) + 14.f, UI::Y_PROB - 14.f), module, UZZ::PROB_PARAMS + i));
 
-    for (int i = 0; i < cols; ++i)
-      addParam(createParamCentered<UzzArcKnob>(Vec(Xc(i), UI::Y_PITCH), module,
-                                               UZZ::PITCH_PARAMS + i));
-    for (int i = 0; i < cols; ++i)
-      addParam(createParamCentered<UzzArcKnob>(Vec(Xc(i), UI::Y_OCT), module,
-                                               UZZ::OCT_PARAMS + i));
-    for (int i = 0; i < cols; ++i)
-      addParam(createParamCentered<UzzArcKnob>(Vec(Xc(i), UI::Y_DUR), module,
-                                               UZZ::DUR_PARAMS + i));
-    for (int i = 0; i < cols; ++i)
-      addParam(createParamCentered<UzzArcKnob>(Vec(Xc(i), UI::Y_C1), module,
-                                               UZZ::M1_PARAMS + i));
-    for (int i = 0; i < cols; ++i)
-      addParam(createParamCentered<UzzArcKnob>(Vec(Xc(i), UI::Y_C2), module,
-                                               UZZ::M2_PARAMS + i));
+    auto addArcKnobRow = [&](float y, int paramBase) {
+      for (int i = 0; i < cols; ++i)
+        addParam(createParamCentered<UzzArcKnob>(Vec(Xc(i), y), module,
+                                                 paramBase + i));
+    };
+    addArcKnobRow(UI::Y_PITCH, UZZ::PITCH_PARAMS);
+    addArcKnobRow(UI::Y_OCT,   UZZ::OCT_PARAMS);
+    addArcKnobRow(UI::Y_DUR,   UZZ::DUR_PARAMS);
+    addArcKnobRow(UI::Y_C1,    UZZ::M1_PARAMS);
+    addArcKnobRow(UI::Y_C2,    UZZ::M2_PARAMS);
 
     const float trigL = UI::trigLeftX();
 
@@ -1116,7 +1104,7 @@ struct UZZWidget : ModuleWidget {
                                 Vec(dW, dH), module));
     }
 
-    if (UZZ_USE_CODE_LABELS) {
+    {
       // — Bottom section labels —
       // CLK / RESET / XPOSE → label centered on step 1's column,
       // with a thin gray connector line running to the input port.

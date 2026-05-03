@@ -37,6 +37,13 @@ inline std::shared_ptr<window::Svg> loadPluginSvg(const char *relPath) {
   return system::exists(path) ? Svg::load(path) : nullptr;
 }
 
+inline std::shared_ptr<window::Svg> loadPluginSvgOr(const char *pluginRel,
+                                                   const char *systemFallback) {
+  if (auto svg = loadPluginSvg(pluginRel))
+    return svg;
+  return Svg::load(asset::system(systemFallback));
+}
+
 template <typename F>
 inline void drawScaled(NVGcontext *vg, Vec boxSize, float scale, F fn) {
   nvgSave(vg);

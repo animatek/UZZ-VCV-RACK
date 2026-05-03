@@ -79,7 +79,8 @@ A 13HP MIDI-to-CV bridge that captures every continuous controller of the **Akai
 
 ## Changelog
 
-### Unreleased — APC40 CTRL & UZZ cleanup
+### 2.5.2 — APC40 CTRL & UZZ cleanup
+*(2026-05)*
 
 #### New module: APC40 CTRL
 * **13HP MIDI-to-CV** bridge for the **Akai APC40** with the full continuous-controller surface on one panel: 8 track controls, 8 device knobs, Cue, Master and Crossfader (with attenuverters), plus a separate column of **8 channel faders** that listen to **CC 7 on MIDI channels 1–8** directly.

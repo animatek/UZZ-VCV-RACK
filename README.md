@@ -1,10 +1,11 @@
 # Animatek VCV Rack Plugin
 
-Three modules for VCV Rack 2.x by **Javier Melgar (Animatek)**.
+Four modules for VCV Rack 2.x by **Javier Melgar (Animatek)**.
 
 - **UZZ** — Ultimate Ztep Zequencer: a 16-step sequencer with per-row shift, probability, accumulator, and flexible clock.
 - **OXI-CV** — 6HP MIDI-to-CV interface designed for the Oxi One controller.
 - **OXI-CV EXPANSOR** — 10HP expander for OXI-CV with 8 configurable multi-track outputs.
+- **APC40 CTRL** — 13HP MIDI-to-CV bridge for the Akai APC40, with all knobs, faders and the master fader on a single panel.
 
 ---
 
@@ -83,7 +84,40 @@ A 10HP expander for **OXI-CV** that unlocks its multi-track capabilities.
 
 ---
 
+## APC40 CTRL
+
+A 13HP MIDI-to-CV bridge that captures every continuous controller of the **Akai APC40 MkI/MkII** on a single panel. Designed to sit next to **OXI-CV EXPANSOR**: title, header divider and the first knob share the same vertical position so both modules read as a pair.
+
+### Features
+
+- **8 Track Controls** (T1–T8) on **CC 48–55** with per-output attenuverters.
+- **8 Device Knobs** (D1–D8) on **CC 16–23** with per-output attenuverters.
+- **CUE level** (CC 47), **MASTER fader** (CC 14) and **XFAD crossfader** (CC 11), each with attenuverter.
+- **8 Channel Faders** (F1–F8) in a dedicated column on the right: all share **CC 7** but on **MIDI channels 1–8**, so the eight faders of the APC40 reach Rack as eight independent CV outputs without remapping the controller.
+- All knob/CC controls listen on **MIDI channel 1**; the fader column accepts channels 1–8 in parallel.
+- 0 → 10 V output range. Use the per-control attenuverter to scale or invert as needed; faders pass through directly.
+
+---
+
 ## Changelog
+
+### Unreleased — APC40 CTRL & UZZ cleanup
+
+#### New module: APC40 CTRL
+* **13HP MIDI-to-CV** bridge for the **Akai APC40** with the full continuous-controller surface on one panel: 8 track controls, 8 device knobs, Cue, Master and Crossfader (with attenuverters), plus a separate column of **8 channel faders** that listen to **CC 7 on MIDI channels 1–8** directly.
+* Layout aligned with **OXI-CV EXPANSOR** so the two modules share title height, header divider position and first-knob row when placed side by side.
+
+#### UZZ: Old overlay panel removed
+* Deleted `res/UZZ-overlay.svg` / `res/UZZ-overlay-light.svg` and the unused `UzzStaticOverlay` widget. Older VCV versions could render the obsolete overlay on top of the current panel; the dead code path is now gone.
+
+#### Code quality (refactor, no behaviour change)
+* New `BasicDisplay` base widget shared by `ParamDisplay` and `AccumDisplay` — drops ~25 lines of duplicated background/font setup.
+* New `loadPluginSvgOr(plugin, fallback)` helper used by `RowShiftButton` and `StepModeButton` to replace the hand-rolled load-with-fallback pattern.
+* The five identical 16-step `UzzArcKnob` loops in `UZZWidget` collapsed into a single `addArcKnobRow(y, paramBase)` lambda.
+* Hardcoded display blue replaced with the existing `displayBlue()` helper from `CommonWidgets`.
+* Dead `UZZ_USE_CODE_LABELS` macro and its always-true branch removed.
+
+---
 
 ### 2.5.1 — UZZ Probability & Clock Robustness
 *(2026-04)*

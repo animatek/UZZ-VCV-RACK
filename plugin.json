@@ -13,8 +13,8 @@
         {
             "slug": "UZZ",
             "name": "UZZ",
-            "description": "Step sequencer",
-            "tags": ["Sequencer", "Clock modulator"]
+            "description": "Ultimate Ztep Zequencer. 16-step sequencer with per-step Pitch/Octave/Duration/Mod1/Mod2 and bipolar Prob/Pulse, eight step modes (Play/Mute/Skip/Accum±/Pulse/Gated/Hold), per-row randomize and shift, multiple direction modes (Forward/Backward/Pendulum/Ping-Pong/Random/Drunk/Odd-Even/Jump/Converge/Diverge), accumulator with modulo wrap, swing, slew, polyphonic step-gates output and EOC.",
+            "tags": ["Sequencer", "Clock modulator", "Polyphonic", "Random"]
         },
         {
             "slug": "OxiCv",
@@ -32,7 +32,7 @@
             "slug": "Apc40Ctrl",
             "name": "APC40 CTRL",
             "description": "MIDI-to-CV bridge for Akai APC40 Track Control, Device Control, Cue and Crossfader CCs on MIDI channel 1, plus the 8 channel faders (CC7 on channels 1-8).",
-            "tags": ["MIDI", "Utility", "Controller"]
+            "tags": ["MIDI", "Utility", "Controller", "External"]
         }
     ]
 }

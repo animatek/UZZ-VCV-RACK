@@ -11,6 +11,7 @@ void init(Plugin* p) {
 		p->addModel(modelUZZ);    // UZZ step sequencer
 		p->addModel(modelOxiCv);  // OXI-CV (6HP MIDI-to-CV for Oxi One)
 		p->addModel(modelOxiCvExp); // OXI-CV EXPANSOR
+		p->addModel(modelApc40Ctrl); // APC40 controller CV bridge
 
 
 	// Any other plugin initialization may go here.

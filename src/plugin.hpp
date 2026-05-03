@@ -46,7 +46,7 @@ inline void appendPanelThemeMenu(ui::Menu* menu) {
 extern Model* modelUZZ;    // UZZ step sequencer
 extern Model* modelOxiCv;  // OXI-CV (6HP MIDI-to-CV, Oxi One)
 extern Model* modelOxiCvExp; // OXI-CV EXPANSOR
-
+extern Model* modelApc40Ctrl; // APC40 controller CV bridge
 
 
 

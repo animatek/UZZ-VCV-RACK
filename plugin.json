@@ -27,6 +27,12 @@
             "name": "OXI-CV EXPANSOR",
             "description": "10HP Expander for OXI-CV. Adds 8 configurable tracks with V/Oct, Gate, and Velocity outputs.",
             "tags": ["MIDI", "Utility", "Expander"]
+        },
+        {
+            "slug": "Apc40Ctrl",
+            "name": "APC40 CTRL",
+            "description": "MIDI-to-CV bridge for Akai APC40 Track Control, Device Control, Cue and Crossfader CCs on MIDI channel 1, plus the 8 channel faders (CC7 on channels 1-8).",
+            "tags": ["MIDI", "Utility", "Controller"]
         }
     ]
 }

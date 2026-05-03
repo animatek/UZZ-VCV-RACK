@@ -38,7 +38,7 @@ static constexpr std::array<const char*, NUM_DEVICE_KNOBS> APC_DEVICE_LABELS = {
 };
 
 static constexpr std::array<const char*, NUM_EXTRA_CONTROLS> APC_EXTRA_LABELS = {
-    "CUE", "MASTER", "CROSSF",
+    "CUE", "MASTER", "XFAD",
 };
 
 struct Apc40Ctrl : Module {
@@ -212,7 +212,7 @@ struct Apc40CtrlWidget : ModuleWidget {
             const float faderLabelW = 8.5f;
             for (int i = 0; i < NUM_FADERS; i++) {
                 float yOut = 19.0f + i * 14.f;
-                float yLbl = yOut - 6.5f;
+                float yLbl = yOut - 8.0f;
 
                 auto lbl = createWidget<ApcLabel>(
                     mm2px(Vec(faderX - faderLabelW * 0.5f, yLbl)));

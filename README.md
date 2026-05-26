@@ -1,11 +1,13 @@
 # Animatek VCV Rack Plugin
 
-Four modules for VCV Rack 2.x by **Javier Melgar (Animatek)**.
+Six modules for VCV Rack 2.x by **Javier Melgar (Animatek)**.
 
 - **UZZ** — Ultimate Ztep Zequencer: a 16-step sequencer with per-row shift, probability, accumulator, and flexible clock.
-- **OXI-CV** — 6HP MIDI-to-CV interface designed for the Oxi One controller.
-- **OXI-CV EXPANSOR** — 10HP expander for OXI-CV with 8 configurable multi-track outputs.
+- **ONE** — 6HP MIDI-to-CV interface designed for the Oxi One controller.
+- **MULTI** — 10HP expander for ONE with 8 configurable multi-track outputs.
 - **APC40 CTRL** — 13HP MIDI-to-CV bridge for the Akai APC40, with all knobs, faders and the master fader on a single panel.
+- **UNIT-D** — deterministic polyphonic generative sequencer based on unit-distance graph walks. Manuals: [EN](Manuals/UNIT-D_Manual_EN.md) / [ES](Manuals/UNIT-D_Manual_ES.md).
+- **BLANK 3** — 3HP blank panel with animated low-opacity Animatek logo pattern and global pause option.
 
 ---
 
@@ -33,7 +35,7 @@ This repository is a port to VCV Rack 2.x, aiming to preserve the original philo
 
 ---
 
-## OXI-CV
+## ONE
 
 A 6HP MIDI-to-CV converter designed for the **Oxi One** sequencer/controller, covering all its output modes.
 
@@ -49,16 +51,16 @@ A 6HP MIDI-to-CV converter designed for the **Oxi One** sequencer/controller, co
 
 ---
 
-## OXI-CV EXPANSOR
+## MULTI
 
-A 10HP expander for **OXI-CV** that unlocks its multi-track capabilities.
+A 10HP expander for **ONE** that unlocks its multi-track capabilities.
 
 ### Features
 
 - **8 configurable tracks** with independent **V/Oct**, **Gate**, and **Velocity** outputs
-- Works alongside OXI-CV in Multitrack and Matriceal modes
-- Must be placed immediately to the right of OXI-CV
-- Mirrors the current OXI-CV track configuration through the expander link
+- Works alongside ONE in Multitrack and Matriceal modes
+- Must be placed immediately to the right of ONE
+- Mirrors the current ONE track configuration through the expander link
 
 ---
 

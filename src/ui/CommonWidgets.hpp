@@ -59,6 +59,20 @@ inline void uppercaseAscii(std::string &text) {
     c = (char)std::toupper((unsigned char)c);
 }
 
+struct TekInputPort : PJ301MPort {
+  TekInputPort() {
+    if (auto svg = loadPluginSvg("res/PJ310M_TEK_IN.svg"))
+      setSvg(svg);
+  }
+};
+
+struct TekOutputPort : PJ301MPort {
+  TekOutputPort() {
+    if (auto svg = loadPluginSvg("res/PJ310M_TEK.svg"))
+      setSvg(svg);
+  }
+};
+
 struct TextLabel : TransparentWidget {
   std::string text;
   float fontSize = 9.f;

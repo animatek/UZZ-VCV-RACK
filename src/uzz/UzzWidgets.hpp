@@ -28,8 +28,8 @@ enum class PortType { INPUT, OUTPUT };
 
 template <PortType Type> struct UzzPort : PJ301MPort {
   UzzPort() {
-    const char *svgPath = (Type == PortType::INPUT) ? "res/port_input.svg"
-                                                    : "res/port_output.svg";
+    const char *svgPath = (Type == PortType::INPUT) ? "res/PJ310M_TEK_IN.svg"
+                                                    : "res/PJ310M_TEK.svg";
     if (auto svg = loadPluginSvg(svgPath))
       setSvg(svg);
   }

@@ -707,6 +707,11 @@ struct OxiCvWidget : ModuleWidget {
         static constexpr float LX = 12.0f;
         static constexpr float RX = 28.64f;
 
+        auto* moduleName = new TextLabel("ONE", mm2px(Vec(0.8f, 119.9f)), mm2px(Vec(17.0f, 5.8f)));
+        moduleName->fontSize = 16.f;
+        moduleName->color = nvgRGB(0x2C, 0x7F, 0xFF);
+        addChild(moduleName);
+
         // Retro console display (top)
         auto dynMode = createWidget<DynamicModeLabel>(mm2px(Vec(3.0f, 3.5f)));
         dynMode->box.size = mm2px(Vec(34.64f, 11.0f));
@@ -750,9 +755,9 @@ struct OxiCvWidget : ModuleWidget {
             lblVl->text = "VEL";
             addChild(lblVl);
 
-            addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(TX1, y + 9.5f)), module, OxiCv::VOCT_OUTPUT));
-            addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(TX2, y + 9.5f)), module, OxiCv::GATE_OUTPUT));
-            addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(TX3, y + 9.5f)), module, OxiCv::VEL_OUTPUT));
+            addOutput(createOutputCentered<AnimatekUI::TekOutputPort>(mm2px(Vec(TX1, y + 9.5f)), module, OxiCv::VOCT_OUTPUT));
+            addOutput(createOutputCentered<AnimatekUI::TekOutputPort>(mm2px(Vec(TX2, y + 9.5f)), module, OxiCv::GATE_OUTPUT));
+            addOutput(createOutputCentered<AnimatekUI::TekOutputPort>(mm2px(Vec(TX3, y + 9.5f)), module, OxiCv::VEL_OUTPUT));
             y += 13.0f;
         };
 
@@ -789,8 +794,8 @@ struct OxiCvWidget : ModuleWidget {
                 addChild(lblR);
             }
 
-            addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(LX, y + 9.5f)), module, outL));
-            addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(RX, y + 9.5f)), module, outR));
+            addOutput(createOutputCentered<AnimatekUI::TekOutputPort>(mm2px(Vec(LX, y + 9.5f)), module, outL));
+            addOutput(createOutputCentered<AnimatekUI::TekOutputPort>(mm2px(Vec(RX, y + 9.5f)), module, outR));
             y += 14.0f;
         };
 
@@ -816,9 +821,9 @@ struct OxiCvWidget : ModuleWidget {
             lblR->text = "RUN";
             addChild(lblR);
 
-            addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(TX1, y + 9.5f)), module, OxiCv::CLK_OUTPUT));
-            addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(TX2, y + 9.5f)), module, OxiCv::CLKDIV_OUTPUT));
-            addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(TX3, y + 9.5f)), module, OxiCv::RUN_OUTPUT));
+            addOutput(createOutputCentered<AnimatekUI::TekOutputPort>(mm2px(Vec(TX1, y + 9.5f)), module, OxiCv::CLK_OUTPUT));
+            addOutput(createOutputCentered<AnimatekUI::TekOutputPort>(mm2px(Vec(TX2, y + 9.5f)), module, OxiCv::CLKDIV_OUTPUT));
+            addOutput(createOutputCentered<AnimatekUI::TekOutputPort>(mm2px(Vec(TX3, y + 9.5f)), module, OxiCv::RUN_OUTPUT));
             y += 13.0f;
         };
 

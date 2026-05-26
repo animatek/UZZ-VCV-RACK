@@ -96,6 +96,11 @@ struct OxiCvExpWidget : ModuleWidget {
             asset::plugin(pluginInstance, "res/OxiCvExp-light.svg"),
             asset::plugin(pluginInstance, "res/OxiCvExp.svg")));
 
+        auto* moduleName = new TextLabel("MULTI", mm2px(Vec(0.8f, 119.9f)), mm2px(Vec(21.8f, 5.8f)));
+        moduleName->fontSize = 16.f;
+        moduleName->color = nvgRGB(0x2C, 0x7F, 0xFF);
+        addChild(moduleName);
+
         auto title = createWidget<ExpLabel>(mm2px(Vec(0.f, Y_TITLE - 3.5f)));
         title->box.size = mm2px(Vec(PANEL_W, 3.5f));
         title->text = "MULTI - EXPANDER";
@@ -125,9 +130,9 @@ struct OxiCvExpWidget : ModuleWidget {
             num->trackIdx = i;
             addChild(num);
 
-            addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(X_VOCT, y)), module, OxiCvExp::VOCT_OUTPUT + i));
-            addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(X_GATE, y)), module, OxiCvExp::GATE_OUTPUT + i));
-            addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(X_VEL,  y)), module, OxiCvExp::VEL_OUTPUT  + i));
+            addOutput(createOutputCentered<AnimatekUI::TekOutputPort>(mm2px(Vec(X_VOCT, y)), module, OxiCvExp::VOCT_OUTPUT + i));
+            addOutput(createOutputCentered<AnimatekUI::TekOutputPort>(mm2px(Vec(X_GATE, y)), module, OxiCvExp::GATE_OUTPUT + i));
+            addOutput(createOutputCentered<AnimatekUI::TekOutputPort>(mm2px(Vec(X_VEL,  y)), module, OxiCvExp::VEL_OUTPUT  + i));
         }
     }
 

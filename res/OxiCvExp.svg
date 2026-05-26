@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg width="50.8mm" height="128.5mm" viewBox="0 0 50.8 128.5" version="1.1" xmlns="http://www.w3.org/2000/svg">
-  <rect fill="#1c1c1c" width="50.8" height="128.5"/>
+  <rect fill="#212121" width="50.8" height="128.5"/>
 
   <!-- Top/bottom accent bars -->
   <rect x="0" y="0"     width="50.8" height="0.8" fill="#2C7FFF"/>

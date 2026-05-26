@@ -12,6 +12,8 @@ void init(Plugin* p) {
 		p->addModel(modelOxiCv);  // OXI-CV (6HP MIDI-to-CV for Oxi One)
 		p->addModel(modelOxiCvExp); // OXI-CV EXPANSOR
 		p->addModel(modelApc40Ctrl); // APC40 controller CV bridge
+		p->addModel(modelUnitDistanceSeq); // UNIT-D unit-distance graph sequencer
+		p->addModel(modelBlank3); // 3HP blank panel
 
 
 	// Any other plugin initialization may go here.

@@ -221,7 +221,7 @@ struct Apc40CtrlWidget : ModuleWidget {
                 lbl->fontSize = 9.0f;
                 addChild(lbl);
 
-                addOutput(createOutputCentered<PJ301MPort>(
+                addOutput(createOutputCentered<AnimatekUI::TekOutputPort>(
                     mm2px(Vec(faderX, yOut)), module, Apc40Ctrl::FADER_OUTPUT + i));
             }
         }
@@ -256,7 +256,7 @@ struct Apc40CtrlWidget : ModuleWidget {
 
             addParam(createParamCentered<Trimpot>(mm2px(Vec(x, knob_y)),
                                                   module, Apc40Ctrl::ATTENUVERT_PARAM + output_idx));
-            addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(x, output_y)),
+            addOutput(createOutputCentered<AnimatekUI::TekOutputPort>(mm2px(Vec(x, output_y)),
                                                        module, Apc40Ctrl::CV_OUTPUT + output_idx));
         };
 

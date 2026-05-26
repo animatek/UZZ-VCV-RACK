@@ -66,7 +66,7 @@ A 10HP expander for **ONE** that unlocks its multi-track capabilities.
 
 ## APC40 CTRL
 
-A 13HP MIDI-to-CV bridge that captures every continuous controller of the **Akai APC40 MkI/MkII** on a single panel. Designed to sit next to **OXI-CV EXPANSOR**: title, header divider and the first knob share the same vertical position so both modules read as a pair.
+A 13HP MIDI-to-CV bridge that captures every continuous controller of the **Akai APC40 MkI/MkII** on a single panel. Designed to sit next to **MULTI**: title, header divider and the first knob share the same vertical position so both modules read as a pair.
 
 ### Features
 
@@ -80,6 +80,28 @@ A 13HP MIDI-to-CV bridge that captures every continuous controller of the **Akai
 ---
 
 ## Changelog
+
+### 2.5.3 — UNIT-D & Blank Panel
+*(2026-05)*
+
+#### New module: UNIT-D
+* Added **UNIT-D**, a compact deterministic polyphonic generative sequencer based on unit-distance graph walks.
+* Seeded 2D nodes create graph transitions with controls for node count, radius, density, tolerance, walk mode, range, gate length, gate density and lock.
+* Outputs include quantized **V/O**, **GATE**, **ACC**, **X CV** and **Y CV** for linked melody, gates, accents and modulation.
+* Added expanded manuals in English and Spanish: [`Manuals/UNIT-D_Manual_EN.md`](Manuals/UNIT-D_Manual_EN.md) and [`Manuals/UNIT-D_Manual_ES.md`](Manuals/UNIT-D_Manual_ES.md).
+
+#### New module: BLANK 3
+* Added **BLANK 3**, a 3HP blank panel with Animatek branding.
+* Background logos are generated per instance with randomized position, size, rotation and opacity.
+* Logos drift with a very slow random walk by default.
+* Added right-click **Pause animation** option, global across all BLANK 3 instances, to freeze animation and reduce idle work.
+
+#### Branding and panel polish
+* Public display names changed from **OXI-CV** to **ONE** and from **OXI-CV EXPANSOR** to **MULTI**.
+* Added bottom-panel module labels using the same blue label style as UZZ.
+* Updated custom Animatek input/output port assets across the public modules.
+
+---
 
 ### 2.5.2 — APC40 CTRL & UZZ cleanup
 *(2026-05)*

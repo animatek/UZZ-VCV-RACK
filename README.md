@@ -79,6 +79,38 @@ A 13HP MIDI-to-CV bridge that captures every continuous controller of the **Akai
 
 ---
 
+## UNIT-D
+
+A compact deterministic generative sequencer based on unit-distance graph walks. UNIT-D creates a seeded 2D cloud of nodes, connects nodes that sit near a target distance, and turns the graph traversal into quantized pitch, gates, accents and related X/Y modulation. The same seed and settings always produce the same structure, so it can move between generative exploration and repeatable musical phrases. Manuals: [EN](Manuals/UNIT-D_Manual_EN.md) / [ES](Manuals/UNIT-D_Manual_ES.md).
+
+### Features
+
+- Seeded graph generation with **8–64 nodes**, **unit radius**, tolerance fine-tuning and musical density control.
+- Deterministic walker with selectable **Walk mode**, resettable state and repeatable behaviour for saved patches.
+- **Bipolar LOCK** control for gradual 16 / 32-step phrase capture, including forward and reverse lock directions.
+- Quantized minor-scale **V/oct** output with selectable **1–4 octave** range.
+- Tempo-following **Gate** output with gate length and gate-density controls.
+- Related **Accent**, **X CV** and **Y CV** outputs derived from graph degree and node position.
+- Polyphonic operation from the context menu: **1–8 voices**, with shared seed or per-voice seed graphs.
+- Inputs: **Clock**, **Reset**, **Seed CV** and **Density CV**.
+- Outputs: **V/oct**, **Gate**, **Accent**, **X CV** and **Y CV**.
+- **Panel theme** menu (Dark / Light).
+
+---
+
+## BLANK 3
+
+A 3HP blank panel for filling small gaps in a Rack patch while keeping the Animatek visual language.
+
+### Features
+
+- 3HP utility blank with **dark / light** panel artwork.
+- Subtle animated background pattern using the Animatek logo.
+- Context-menu **Pause animation** option.
+- **Panel theme** menu (Dark / Light).
+
+---
+
 ## Changelog
 
 ### 2.5.3 — UNIT-D & Blank Panel

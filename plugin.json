@@ -38,7 +38,7 @@
             "slug": "UnitDistanceSeq",
             "name": "UNIT-D",
             "description": "Compact deterministic polyphonic generative sequencer based on unit-distance graph walks. Seeded 2D nodes create graph transitions, with musical density, gate-density and bipolar 16/32-step gradual lock controls, quantized minor-scale pitch, gate, accent, X CV and Y CV outputs.",
-            "tags": ["Sequencer", "Random", "Generative"]
+            "tags": ["Sequencer", "Random", "Polyphonic"]
         },
         {
             "slug": "Blank3",

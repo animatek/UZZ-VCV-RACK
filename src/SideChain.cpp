@@ -107,8 +107,13 @@ struct SideChain : Module {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
         // Exponential scale: the stored value is log2(seconds), so the knob
-        // spends as much travel on 20-200 ms as on 200-2000 ms.
-        configParam(RECOVERY_PARAM, std::log2(0.020f), std::log2(2.0f),
+        // spends as much travel on 40-200 ms as on 200-1000 ms.
+        //
+        // 40 ms floor rather than 20: below that the duck is shorter than the
+        // 12 ms hold plus the 2 ms fall, so the knob stops doing anything
+        // useful. 1 s ceiling rather than 2: past a second the recovery
+        // outlasts a bar at most tempos and the pumping stops reading as such.
+        configParam(RECOVERY_PARAM, std::log2(0.040f), std::log2(1.0f),
                     std::log2(0.250f), "Recovery", " ms", 2.f, 1000.f);
         configParam(DEPTH_PARAM, 0.f, 1.f, 0.80f, "Depth", "%", 0.f, 100.f);
         configParam(JITTER_PARAM, 0.f, 1.f, 0.25f, "Jitter", "%", 0.f, 100.f);

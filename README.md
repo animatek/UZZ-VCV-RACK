@@ -89,7 +89,7 @@ What separates it from any inverted envelope patched by hand is that **each hit 
 
 ### Features
 
-- **RECOVERY** (20 ms – 2 s, exponential), **DEPTH** (0–100 %) and **JITTER** (0–100 %).
+- **RECOVERY** (40 ms – 1 s, exponential), **DEPTH** (0–100 %) and **JITTER** (0–100 %).
 - **Stereo audio path**: patch **IN L** and **IN R** for true stereo, or just **IN L** — right is normalled to left, so one cable turns it into a mono-to-stereo ducker. Unity gain at rest.
 - **Humanisation** across three dimensions per hit: recovery time (±20 %), depth (±12 %) and curve exponent (±15 %) at full jitter, scaled linearly by the knob. At JITTER = 0 the module is perfectly deterministic and repeatable.
 - The variation is a **correlated random walk**, not white noise: each hit relates to the previous one, which is what makes it read as human rather than as random.

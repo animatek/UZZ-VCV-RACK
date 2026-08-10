@@ -10,8 +10,8 @@ Registro de cambios de los módulos Animatek. Formato basado en
 
 ### Added
 - **SIDECHAIN**: nuevo módulo (6HP) — **VCA de ducking** disparado por trigger,
-  para hacer pumping sin compresor. Knobs RECOVERY (20 ms–2 s, exponencial),
-  DEPTH y JITTER.
+  para hacer pumping sin compresor. Knobs RECOVERY (40 ms–1 s, exponencial,
+  250 ms por defecto), DEPTH y JITTER.
   - **Camino de audio estéreo**: entradas IN L / IN R y salidas OUT L / OUT R.
     **IN R está normalizado a IN L**, así que con un solo cable el módulo hace
     de ducker mono-a-estéreo. Ganancia unidad en reposo.

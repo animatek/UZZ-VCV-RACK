@@ -110,10 +110,15 @@ struct SideChain : Module {
     // sideways on every hit. Worth turning on only to duck several unrelated
     // tracks through one polyphonic cable.
     bool perChannelEnvelopes = false;
-    // Live VCA gain of channel 0, for the meter to draw. Written from the
-    // audio thread and read from the UI thread; a torn float here would just
-    // mean one wrong frame of a meter, so no synchronisation.
+    // Live values of channel 0 for the meter to draw. Written from the audio
+    // thread and read from the UI thread; a torn float here would just mean
+    // one wrong frame of a meter, so no synchronisation.
+    //
+    // Two of them because they drive different things: the bar's height is
+    // the gain including the ceiling, but its brightness follows the envelope
+    // alone. Pulling the slider down should shorten the bar, not dim it.
     float meterGain = 1.f;
+    float meterEnv = 1.f;
 
     SideChain() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
@@ -278,7 +283,8 @@ struct SideChain : Module {
         outputs[EOC_OUTPUT].setChannels(channels);
 
         float baseLevel = params[LEVEL_PARAM].getValue();
-        meterGain = voices[0].level * baseLevel;
+        meterEnv = voices[0].level;
+        meterGain = meterEnv * baseLevel;
 
         // -- VCA ------------------------------------------------------------
         //
@@ -393,6 +399,12 @@ struct LevelSlider : app::SliderKnob {
             const float track = h - inset * 2.f;
 
             float gain = module ? clamp(module->meterGain, 0.f, 1.f) : 1.f;
+            float env = module ? clamp(module->meterEnv, 0.f, 1.f) : 1.f;
+            // Brightness follows the envelope, so a duck reads twice: the bar
+            // gets shorter and dims at the same time. The floor keeps it from
+            // vanishing outright at full depth.
+            float lit = 0.30f + 0.70f * env;
+
             float barH = track * gain;
             if (barH > 0.5f) {
                 float y = h - inset - barH;
@@ -403,13 +415,13 @@ struct LevelSlider : app::SliderKnob {
                 nvgRect(args.vg, -7.f, y - 7.f, w + 14.f, barH + 14.f);
                 nvgFillPaint(args.vg, nvgBoxGradient(args.vg, inset, y, bw, barH,
                                                      3.f, 9.f,
-                                                     AnimatekUI::logoBlue(85),
+                                                     AnimatekUI::logoBlue((uint8_t)(110.f * lit)),
                                                      nvgRGBA(0, 0, 0, 0)));
                 nvgFill(args.vg);
 
                 nvgBeginPath(args.vg);
                 nvgRoundedRect(args.vg, inset, y, bw, barH, 1.f);
-                nvgFillColor(args.vg, AnimatekUI::logoBlue(255));
+                nvgFillColor(args.vg, AnimatekUI::logoBlue((uint8_t)(255.f * lit)));
                 nvgFill(args.vg);
             }
         }

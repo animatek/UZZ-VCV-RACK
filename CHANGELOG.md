@@ -28,6 +28,9 @@ Registro de cambios de los módulos Animatek. Formato basado en
     verdad, así que el duck se ve caer en cada golpe. Los knobs se desplazan
     a la columna izquierda. La barra se dibuja en la capa de luces de Rack
     con un halo suave, así que sigue encendida al bajar el brillo de sala.
+    Su **intensidad sigue a la envolvente** (no a la ganancia), de modo que un
+    duck se lee dos veces —la barra se acorta y se atenúa— pero bajar el techo
+    con el slider solo la acorta, sin apagarla.
   - Salida **EOC**: trigger de 1 ms cuando la recuperación termina y la
     envolvente vuelve al reposo. Un retrigger que corte la recuperación no
     dispara nada, para que EOC signifique siempre "el duck se ha soltado del
@@ -65,6 +68,11 @@ Registro de cambios de los módulos Animatek. Formato basado en
   completa (todas las lanes por-paso + acumuladores) una posición dentro de la
   ventana activa, con wrap; trigger RST de reset de acumuladores; gate REV de
   inversión momentánea FWD↔REV. LED de enlace.
+
+### Changed
+- **UZZ**: el capibara del panel se dibuja en la capa de luces de Rack, con un
+  pase tenue constante y el flash encima. Antes estaba en `draw()` y se apagaba
+  junto al panel al bajar el brillo de sala; ahora sigue visible y late.
 
 ### Fixed
 - **UNIT-D**: `polyVoices` y `polyUseVoiceSeeds` (menú contextual) ahora se

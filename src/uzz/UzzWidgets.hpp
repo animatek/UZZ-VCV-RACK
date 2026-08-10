@@ -339,22 +339,43 @@ struct CapybaraWidget : Widget {
     box.size = Vec(48.4f, 53.2f);
   }
 
+  /** Mirrors and scales the 200x200 artwork into the widget box. */
+  void applyTransform(NVGcontext *vg) {
+    nvgTranslate(vg, box.size.x, 0.f);
+    nvgScale(vg, -box.size.x / 200.f, box.size.y / 200.f);
+  }
+
   void draw(const DrawArgs &args) override {
     if (!module || !svg)
       return;
 
-    float flash = clamp(module->capiFlash, 0.f, 1.f);
+    // Base outline only. The flash moved to the light layer, so it survives
+    // the room dimming instead of fading out with the panel around it.
     nvgSave(args.vg);
-    nvgTranslate(args.vg, box.size.x, 0.f);
-    nvgScale(args.vg, -box.size.x / 200.f, box.size.y / 200.f);
+    applyTransform(args.vg);
     svg->draw(args.vg);
-
-    if (flash > 0.f) {
-      nvgGlobalCompositeOperation(args.vg, NVG_LIGHTER);
-      nvgGlobalAlpha(args.vg, flash * 0.65f);
-      svg->draw(args.vg);
-    }
-
     nvgRestore(args.vg);
+  }
+
+  /** Layer 1 is composited after the room brightness is applied, which is why
+  LEDs stay lit in a dark room. A faint constant pass keeps the capybara
+  visible there, and the flash rides on top of it. */
+  void drawLayer(const DrawArgs &args, int layer) override {
+    if (layer == 1 && module && svg) {
+      float flash = clamp(module->capiFlash, 0.f, 1.f);
+      nvgSave(args.vg);
+      applyTransform(args.vg);
+      nvgGlobalCompositeOperation(args.vg, NVG_LIGHTER);
+
+      nvgGlobalAlpha(args.vg, 0.22f);
+      svg->draw(args.vg);
+
+      if (flash > 0.f) {
+        nvgGlobalAlpha(args.vg, flash * 0.75f);
+        svg->draw(args.vg);
+      }
+      nvgRestore(args.vg);
+    }
+    Widget::drawLayer(args, layer);
   }
 };

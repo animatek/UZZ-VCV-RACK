@@ -36,9 +36,14 @@ static constexpr float HOLD_TIME = 0.012f;    // time spent at the floor
 // the widest range because it is the most natural sounding and the least
 // distracting; depth gets the narrowest because it moves the perceived level
 // of the mix.
-static constexpr float JITTER_RECOVERY = 0.20f;
-static constexpr float JITTER_DEPTH = 0.12f;
-static constexpr float JITTER_CURVE = 0.15f;
+//
+// These are the extremes, not the typical swing: the walk settles at a
+// standard deviation of about 0.54, so what you actually hear most of the
+// time is a bit over half of each figure. A nominal ±20% on recovery came out
+// as ±11% in practice, which was too polite to notice.
+static constexpr float JITTER_RECOVERY = 0.50f;
+static constexpr float JITTER_DEPTH = 0.25f;
+static constexpr float JITTER_CURVE = 0.30f;
 
 // Random walk: x = A*x + B*u, with u uniform in [-1, 1].
 //

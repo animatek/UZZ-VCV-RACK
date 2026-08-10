@@ -92,7 +92,7 @@ What separates it from any inverted envelope patched by hand is that **each hit 
 - **RECOVERY** (40 ms – 1 s, exponential), **DEPTH** (0–100 %) and **JITTER** (0–100 %) down the left, with the **LEVEL slider** filling the right.
 - The slider is also the **meter**: the bar draws the gain actually applied, so the duck is visible on every hit, and the handle sets the VCA ceiling. At 100 % (the default) the audio passes untouched at rest.
 - **Stereo audio path**: patch **IN L** and **IN R** for true stereo, or just **IN L** — right is normalled to left, so one cable turns it into a mono-to-stereo ducker. Unity gain at rest.
-- **Humanisation** across three dimensions per hit: recovery time (±20 %), depth (±12 %) and curve exponent (±15 %) at full jitter, scaled linearly by the knob. At JITTER = 0 the module is perfectly deterministic and repeatable.
+- **Humanisation** across three dimensions per hit: recovery time (±50 %), depth (±25 %) and curve exponent (±30 %) at full jitter, scaled linearly by the knob. At JITTER = 0 the module is perfectly deterministic and repeatable.
 - The variation is a **correlated random walk**, not white noise: each hit relates to the previous one, which is what makes it read as human rather than as random.
 - By default every audio channel shares one envelope, so a stereo pair ducks symmetrically and the image does not wobble. **Per-channel envelopes** in the menu gives each channel its own generator instead — for ducking several unrelated tracks through one polyphonic cable.
 - Fixed 2 ms fall and 12 ms hold at the floor, so retriggering mid-recovery never clicks or steps the level upward.

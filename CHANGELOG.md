@@ -33,8 +33,8 @@ Registro de cambios de los módulos Animatek. Formato basado en
     todo" y no degenere en una copia de TRIG a tempos rápidos.
   - Orden de jacks de arriba abajo siguiendo el flujo de señal: TRIG · D-CV,
     IN L · IN R, OUT L · OUT R, ENV · EOC.
-  - **Humanización**: en cada golpe se sortean tiempo de recuperación (±20 %),
-    profundidad (±12 %) y exponente de la curva (±15 %) a JITTER 100 %,
+  - **Humanización**: en cada golpe se sortean tiempo de recuperación (±50 %),
+    profundidad (±25 %) y exponente de la curva (±30 %) a JITTER 100 %,
     escalados linealmente por el knob. Con JITTER a 0 es determinista.
   - Los valores vienen de un **random walk correlacionado** (a = 0.7), no de
     ruido blanco: el azar puro suena aleatorio, el correlacionado suena humano.

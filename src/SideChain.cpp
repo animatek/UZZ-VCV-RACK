@@ -492,11 +492,12 @@ struct SideChainWidget : ModuleWidget {
         // of air. The full-size RoundBlackKnob (12.87 mm) does not fit: three
         // of them with labels need 50.6 mm and there are only 44 between the
         // header and the jacks.
-        constexpr float KX = 9.5f;
+        // Same x as the jack column, so knobs, TRIG and the button all sit on
+        // one axis.
         auto addKnob = [&](const char* text, float y, int paramId) {
-            addLabel(text, KX, y, 16.f);
+            addLabel(text, X1, y, 16.f);
             addParam(createParamCentered<RoundSmallBlackKnob>(
-                mm2px(Vec(KX, y + 8.5f)), module, paramId));
+                mm2px(Vec(X1, y + 8.5f)), module, paramId));
         };
 
         addKnob("RECOVERY", 4.0f, SideChain::RECOVERY_PARAM);
@@ -523,7 +524,7 @@ struct SideChainWidget : ModuleWidget {
         };
 
         // TRIG jack closes the left column, level with the foot of the slider.
-        addIn("TRIG", X1, 46.0f, SideChain::TRIG_INPUT);
+        addIn("TRIG", X1, 47.0f, SideChain::TRIG_INPUT);
         // The button carries no label of its own: the line down from the jack
         // says what it is, which is the whole point of drawing it.
         addParam(createParamCentered<TL1105>(mm2px(Vec(X1, 67.5f)), module,
@@ -532,8 +533,8 @@ struct SideChainWidget : ModuleWidget {
 
         // Two hairlines tie the trigger group together: jack to slider, and
         // jack down to the button that does the same job.
-        line(X1 + 4.6f, 53.5f, 17.6f, 53.5f);
-        line(X1, 58.1f, X1, 63.7f);
+        line(X1 + 4.6f, 54.5f, 17.6f, 54.5f);
+        line(X1, 59.1f, X1, 63.7f);
 
         addIn("IN L", X1, 79.0f, SideChain::IN_L_INPUT);
         addIn("IN R", X2, 79.0f, SideChain::IN_R_INPUT);

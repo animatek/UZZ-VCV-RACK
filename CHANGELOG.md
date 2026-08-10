@@ -30,10 +30,13 @@ Registro de cambios de los módulos Animatek. Formato basado en
     con un halo suave, así que sigue encendida al bajar el brillo de sala.
     Su **intensidad sigue a la envolvente** (no a la ganancia), de modo que un
     duck se lee dos veces —la barra se acorta y se atenúa— pero bajar el techo
-    con el slider solo la acorta, sin apagarla. Va **partido en dos barras**,
-    L y R, cada una con la ganancia de su lado. Deliberadamente no miden el
-    nivel de audio: eso lo convertiría en un VU de salida y el ducking dejaría
-    de leerse, que es justo lo que el medidor tiene que contar.
+    con el slider solo la acorta, sin apagarla. El número de barras es
+    **dinámico**: una en mono, dos al conectar un par estéreo, y una por canal
+    —hasta 16— con `Per-channel envelopes`. Cada barra dibuja la ganancia de su
+    canal, deliberadamente no el nivel de audio: eso lo convertiría en un VU de
+    salida y el ducking dejaría de leerse, que es lo que el medidor tiene que
+    contar. La separación entre barras se estrecha al crecer el número, porque
+    con 16 una separación fija se comería más de la mitad del ancho.
   - Menú **"Level attenuates ENV"**, apagado por defecto: con él, el slider
     atenúa también la salida ENV y sirve de atenuador de CV. Apagado, ENV sigue
     siendo la envolvente completa de 0 a 10 V. EOC nunca se atenúa, porque un

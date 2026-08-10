@@ -119,13 +119,16 @@ struct SideChain : Module {
     // alone. Pulling the slider down should shorten the bar, not dim it.
     float meterGain = 1.f;
     float meterEnv = 1.f;
-    // Gain applied to each side. Deliberately not the audio level: metering
-    // the signal turns this into an output VU and the ducking stops being
-    // legible, which is the whole point of the module. With the shared
-    // envelope both bars move together; they only part company under
-    // per-channel envelopes.
-    float meterGainL = 1.f;
-    float meterGainR = 1.f;
+    // One bar per thing worth showing. Deliberately the gain, not the audio
+    // level: metering the signal turns this into an output VU and the ducking
+    // stops being legible, which is the whole point of the module.
+    //
+    // The count is dynamic. With the shared envelope there is only one gain,
+    // so it draws one bar, or two when a stereo pair is patched. Under
+    // per-channel envelopes each channel really does have its own gain and
+    // gets its own bar.
+    float meterBar[16] = {};
+    int meterBars = 1;
 
     bool levelAffectsEnv = false;
 
@@ -296,27 +299,42 @@ struct SideChain : Module {
         outputs[ENV_OUTPUT].setChannels(channels);
         outputs[EOC_OUTPUT].setChannels(channels);
 
-        int envR = perChannelEnvelopes ? std::min(1, channels - 1) : 0;
         meterEnv = voices[0].level;
         meterGain = meterEnv * baseLevel;
-        meterGainL = meterGain;
-        meterGainR = voices[envR].level * baseLevel;
+
+        // -- Meter --------------------------------------------------------
+        bool leftPatched = inputs[IN_L_INPUT].isConnected();
+        bool rightPatched = inputs[IN_R_INPUT].isConnected();
+        int audioChannels = 0;
+        if (leftPatched || rightPatched) {
+            audioChannels = std::max(1, std::max(inputs[IN_L_INPUT].getChannels(),
+                                                 inputs[IN_R_INPUT].getChannels()));
+        }
+
+        if (perChannelEnvelopes) {
+            // Follow whatever is actually being ducked; without audio, fall
+            // back to the envelopes so the meter still says something.
+            meterBars = clamp(audioChannels > 0 ? audioChannels : channels, 1, 16);
+        }
+        else {
+            // A single shared gain: one bar, or two once a stereo pair is in.
+            meterBars = (rightPatched || audioChannels >= 2) ? 2 : 1;
+        }
+        for (int i = 0; i < meterBars; i++) {
+            int e = perChannelEnvelopes ? std::min(i, channels - 1) : 0;
+            meterBar[i] = voices[e].level * baseLevel;
+        }
 
         // -- VCA ------------------------------------------------------------
         //
         // Nothing patched in means nothing to attenuate: leave both audio
         // outputs at zero channels so downstream sees an unconnected jack
         // rather than silence.
-        bool leftPatched = inputs[IN_L_INPUT].isConnected();
-        bool rightPatched = inputs[IN_R_INPUT].isConnected();
-        if (!leftPatched && !rightPatched) {
+        if (audioChannels == 0) {
             outputs[OUT_L_OUTPUT].setChannels(0);
             outputs[OUT_R_OUTPUT].setChannels(0);
             return;
         }
-
-        int audioChannels = std::max(1, std::max(inputs[IN_L_INPUT].getChannels(),
-                                                 inputs[IN_R_INPUT].getChannels()));
 
         for (int c = 0; c < audioChannels; c++) {
             // One envelope for everything unless the user asked otherwise, so
@@ -424,30 +442,32 @@ struct LevelSlider : app::SliderKnob {
             // vanishing outright at full depth.
             float lit = 0.30f + 0.70f * env;
 
-            float left = module ? clamp(module->meterGainL, 0.f, 1.f) : gain;
-            float right = module ? clamp(module->meterGainR, 0.f, 1.f) : gain;
+            int bars = module ? clamp(module->meterBars, 1, 16) : 1;
+            // The gap has to shrink as bars multiply or there is nothing left
+            // to draw: at sixteen, a fixed 0.8 px would eat more than half the
+            // 20.6 px of usable width.
+            const float gap = (bars <= 2) ? 0.8f : (bars <= 8 ? 0.5f : 0.25f);
+            const float bw = (w - inset * 2.f - gap * (bars - 1)) / bars;
+            const float rounding = (bw < 2.f) ? 0.f : 1.f;
 
-            const float gap = 0.8f;
-            const float bw = (w - inset * 2.f - gap) * 0.5f;
-            const float xs[2] = {inset, inset + bw + gap};
-            const float vals[2] = {left, right};
-
-            for (int i = 0; i < 2; i++) {
-                float barH = track * vals[i];
+            for (int i = 0; i < bars; i++) {
+                float value = module ? clamp(module->meterBar[i], 0.f, 1.f) : gain;
+                float barH = track * value;
                 if (barH <= 0.5f)
                     continue;
+                float x = inset + i * (bw + gap);
                 float y = h - inset - barH;
 
                 nvgBeginPath(args.vg);
-                nvgRect(args.vg, xs[i] - 7.f, y - 7.f, bw + 14.f, barH + 14.f);
-                nvgFillPaint(args.vg, nvgBoxGradient(args.vg, xs[i], y, bw, barH,
+                nvgRect(args.vg, x - 7.f, y - 7.f, bw + 14.f, barH + 14.f);
+                nvgFillPaint(args.vg, nvgBoxGradient(args.vg, x, y, bw, barH,
                                                      2.f, 8.f,
                                                      AnimatekUI::logoBlue((uint8_t)(95.f * lit)),
                                                      nvgRGBA(0, 0, 0, 0)));
                 nvgFill(args.vg);
 
                 nvgBeginPath(args.vg);
-                nvgRoundedRect(args.vg, xs[i], y, bw, barH, 1.f);
+                nvgRoundedRect(args.vg, x, y, bw, barH, rounding);
                 nvgFillColor(args.vg, AnimatekUI::logoBlue((uint8_t)(255.f * lit)));
                 nvgFill(args.vg);
             }

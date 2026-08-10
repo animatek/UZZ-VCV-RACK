@@ -367,15 +367,9 @@ struct LevelSlider : app::SliderKnob {
         nvgStrokeColor(args.vg, nvgRGB(0x33, 0x38, 0x4a));
         nvgStroke(args.vg);
 
+        // The bar is not drawn here: it lives in the light layer so that
+        // dimming the room leaves it lit, like Rack's own LEDs.
         const float track = h - inset * 2.f;
-        float gain = module ? clamp(module->meterGain, 0.f, 1.f) : 1.f;
-        float barH = track * gain;
-        if (barH > 0.5f) {
-            nvgBeginPath(args.vg);
-            nvgRoundedRect(args.vg, inset, h - inset - barH, w - inset * 2.f, barH, 1.f);
-            nvgFillColor(args.vg, AnimatekUI::logoBlue(210));
-            nvgFill(args.vg);
-        }
 
         float value = 1.f;
         if (engine::ParamQuantity* pq = getParamQuantity())
@@ -385,6 +379,41 @@ struct LevelSlider : app::SliderKnob {
         nvgRect(args.vg, 0.5f, y - 1.f, w - 1.f, 2.f);
         nvgFillColor(args.vg, nvgRGB(0xe8, 0xe8, 0xe8));
         nvgFill(args.vg);
+    }
+
+    /** Layer 1 is Rack's light layer: it is composited over the panel after
+    the room dimming is applied, which is why LEDs stay bright in a dark room.
+    Drawing the gain bar here rather than in draw() means the meter reads as
+    something lit instead of something painted. */
+    void drawLayer(const DrawArgs& args, int layer) override {
+        if (layer == 1) {
+            const float w = box.size.x;
+            const float h = box.size.y;
+            const float inset = 1.5f;
+            const float track = h - inset * 2.f;
+
+            float gain = module ? clamp(module->meterGain, 0.f, 1.f) : 1.f;
+            float barH = track * gain;
+            if (barH > 0.5f) {
+                float y = h - inset - barH;
+                float bw = w - inset * 2.f;
+
+                // Soft bloom around the bar, the same trick Rack's lights use.
+                nvgBeginPath(args.vg);
+                nvgRect(args.vg, -7.f, y - 7.f, w + 14.f, barH + 14.f);
+                nvgFillPaint(args.vg, nvgBoxGradient(args.vg, inset, y, bw, barH,
+                                                     3.f, 9.f,
+                                                     AnimatekUI::logoBlue(85),
+                                                     nvgRGBA(0, 0, 0, 0)));
+                nvgFill(args.vg);
+
+                nvgBeginPath(args.vg);
+                nvgRoundedRect(args.vg, inset, y, bw, barH, 1.f);
+                nvgFillColor(args.vg, AnimatekUI::logoBlue(255));
+                nvgFill(args.vg);
+            }
+        }
+        app::SliderKnob::drawLayer(args, layer);
     }
 };
 

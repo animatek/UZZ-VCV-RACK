@@ -26,7 +26,8 @@ Registro de cambios de los módulos Animatek. Formato basado en
     del VCA-1: el mango fija el techo del VCA (100 % por defecto, o sea audio
     intacto en reposo) y la barra dibuja la ganancia que se está aplicando de
     verdad, así que el duck se ve caer en cada golpe. Los knobs se desplazan
-    a la columna izquierda.
+    a la columna izquierda. La barra se dibuja en la capa de luces de Rack
+    con un halo suave, así que sigue encendida al bajar el brillo de sala.
   - Salida **EOC**: trigger de 1 ms cuando la recuperación termina y la
     envolvente vuelve al reposo. Un retrigger que corte la recuperación no
     dispara nada, para que EOC signifique siempre "el duck se ha soltado del

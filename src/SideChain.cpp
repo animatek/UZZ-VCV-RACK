@@ -402,16 +402,23 @@ struct SideChainWidget : ModuleWidget {
         };
 
         // Knobs stacked down the left, meter-slider filling the right.
+        //
+        // RoundSmallBlackKnob is 9.48 mm across, so its top edge sits 4.74 mm
+        // below the centre. The label box is 3 mm tall, so the centre has to
+        // be at least 7.74 mm below the label to clear it; 8.5 leaves 1.8 mm
+        // of air. The full-size RoundBlackKnob (12.87 mm) does not fit: three
+        // of them with labels need 50.6 mm and there are only 44 between the
+        // header and the jacks.
         constexpr float KX = 9.5f;
         auto addKnob = [&](const char* text, float y, int paramId) {
             addLabel(text, KX, y, 16.f);
-            addParam(createParamCentered<RoundBlackKnob>(
-                mm2px(Vec(KX, y + 7.0f)), module, paramId));
+            addParam(createParamCentered<RoundSmallBlackKnob>(
+                mm2px(Vec(KX, y + 8.5f)), module, paramId));
         };
 
-        addKnob("RECOVERY", 12.0f, SideChain::RECOVERY_PARAM);
-        addKnob("DEPTH", 27.0f, SideChain::DEPTH_PARAM);
-        addKnob("JITTER", 42.0f, SideChain::JITTER_PARAM);
+        addKnob("RECOVERY", 11.0f, SideChain::RECOVERY_PARAM);
+        addKnob("DEPTH", 26.0f, SideChain::DEPTH_PARAM);
+        addKnob("JITTER", 41.0f, SideChain::JITTER_PARAM);
 
         auto* slider = createParam<LevelSlider>(mm2px(Vec(18.0f, 13.0f)), module,
                                                 SideChain::LEVEL_PARAM);

@@ -74,7 +74,8 @@ static const char* CURVE_NAMES[NUM_CURVE_SHAPES] = {
 struct SideChain : Module {
     // New entries go at the end of each enum: the indices are what patches
     // store, so appending keeps older patches loading onto the right jacks.
-    enum ParamId { RECOVERY_PARAM, DEPTH_PARAM, JITTER_PARAM, LEVEL_PARAM, PARAMS_LEN };
+    enum ParamId { RECOVERY_PARAM, DEPTH_PARAM, JITTER_PARAM, LEVEL_PARAM,
+                   TRIG_PARAM, PARAMS_LEN };
     enum InputId { TRIG_INPUT, DEPTH_CV_INPUT, IN_L_INPUT, IN_R_INPUT, INPUTS_LEN };
     enum OutputId { ENV_OUTPUT, OUT_L_OUTPUT, OUT_R_OUTPUT, EOC_OUTPUT, OUTPUTS_LEN };
     enum LightId { LIGHTS_LEN };
@@ -130,6 +131,7 @@ struct SideChain : Module {
         // Ceiling of the VCA. At 100% the module behaves exactly as before it
         // had a slider, so old patches sound unchanged.
         configParam(LEVEL_PARAM, 0.f, 1.f, 1.f, "Level", "%", 0.f, 100.f);
+        configButton(TRIG_PARAM, "Manual trigger");
 
         configInput(TRIG_INPUT, "Trigger");
         configInput(DEPTH_CV_INPUT, "Depth CV");
@@ -189,11 +191,16 @@ struct SideChain : Module {
         float depthKnob = params[DEPTH_PARAM].getValue();
         float jitter = params[JITTER_PARAM].getValue();
         float baseExponent = CURVE_EXPONENTS[curveShape];
+        // The button fires every channel at once, which is what you want from
+        // a panel control. Summing it into the trigger voltage rather than
+        // handling it apart means holding it down still only fires once: the
+        // Schmitt trigger is edge-based.
+        float manual = params[TRIG_PARAM].getValue() * 10.f;
 
         for (int c = 0; c < channels; c++) {
             Voice& v = voices[c];
 
-            if (v.trigger.process(inputs[TRIG_INPUT].getPolyVoltage(c), 0.1f, 1.0f)) {
+            if (v.trigger.process(inputs[TRIG_INPUT].getPolyVoltage(c) + manual, 0.1f, 1.0f)) {
                 if (!freezeJitter) {
                     v.walkRecovery = walkStep(v.rng, v.walkRecovery);
                     v.walkDepth = walkStep(v.rng, v.walkDepth);
@@ -343,7 +350,7 @@ struct LevelSlider : app::SliderKnob {
     SideChain* module = NULL;
 
     LevelSlider() {
-        box.size = mm2px(Vec(8.f, 40.f));
+        box.size = mm2px(Vec(8.f, 51.f));
     }
 
     void draw(const DrawArgs& args) override {
@@ -388,15 +395,17 @@ struct SideChainWidget : ModuleWidget {
                              asset::plugin(pluginInstance, "res/SideChain.svg")));
 
         constexpr float W = 30.48f;  // 6 HP
-        constexpr float C = W * 0.5f;
         constexpr float X1 = 8.6f;
         constexpr float X2 = W - 8.6f;
 
-        auto* title = new TextLabel("SIDECHAIN", mm2px(Vec(C - 12.f, 3.2f)),
-                                    mm2px(Vec(24.f, 5.f)));
-        title->fontSize = 10.f;
-        title->color = nvgRGB(0x2C, 0x7F, 0xFF);
-        addChild(title);
+        // Name goes bottom left next to the logo, as in the other modules,
+        // which frees the whole header strip for the trigger button and lets
+        // the slider run the full height of the control section.
+        auto* moduleName = new TextLabel("CAP", mm2px(Vec(1.8f, 119.9f)),
+                                         mm2px(Vec(14.f, 5.8f)));
+        moduleName->fontSize = 16.f;
+        moduleName->color = nvgRGB(0x2C, 0x7F, 0xFF);
+        addChild(moduleName);
 
         auto addLabel = [&](const char* text, float cx, float y, float w) {
             auto label = createWidget<TextLabel>(mm2px(Vec(cx - w * 0.5f, y)));
@@ -425,7 +434,13 @@ struct SideChainWidget : ModuleWidget {
         addKnob("DEPTH", 26.0f, SideChain::DEPTH_PARAM);
         addKnob("JITTER", 41.0f, SideChain::JITTER_PARAM);
 
-        auto* slider = createParam<LevelSlider>(mm2px(Vec(18.0f, 13.0f)), module,
+        // Header strip: manual trigger. Patch EOC back into TRIG and one press
+        // sets the module cycling on its own as a jittered LFO.
+        addParam(createParamCentered<TL1105>(mm2px(Vec(5.2f, 5.6f)), module,
+                                             SideChain::TRIG_PARAM));
+        addLabel("TRIG", 13.5f, 4.2f, 9.f);
+
+        auto* slider = createParam<LevelSlider>(mm2px(Vec(18.0f, 3.0f)), module,
                                                 SideChain::LEVEL_PARAM);
         slider->module = module;
         addParam(slider);

@@ -4,7 +4,7 @@ Eight modules for VCV Rack 2.x by **Javier Melgar (Animatek)**.
 
 - **UZZ** — Ultimate Ztep Zequencer: a 16-step sequencer with per-row shift, probability, accumulator, and flexible clock.
 - **UZZ-X** — 6HP CV expander for UZZ: bipolar offsets for steps, start, direction, ratio, swing, probability and accumulator, plus absolute step addressing, rotation triggers and a reverse gate.
-- **SIDECHAIN** — 6HP trigger-fired ducking VCA with stereo audio in/out, humanised per hit so the ducking breathes.
+- **CAP** — 6HP ducking VCA with sidechain envelope: stereo audio in/out, humanised per hit so the ducking breathes, and self-patchable into a jittered LFO.
 - **ONE** — 6HP MIDI-to-CV interface designed for the Oxi One controller.
 - **MULTI** — 10HP expander for ONE with 8 configurable multi-track outputs.
 - **APC40 CTRL** — 13HP MIDI-to-CV bridge for the Akai APC40, with all knobs, faders and the master fader on a single panel.
@@ -81,7 +81,7 @@ A 13HP MIDI-to-CV bridge that captures every continuous controller of the **Akai
 
 ---
 
-## SIDECHAIN
+## CAP
 
 A 6HP trigger-fired ducking VCA. Feed it the same trigger that fires the kick, run the audio through it, and the signal drops and recovers on every hit — no compressor involved. The VCA is built in, so nothing else is needed, but **ENV** still carries the envelope as CV for whatever else you want to duck in step.
 
@@ -98,7 +98,8 @@ What separates it from any inverted envelope patched by hand is that **each hit 
 - Fixed 2 ms fall and 12 ms hold at the floor, so retriggering mid-recovery never clicks or steps the level upward.
 - **ENV** rests at 10 V and dips, following TRIG's channel count. Handy for ducking a reverb return or driving a filter in step with the audio path.
 - **EOC** fires a 1 ms trigger when the recovery completes and the envelope is back at rest. A retrigger that cuts the recovery short fires nothing, so EOC always means "the duck has fully released" rather than turning into a copy of TRIG at fast tempos.
-- Jacks read top to bottom as signal flow: **TRIG · D-CV**, **IN L · IN R**, **OUT L · OUT R**, **ENV · EOC**.
+- Jacks read top to bottom as signal flow: **TRIG · D-CV**, **IN L · IN R**, **OUT L · OUT R**, **ENV · EOC**. A **manual trigger button** sits in the header.
+- **Self-patch EOC into TRIG** and one press of the button sets it free-running: the cycle is 2 ms fall + 12 ms hold + recovery, so it oscillates from about 1 Hz to 18.5 Hz — a function generator whose every cycle differs, which a plain LFO cannot do.
 - **DEPTH CV** input, summed with the knob (10 V = 100 %) and clamped.
 - Context menu: **recovery curve** (exponential / linear / logarithmic), **freeze jitter** for A/B comparison, **per-channel envelopes**, **reset jitter seed**, and the standard **Panel** theme menu.
 

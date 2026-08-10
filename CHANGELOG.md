@@ -9,7 +9,7 @@ Registro de cambios de los módulos Animatek. Formato basado en
 ## [2.5.5]
 
 ### Added
-- **SIDECHAIN**: nuevo módulo (6HP) — **VCA de ducking** disparado por trigger,
+- **CAP** (slug `SideChain`): nuevo módulo (6HP) — **VCA de ducking** disparado por trigger,
   para hacer pumping sin compresor. Knobs RECOVERY (40 ms–1 s, exponencial,
   250 ms por defecto), DEPTH y JITTER.
   - **Camino de audio estéreo**: entradas IN L / IN R y salidas OUT L / OUT R.
@@ -33,6 +33,14 @@ Registro de cambios de los módulos Animatek. Formato basado en
     todo" y no degenere en una copia de TRIG a tempos rápidos.
   - Orden de jacks de arriba abajo siguiendo el flujo de señal: TRIG · D-CV,
     IN L · IN R, OUT L · OUT R, ENV · EOC.
+  - **Botón de trigger manual** en la cabecera. El nombre del módulo baja a la
+    esquina inferior izquierda junto al logo, como en los demás módulos, y ese
+    hueco de arriba es el que ocupa el botón; el slider aprovecha para crecer
+    de 40 a 51 mm.
+  - **Autoparcheo**: con EOC conectado a TRIG, una pulsación del botón lo deja
+    oscilando solo. El ciclo es 2 ms de caída + 12 ms de meseta + recuperación,
+    o sea de ~1 Hz a ~18.5 Hz, y con jitter ningún ciclo se repite: un
+    generador de funciones que un LFO normal no da.
   - **Humanización**: en cada golpe se sortean tiempo de recuperación (±50 %),
     profundidad (±25 %) y exponente de la curva (±30 %) a JITTER 100 %,
     escalados linealmente por el knob. Con JITTER a 0 es determinista.

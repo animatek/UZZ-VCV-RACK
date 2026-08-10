@@ -14,49 +14,85 @@
             "slug": "UZZ",
             "name": "UZZ",
             "description": "Ultimate Ztep Zequencer. 16-step sequencer with per-step Pitch/Octave/Duration/Mod1/Mod2 and bipolar Prob/Pulse, eight step modes (Play/Mute/Skip/Accum±/Pulse/Gated/Hold), per-row randomize and shift, multiple direction modes (Forward/Backward/Pendulum/Ping-Pong/Random/Drunk/Odd-Even/Jump/Converge/Diverge), accumulator with modulo wrap, swing, slew, polyphonic step-gates output and EOC.",
-            "tags": ["Sequencer", "Clock modulator", "Polyphonic", "Random"]
+            "tags": [
+                "Sequencer",
+                "Clock modulator",
+                "Polyphonic",
+                "Random"
+            ]
         },
         {
             "slug": "UzzX",
             "name": "UZZ-X",
             "description": "CV expander for UZZ: modulate steps, start, direction, clock ratio, swing, probability and accumulator; step-address CV, row-shift and accumulator-reset triggers, reverse gate",
-            "tags": ["Expander", "Sequencer", "Utility"]
+            "tags": [
+                "Expander",
+                "Sequencer",
+                "Utility"
+            ]
         },
         {
             "slug": "OxiCv",
             "name": "ONE",
             "description": "6HP MIDI-to-CV for Oxi One. V/Oct, Gate, Velocity, 8x CC, Clock, CLK/n (divisions), Run. Supports Mono, Poly, Chord, Multitrack and Matriceal modes.",
-            "tags": ["MIDI", "Polyphonic", "Utility", "Controller"]
+            "tags": [
+                "MIDI",
+                "Polyphonic",
+                "Utility",
+                "Controller"
+            ]
         },
         {
             "slug": "OxiCvExp",
             "name": "MULTI",
             "description": "10HP Expander for OXI-CV. Adds 8 configurable tracks with V/Oct, Gate, and Velocity outputs.",
-            "tags": ["MIDI", "Utility", "Expander"]
+            "tags": [
+                "MIDI",
+                "Utility",
+                "Expander"
+            ]
         },
         {
             "slug": "Apc40Ctrl",
             "name": "APC40 CTRL",
             "description": "MIDI-to-CV bridge for Akai APC40 Track Control, Device Control, Cue and Crossfader CCs on MIDI channel 1, plus the 8 channel faders (CC7 on channels 1-8).",
-            "tags": ["MIDI", "Utility", "Controller", "External"]
+            "tags": [
+                "MIDI",
+                "Utility",
+                "Controller",
+                "External"
+            ]
         },
         {
             "slug": "SideChain",
-            "name": "SIDECHAIN",
-            "description": "6HP trigger-fired ducking VCA for sidechain pumping without a compressor. Stereo audio in and out (right normalled to left) plus an envelope CV output. Recovery, depth and jitter controls; humanised per hit with a correlated random walk over recovery time, depth and curve exponent. Polyphonic, with an independent generator per channel and an optional per-channel envelope mode.",
-            "tags": ["Amplifier", "Dynamics", "Envelope generator", "Polyphonic", "Utility"]
+            "name": "CAP",
+            "description": "6HP ducking VCA with sidechain envelope and manual trigger. Stereo audio in and out (right normalled to left), envelope CV and end-of-cycle outputs, and a level slider that doubles as the gain meter. Recovery, depth and jitter controls, humanised per hit with a correlated random walk so no two ducks are identical. Patch EOC back into TRIG and it free-runs as a jittered LFO or function generator. Polyphonic.",
+            "tags": [
+                "Amplifier",
+                "Dynamics",
+                "Envelope generator",
+                "Polyphonic",
+                "Utility"
+            ]
         },
         {
             "slug": "UnitDistanceSeq",
             "name": "UNIT-D",
             "description": "Compact deterministic polyphonic generative sequencer based on unit-distance graph walks. Seeded 2D nodes create graph transitions, with musical density, gate-density and bipolar 16/32-step gradual lock controls, quantized minor-scale pitch, gate, accent, X CV and Y CV outputs.",
-            "tags": ["Sequencer", "Random", "Polyphonic"]
+            "tags": [
+                "Sequencer",
+                "Random",
+                "Polyphonic"
+            ]
         },
         {
             "slug": "Blank3",
             "name": "BLANK 3",
             "description": "3HP blank panel with Animatek logo.",
-            "tags": ["Blank", "Utility"]
+            "tags": [
+                "Blank",
+                "Utility"
+            ]
         }
     ]
 }

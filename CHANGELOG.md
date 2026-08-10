@@ -9,12 +9,19 @@ Registro de cambios de los módulos Animatek. Formato basado en
 ## [2.5.5]
 
 ### Added
-- **SIDECHAIN**: nuevo módulo (6HP) — envolvente invertida disparada por
-  trigger para hacer ducking y pumping sin compresor. Knobs RECOVERY (20 ms–2 s,
-  exponencial), DEPTH y JITTER; entradas TRIG (polifónica, define los canales
-  del módulo) y DEPTH CV (10 V = 100 %, sumada y clampeada); salidas OUT
-  (reposo 10 V, cae y vuelve) y UP (la misma sin invertir, reposo 0 V), ambas
-  polifónicas.
+- **SIDECHAIN**: nuevo módulo (6HP) — **VCA de ducking** disparado por trigger,
+  para hacer pumping sin compresor. Knobs RECOVERY (20 ms–2 s, exponencial),
+  DEPTH y JITTER.
+  - **Camino de audio estéreo**: entradas IN L / IN R y salidas OUT L / OUT R.
+    **IN R está normalizado a IN L**, así que con un solo cable el módulo hace
+    de ducker mono-a-estéreo. Ganancia unidad en reposo.
+  - Salida **ENV** con la envolvente como CV (reposo 10 V, cae y vuelve),
+    polifónica según los canales de TRIG, para duckear otras cosas en fase.
+  - Por defecto **todos los canales de audio comparten una envolvente**, para
+    que un par estéreo duckee simétricamente y la imagen no se bambolee. El
+    menú "Per-channel envelopes" da a cada canal su propio generador, para
+    duckear varias pistas independientes por un cable polifónico.
+  - Entradas TRIG (polifónica) y DEPTH CV (10 V = 100 %, sumada y clampeada).
   - **Humanización**: en cada golpe se sortean tiempo de recuperación (±20 %),
     profundidad (±12 %) y exponente de la curva (±15 %) a JITTER 100 %,
     escalados linealmente por el knob. Con JITTER a 0 es determinista.

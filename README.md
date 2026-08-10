@@ -4,7 +4,7 @@ Eight modules for VCV Rack 2.x by **Javier Melgar (Animatek)**.
 
 - **UZZ** — Ultimate Ztep Zequencer: a 16-step sequencer with per-row shift, probability, accumulator, and flexible clock.
 - **UZZ-X** — 6HP CV expander for UZZ: bipolar offsets for steps, start, direction, ratio, swing, probability and accumulator, plus absolute step addressing, rotation triggers and a reverse gate.
-- **SIDECHAIN** — 6HP trigger-fired inverted envelope for ducking and pumping without a compressor, humanised per hit so the ducking breathes.
+- **SIDECHAIN** — 6HP trigger-fired ducking VCA with stereo audio in/out, humanised per hit so the ducking breathes.
 - **ONE** — 6HP MIDI-to-CV interface designed for the Oxi One controller.
 - **MULTI** — 10HP expander for ONE with 8 configurable multi-track outputs.
 - **APC40 CTRL** — 13HP MIDI-to-CV bridge for the Akai APC40, with all knobs, faders and the master fader on a single panel.
@@ -83,20 +83,21 @@ A 13HP MIDI-to-CV bridge that captures every continuous controller of the **Akai
 
 ## SIDECHAIN
 
-A 6HP trigger-fired inverted envelope for ducking and pumping without a compressor. Feed it the same trigger that fires the kick and patch **OUT** straight into a VCA: the signal drops and recovers on every hit.
+A 6HP trigger-fired ducking VCA. Feed it the same trigger that fires the kick, run the audio through it, and the signal drops and recovers on every hit — no compressor involved. The VCA is built in, so nothing else is needed, but **ENV** still carries the envelope as CV for whatever else you want to duck in step.
 
 What separates it from any inverted envelope patched by hand is that **each hit is slightly different from the last**, so the ducking breathes like an analogue compressor instead of stamping an identical curve forever.
 
 ### Features
 
 - **RECOVERY** (20 ms – 2 s, exponential), **DEPTH** (0–100 %) and **JITTER** (0–100 %).
+- **Stereo audio path**: patch **IN L** and **IN R** for true stereo, or just **IN L** — right is normalled to left, so one cable turns it into a mono-to-stereo ducker. Unity gain at rest.
 - **Humanisation** across three dimensions per hit: recovery time (±20 %), depth (±12 %) and curve exponent (±15 %) at full jitter, scaled linearly by the knob. At JITTER = 0 the module is perfectly deterministic and repeatable.
 - The variation is a **correlated random walk**, not white noise: each hit relates to the previous one, which is what makes it read as human rather than as random.
-- **One independent generator per polyphony channel**, so ducking several tracks makes each breathe differently — the thing that cannot be built by patching envelopes by hand.
+- By default every audio channel shares one envelope, so a stereo pair ducks symmetrically and the image does not wobble. **Per-channel envelopes** in the menu gives each channel its own generator instead — for ducking several unrelated tracks through one polyphonic cable.
 - Fixed 2 ms fall and 12 ms hold at the floor, so retriggering mid-recovery never clicks or steps the level upward.
-- **OUT** rests at 10 V and dips (ready for a VCA with nothing to attenuvert); **UP** is the same envelope uninverted, resting at 0 V. Both polyphonic, following TRIG's channel count.
+- **ENV** rests at 10 V and dips, following TRIG's channel count. Handy for ducking a reverb return or driving a filter in step with the audio path.
 - **DEPTH CV** input, summed with the knob (10 V = 100 %) and clamped.
-- Context menu: **recovery curve** (exponential / linear / logarithmic), **freeze jitter** for A/B comparison, **reset jitter seed**, and the standard **Panel** theme menu.
+- Context menu: **recovery curve** (exponential / linear / logarithmic), **freeze jitter** for A/B comparison, **per-channel envelopes**, **reset jitter seed**, and the standard **Panel** theme menu.
 
 ---
 

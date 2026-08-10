@@ -43,8 +43,8 @@
         {
             "slug": "SideChain",
             "name": "SIDECHAIN",
-            "description": "6HP trigger-fired inverted envelope for ducking and pumping without a compressor. Recovery, depth and jitter controls; humanised per hit with a correlated random walk over recovery time, depth and curve exponent, with an independent generator per polyphony channel. Ducked and upward outputs, both polyphonic.",
-            "tags": ["Envelope generator", "Dynamics", "Polyphonic", "Utility"]
+            "description": "6HP trigger-fired ducking VCA for sidechain pumping without a compressor. Stereo audio in and out (right normalled to left) plus an envelope CV output. Recovery, depth and jitter controls; humanised per hit with a correlated random walk over recovery time, depth and curve exponent. Polyphonic, with an independent generator per channel and an optional per-channel envelope mode.",
+            "tags": ["Amplifier", "Dynamics", "Envelope generator", "Polyphonic", "Utility"]
         },
         {
             "slug": "UnitDistanceSeq",

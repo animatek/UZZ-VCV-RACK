@@ -9,14 +9,17 @@ using AnimatekUI::TekOutputPort;
 using AnimatekUI::TextLabel;
 
 // ============================================================================
-// SideChain - trigger-fired inverted envelope for ducking and pumping
+// SideChain - trigger-fired ducking VCA
 // ============================================================================
 //
-// Feed it the same trigger that fires the kick and patch OUT into a VCA: the
-// signal drops and recovers, no compressor involved. What separates it from
-// any inverted envelope patched by hand is that every hit is slightly
-// different from the last, so the ducking breathes the way an analogue
-// compressor does instead of stamping an identical curve forever.
+// Feed it the same trigger that fires the kick and run the audio through it:
+// the signal drops and recovers, no compressor involved. The VCA is built in,
+// so nothing else is needed, but ENV still carries the envelope as CV for
+// whatever else you want to duck in step.
+//
+// What separates it from any inverted envelope patched by hand is that every
+// hit is slightly different from the last, so the ducking breathes the way an
+// analogue compressor does instead of stamping an identical curve forever.
 //
 // The variation is a random walk, not white noise: each hit is correlated
 // with the previous one. Pure randomness sounds random; correlated variation
@@ -65,8 +68,10 @@ static const char* CURVE_NAMES[NUM_CURVE_SHAPES] = {
 
 struct SideChain : Module {
     enum ParamId { RECOVERY_PARAM, DEPTH_PARAM, JITTER_PARAM, PARAMS_LEN };
-    enum InputId { TRIG_INPUT, DEPTH_CV_INPUT, INPUTS_LEN };
-    enum OutputId { OUT_OUTPUT, UP_OUTPUT, OUTPUTS_LEN };
+    enum InputId { TRIG_INPUT, DEPTH_CV_INPUT, IN_L_INPUT, IN_R_INPUT, INPUTS_LEN };
+    // ENV keeps index 0 so cables saved against the CV-only version still land
+    // on the right jack.
+    enum OutputId { ENV_OUTPUT, OUT_L_OUTPUT, OUT_R_OUTPUT, OUTPUTS_LEN };
     enum LightId { LIGHTS_LEN };
 
     enum Stage { STAGE_IDLE, STAGE_ATTACK, STAGE_HOLD, STAGE_RECOVER };
@@ -92,6 +97,11 @@ struct SideChain : Module {
     int curveShape = CURVE_EXPONENTIAL;
     bool freezeJitter = false;
     uint64_t baseSeed = 0x5C1DECA1ULL;
+    // Off by default: a stereo pair must duck identically. Giving L and R
+    // their own jittered envelopes decorrelates them and the image wobbles
+    // sideways on every hit. Worth turning on only to duck several unrelated
+    // tracks through one polyphonic cable.
+    bool perChannelEnvelopes = false;
 
     SideChain() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
@@ -105,8 +115,13 @@ struct SideChain : Module {
 
         configInput(TRIG_INPUT, "Trigger");
         configInput(DEPTH_CV_INPUT, "Depth CV");
-        configOutput(OUT_OUTPUT, "Ducked envelope");
-        configOutput(UP_OUTPUT, "Upward envelope");
+        configInput(IN_L_INPUT, "Audio left");
+        configInput(IN_R_INPUT, "Audio right (normalled to left)");
+        configOutput(ENV_OUTPUT, "Ducked envelope");
+        configOutput(OUT_L_OUTPUT, "Ducked audio left");
+        configOutput(OUT_R_OUTPUT, "Ducked audio right");
+        configBypass(IN_L_INPUT, OUT_L_OUTPUT);
+        configBypass(IN_R_INPUT, OUT_R_OUTPUT);
 
         reseedVoices(baseSeed);
     }
@@ -129,6 +144,7 @@ struct SideChain : Module {
         Module::onReset(e);
         curveShape = CURVE_EXPONENTIAL;
         freezeJitter = false;
+        perChannelEnvelopes = false;
         baseSeed = 0x5C1DECA1ULL;
         for (int c = 0; c < 16; c++) {
             voices[c].trigger.reset();
@@ -222,18 +238,51 @@ struct SideChain : Module {
                     break;
             }
 
-            outputs[OUT_OUTPUT].setVoltage(10.f * v.level, c);
-            outputs[UP_OUTPUT].setVoltage(10.f * (1.f - v.level), c);
+            outputs[ENV_OUTPUT].setVoltage(10.f * v.level, c);
         }
 
-        outputs[OUT_OUTPUT].setChannels(channels);
-        outputs[UP_OUTPUT].setChannels(channels);
+        outputs[ENV_OUTPUT].setChannels(channels);
+
+        // -- VCA ------------------------------------------------------------
+        //
+        // Nothing patched in means nothing to attenuate: leave both audio
+        // outputs at zero channels so downstream sees an unconnected jack
+        // rather than silence.
+        bool leftPatched = inputs[IN_L_INPUT].isConnected();
+        bool rightPatched = inputs[IN_R_INPUT].isConnected();
+        if (!leftPatched && !rightPatched) {
+            outputs[OUT_L_OUTPUT].setChannels(0);
+            outputs[OUT_R_OUTPUT].setChannels(0);
+            return;
+        }
+
+        int audioChannels = std::max(1, std::max(inputs[IN_L_INPUT].getChannels(),
+                                                 inputs[IN_R_INPUT].getChannels()));
+
+        for (int c = 0; c < audioChannels; c++) {
+            // One envelope for everything unless the user asked otherwise, so
+            // a stereo pair ducks symmetrically.
+            int e = perChannelEnvelopes ? std::min(c, channels - 1) : 0;
+            float gain = voices[e].level;
+
+            float left = inputs[IN_L_INPUT].getPolyVoltage(c);
+            // Right is normalled to left: one cable feeds both outputs, which
+            // turns the module into a mono-to-stereo ducker for free.
+            float right = rightPatched ? inputs[IN_R_INPUT].getPolyVoltage(c) : left;
+
+            outputs[OUT_L_OUTPUT].setVoltage(left * gain, c);
+            outputs[OUT_R_OUTPUT].setVoltage(right * gain, c);
+        }
+
+        outputs[OUT_L_OUTPUT].setChannels(audioChannels);
+        outputs[OUT_R_OUTPUT].setChannels(audioChannels);
     }
 
     json_t* dataToJson() override {
         json_t* root = json_object();
         json_object_set_new(root, "curveShape", json_integer(curveShape));
         json_object_set_new(root, "freezeJitter", json_boolean(freezeJitter));
+        json_object_set_new(root, "perChannelEnvelopes", json_boolean(perChannelEnvelopes));
         // Stored as a string: a 64-bit seed does not survive JSON's double.
         json_object_set_new(root, "baseSeed",
                             json_string(string::f("%" PRIu64, baseSeed).c_str()));
@@ -247,6 +296,8 @@ struct SideChain : Module {
             curveShape = clamp((int) json_integer_value(j), 0, NUM_CURVE_SHAPES - 1);
         if (json_t* j = json_object_get(root, "freezeJitter"))
             freezeJitter = json_boolean_value(j);
+        if (json_t* j = json_object_get(root, "perChannelEnvelopes"))
+            perChannelEnvelopes = json_boolean_value(j);
         if (json_t* j = json_object_get(root, "baseSeed")) {
             if (json_is_string(j))
                 baseSeed = strtoull(json_string_value(j), NULL, 10);
@@ -284,26 +335,32 @@ struct SideChainWidget : ModuleWidget {
         auto addKnob = [&](const char* text, float y, int paramId) {
             addLabel(text, C, y, 24.f);
             addParam(createParamCentered<RoundBlackKnob>(
-                mm2px(Vec(C, y + 8.5f)), module, paramId));
+                mm2px(Vec(C, y + 8.0f)), module, paramId));
         };
 
-        addKnob("RECOVERY", 14.0f, SideChain::RECOVERY_PARAM);
-        addKnob("DEPTH", 33.0f, SideChain::DEPTH_PARAM);
-        addKnob("JITTER", 52.0f, SideChain::JITTER_PARAM);
+        addKnob("RECOVERY", 12.0f, SideChain::RECOVERY_PARAM);
+        addKnob("DEPTH", 28.0f, SideChain::DEPTH_PARAM);
+        addKnob("JITTER", 44.0f, SideChain::JITTER_PARAM);
 
-        addLabel("TRIG", X1, 74.0f, 14.f);
-        addInput(createInputCentered<TekInputPort>(
-            mm2px(Vec(X1, 81.0f)), module, SideChain::TRIG_INPUT));
-        addLabel("D-CV", X2, 74.0f, 14.f);
-        addInput(createInputCentered<TekInputPort>(
-            mm2px(Vec(X2, 81.0f)), module, SideChain::DEPTH_CV_INPUT));
+        // Four jack rows 16 mm apart: audio in, audio out, control in, envelope.
+        auto addIn = [&](const char* text, float cx, float y, int inputId) {
+            addLabel(text, cx, y, 14.f);
+            addInput(createInputCentered<TekInputPort>(
+                mm2px(Vec(cx, y + 7.5f)), module, inputId));
+        };
+        auto addOut = [&](const char* text, float cx, float y, int outputId) {
+            addLabel(text, cx, y, 14.f);
+            addOutput(createOutputCentered<TekOutputPort>(
+                mm2px(Vec(cx, y + 7.5f)), module, outputId));
+        };
 
-        addLabel("OUT", X1, 95.0f, 14.f);
-        addOutput(createOutputCentered<TekOutputPort>(
-            mm2px(Vec(X1, 102.0f)), module, SideChain::OUT_OUTPUT));
-        addLabel("UP", X2, 95.0f, 14.f);
-        addOutput(createOutputCentered<TekOutputPort>(
-            mm2px(Vec(X2, 102.0f)), module, SideChain::UP_OUTPUT));
+        addIn("IN L", X1, 59.0f, SideChain::IN_L_INPUT);
+        addIn("IN R", X2, 59.0f, SideChain::IN_R_INPUT);
+        addOut("OUT L", X1, 75.0f, SideChain::OUT_L_OUTPUT);
+        addOut("OUT R", X2, 75.0f, SideChain::OUT_R_OUTPUT);
+        addIn("TRIG", X1, 91.0f, SideChain::TRIG_INPUT);
+        addIn("D-CV", X2, 91.0f, SideChain::DEPTH_CV_INPUT);
+        addOut("ENV", C, 107.0f, SideChain::ENV_OUTPUT);
     }
 
     void appendContextMenu(ui::Menu* menu) override {
@@ -326,6 +383,11 @@ struct SideChainWidget : ModuleWidget {
             "Freeze jitter", "",
             [=]() { return module->freezeJitter; },
             [=]() { module->freezeJitter ^= true; }));
+
+        menu->addChild(createCheckMenuItem(
+            "Per-channel envelopes", "",
+            [=]() { return module->perChannelEnvelopes; },
+            [=]() { module->perChannelEnvelopes ^= true; }));
 
         menu->addChild(createMenuItem("Reset jitter seed", "", [=]() {
             module->baseSeed = random::u64();

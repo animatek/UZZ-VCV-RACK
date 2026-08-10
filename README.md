@@ -1,8 +1,10 @@
 # Animatek VCV Rack Plugin
 
-Six modules for VCV Rack 2.x by **Javier Melgar (Animatek)**.
+Eight modules for VCV Rack 2.x by **Javier Melgar (Animatek)**.
 
 - **UZZ** — Ultimate Ztep Zequencer: a 16-step sequencer with per-row shift, probability, accumulator, and flexible clock.
+- **UZZ-X** — 6HP CV expander for UZZ: bipolar offsets for steps, start, direction, ratio, swing, probability and accumulator, plus absolute step addressing, rotation triggers and a reverse gate.
+- **SIDECHAIN** — 6HP trigger-fired inverted envelope for ducking and pumping without a compressor, humanised per hit so the ducking breathes.
 - **ONE** — 6HP MIDI-to-CV interface designed for the Oxi One controller.
 - **MULTI** — 10HP expander for ONE with 8 configurable multi-track outputs.
 - **APC40 CTRL** — 13HP MIDI-to-CV bridge for the Akai APC40, with all knobs, faders and the master fader on a single panel.
@@ -76,6 +78,25 @@ A 13HP MIDI-to-CV bridge that captures every continuous controller of the **Akai
 - **8 Channel Faders** (F1–F8) in a dedicated column on the right: all share **CC 7** but on **MIDI channels 1–8**, so the eight faders of the APC40 reach Rack as eight independent CV outputs without remapping the controller.
 - All knob/CC controls listen on **MIDI channel 1**; the fader column accepts channels 1–8 in parallel.
 - 0 → 10 V output range. Use the per-control attenuverter to scale or invert as needed; faders pass through directly.
+
+---
+
+## SIDECHAIN
+
+A 6HP trigger-fired inverted envelope for ducking and pumping without a compressor. Feed it the same trigger that fires the kick and patch **OUT** straight into a VCA: the signal drops and recovers on every hit.
+
+What separates it from any inverted envelope patched by hand is that **each hit is slightly different from the last**, so the ducking breathes like an analogue compressor instead of stamping an identical curve forever.
+
+### Features
+
+- **RECOVERY** (20 ms – 2 s, exponential), **DEPTH** (0–100 %) and **JITTER** (0–100 %).
+- **Humanisation** across three dimensions per hit: recovery time (±20 %), depth (±12 %) and curve exponent (±15 %) at full jitter, scaled linearly by the knob. At JITTER = 0 the module is perfectly deterministic and repeatable.
+- The variation is a **correlated random walk**, not white noise: each hit relates to the previous one, which is what makes it read as human rather than as random.
+- **One independent generator per polyphony channel**, so ducking several tracks makes each breathe differently — the thing that cannot be built by patching envelopes by hand.
+- Fixed 2 ms fall and 12 ms hold at the floor, so retriggering mid-recovery never clicks or steps the level upward.
+- **OUT** rests at 10 V and dips (ready for a VCA with nothing to attenuvert); **UP** is the same envelope uninverted, resting at 0 V. Both polyphonic, following TRIG's channel count.
+- **DEPTH CV** input, summed with the knob (10 V = 100 %) and clamped.
+- Context menu: **recovery curve** (exponential / linear / logarithmic), **freeze jitter** for A/B comparison, **reset jitter seed**, and the standard **Panel** theme menu.
 
 ---
 

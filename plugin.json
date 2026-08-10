@@ -41,6 +41,12 @@
             "tags": ["MIDI", "Utility", "Controller", "External"]
         },
         {
+            "slug": "SideChain",
+            "name": "SIDECHAIN",
+            "description": "6HP trigger-fired inverted envelope for ducking and pumping without a compressor. Recovery, depth and jitter controls; humanised per hit with a correlated random walk over recovery time, depth and curve exponent, with an independent generator per polyphony channel. Ducked and upward outputs, both polyphonic.",
+            "tags": ["Envelope generator", "Dynamics", "Polyphonic", "Utility"]
+        },
+        {
             "slug": "UnitDistanceSeq",
             "name": "UNIT-D",
             "description": "Compact deterministic polyphonic generative sequencer based on unit-distance graph walks. Seeded 2D nodes create graph transitions, with musical density, gate-density and bipolar 16/32-step gradual lock controls, quantized minor-scale pitch, gate, accent, X CV and Y CV outputs.",

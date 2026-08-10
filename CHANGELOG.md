@@ -9,6 +9,27 @@ Registro de cambios de los módulos Animatek. Formato basado en
 ## [2.5.5]
 
 ### Added
+- **SIDECHAIN**: nuevo módulo (6HP) — envolvente invertida disparada por
+  trigger para hacer ducking y pumping sin compresor. Knobs RECOVERY (20 ms–2 s,
+  exponencial), DEPTH y JITTER; entradas TRIG (polifónica, define los canales
+  del módulo) y DEPTH CV (10 V = 100 %, sumada y clampeada); salidas OUT
+  (reposo 10 V, cae y vuelve) y UP (la misma sin invertir, reposo 0 V), ambas
+  polifónicas.
+  - **Humanización**: en cada golpe se sortean tiempo de recuperación (±20 %),
+    profundidad (±12 %) y exponente de la curva (±15 %) a JITTER 100 %,
+    escalados linealmente por el knob. Con JITTER a 0 es determinista.
+  - Los valores vienen de un **random walk correlacionado** (a = 0.7), no de
+    ruido blanco: el azar puro suena aleatorio, el correlacionado suena humano.
+    El paso usa `√(1−a²)` en vez de `(1−a)`; medido sobre 2 M de muestras, con
+    `(1−a)` la desviación se queda en 0.24 y el rango nominal nunca se alcanza
+    (±4.6 % efectivo en RECOVERY en vez de ±20 %).
+  - **Un generador independiente por canal de polifonía**, para que al duckear
+    varias pistas cada una respire distinto.
+  - Caída fija de 2 ms y meseta de 12 ms: retriggear a mitad de la recuperación
+    no produce clicks ni saltos al alza.
+  - Menú: forma de la curva (exponencial `p^2.5` / lineal / logarítmica `p^0.4`),
+    congelar jitter para comparar A/B, y reset de la semilla. Los tres se
+    persisten en el patch.
 - **UZZ-X**: nuevo expander CV para UZZ (6HP, se acopla a la izquierda).
   Offsets bipolares alrededor del knob para STEPS, START, DIR, RATIO, SWING,
   PROB y ACCUM (1V/incremento en los steppeados, ±5V/±10V en los continuos);

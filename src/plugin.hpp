@@ -71,6 +71,7 @@ extern Model* modelUzzX;   // UZZ-X CV expander for UZZ
 extern Model* modelOxiCv;  // OXI-CV (6HP MIDI-to-CV, Oxi One)
 extern Model* modelOxiCvExp; // OXI-CV EXPANSOR
 extern Model* modelApc40Ctrl; // APC40 controller CV bridge
+extern Model* modelSideChain; // SIDECHAIN trigger-fired ducking envelope
 extern Model* modelUnitDistanceSeq; // UNIT-D unit-distance graph sequencer
 extern Model* modelBlank3; // 3HP blank panel
 

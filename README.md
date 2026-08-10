@@ -90,7 +90,7 @@ What separates it from any inverted envelope patched by hand is that **each hit 
 ### Features
 
 - **RECOVERY** (40 ms – 1 s, exponential), **DEPTH** (0–100 %) and **JITTER** (0–100 %) down the left, with the **LEVEL slider** filling the right.
-- The slider is also the **meter**: the bar draws the gain actually applied, so the duck is visible on every hit, and the handle sets the VCA ceiling. At 100 % (the default) the audio passes untouched at rest. The bar is drawn in Rack's light layer with a soft bloom, so it stays lit when you dim the room brightness.
+- The slider is also the **meter**, split into two bars for left and right. With audio patched each bar follows the peak level of its own output; with nothing patched both fall back to the gain, so the duck stays visible when the module is used as a bare envelope generator. Brightness follows the envelope, so a duck reads twice — shorter and dimmer. Drawn in Rack's light layer with a soft bloom, so it stays lit when you dim the room brightness.
 - **Stereo audio path**: patch **IN L** and **IN R** for true stereo, or just **IN L** — right is normalled to left, so one cable turns it into a mono-to-stereo ducker. Unity gain at rest.
 - **Humanisation** across three dimensions per hit: recovery time (±50 %), depth (±25 %) and curve exponent (±30 %) at full jitter, scaled linearly by the knob. At JITTER = 0 the module is perfectly deterministic and repeatable.
 - The variation is a **correlated random walk**, not white noise: each hit relates to the previous one, which is what makes it read as human rather than as random.
@@ -101,7 +101,7 @@ What separates it from any inverted envelope patched by hand is that **each hit 
 - Layout: knobs down the left with the **TRIG** jack closing the column, the meter-slider alongside them, then **D-CV**, and the audio and CV jacks below — **IN L · IN R**, **OUT L · OUT R**, **ENV · EOC**. Two hairlines tie the trigger group together: one from the TRIG jack across to the slider, one down to the **manual trigger button**, which carries no label because the line already says what it is.
 - **Self-patch EOC into TRIG** and one press of the button sets it free-running: the cycle is 2 ms fall + 12 ms hold + recovery, so it oscillates from about 1 Hz to 18.5 Hz — a function generator whose every cycle differs, which a plain LFO cannot do.
 - **DEPTH CV** input, summed with the knob (10 V = 100 %) and clamped.
-- Context menu: **recovery curve** (exponential / linear / logarithmic), **freeze jitter** for A/B comparison, **per-channel envelopes**, **reset jitter seed**, and the standard **Panel** theme menu.
+- Context menu: **recovery curve** (exponential / linear / logarithmic), **freeze jitter** for A/B comparison, **per-channel envelopes**, **level attenuates ENV** (off by default, so ENV stays a full 0–10 V envelope unless you want the slider to double as a CV attenuator), **reset jitter seed**, and the standard **Panel** theme menu.
 
 ---
 

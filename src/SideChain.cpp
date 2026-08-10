@@ -119,6 +119,15 @@ struct SideChain : Module {
     // alone. Pulling the slider down should shorten the bar, not dim it.
     float meterGain = 1.f;
     float meterEnv = 1.f;
+    // Peak followers on each output, normalised to 10 V. With audio patched
+    // these drive the two bars, which is the only way splitting the meter says
+    // anything: by default both channels share one envelope, so two bars of
+    // gain would be the same bar twice.
+    float meterL = 0.f;
+    float meterR = 0.f;
+    bool audioPatched = false;
+
+    bool levelAffectsEnv = false;
 
     SideChain() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
@@ -172,6 +181,7 @@ struct SideChain : Module {
         curveShape = CURVE_EXPONENTIAL;
         freezeJitter = false;
         perChannelEnvelopes = false;
+        levelAffectsEnv = false;
         baseSeed = 0x5C1DECA1ULL;
         for (int c = 0; c < 16; c++) {
             voices[c].trigger.reset();
@@ -197,6 +207,8 @@ struct SideChain : Module {
         float depthKnob = params[DEPTH_PARAM].getValue();
         float jitter = params[JITTER_PARAM].getValue();
         float baseExponent = CURVE_EXPONENTS[curveShape];
+        float baseLevel = params[LEVEL_PARAM].getValue();
+        float envScale = levelAffectsEnv ? baseLevel : 1.f;
         // The button fires every channel at once, which is what you want from
         // a panel control. Summing it into the trigger voltage rather than
         // handling it apart means holding it down still only fires once: the
@@ -275,16 +287,23 @@ struct SideChain : Module {
                     break;
             }
 
-            outputs[ENV_OUTPUT].setVoltage(10.f * v.level, c);
+            outputs[ENV_OUTPUT].setVoltage(10.f * v.level * envScale, c);
+            // EOC is a trigger, never attenuated: a half-height trigger is
+            // just a trigger some modules miss.
             outputs[EOC_OUTPUT].setVoltage(v.eocPulse.process(args.sampleTime) ? 10.f : 0.f, c);
         }
 
         outputs[ENV_OUTPUT].setChannels(channels);
         outputs[EOC_OUTPUT].setChannels(channels);
 
-        float baseLevel = params[LEVEL_PARAM].getValue();
         meterEnv = voices[0].level;
         meterGain = meterEnv * baseLevel;
+
+        // Linear peak decay: full scale to zero in a quarter second. Cheaper
+        // than an exponential and easier to read on a short bar.
+        float fall = args.sampleTime * 4.f;
+        meterL = std::max(meterL - fall, 0.f);
+        meterR = std::max(meterR - fall, 0.f);
 
         // -- VCA ------------------------------------------------------------
         //
@@ -293,7 +312,8 @@ struct SideChain : Module {
         // rather than silence.
         bool leftPatched = inputs[IN_L_INPUT].isConnected();
         bool rightPatched = inputs[IN_R_INPUT].isConnected();
-        if (!leftPatched && !rightPatched) {
+        audioPatched = leftPatched || rightPatched;
+        if (!audioPatched) {
             outputs[OUT_L_OUTPUT].setChannels(0);
             outputs[OUT_R_OUTPUT].setChannels(0);
             return;
@@ -313,8 +333,15 @@ struct SideChain : Module {
             // turns the module into a mono-to-stereo ducker for free.
             float right = rightPatched ? inputs[IN_R_INPUT].getPolyVoltage(c) : left;
 
-            outputs[OUT_L_OUTPUT].setVoltage(left * gain, c);
-            outputs[OUT_R_OUTPUT].setVoltage(right * gain, c);
+            float outL = left * gain;
+            float outR = right * gain;
+            outputs[OUT_L_OUTPUT].setVoltage(outL, c);
+            outputs[OUT_R_OUTPUT].setVoltage(outR, c);
+
+            // Loudest channel wins, so a polyphonic cable still reads as one
+            // bar per side rather than only showing channel 0.
+            meterL = std::max(meterL, std::fabs(outL) * 0.1f);
+            meterR = std::max(meterR, std::fabs(outR) * 0.1f);
         }
 
         outputs[OUT_L_OUTPUT].setChannels(audioChannels);
@@ -326,6 +353,7 @@ struct SideChain : Module {
         json_object_set_new(root, "curveShape", json_integer(curveShape));
         json_object_set_new(root, "freezeJitter", json_boolean(freezeJitter));
         json_object_set_new(root, "perChannelEnvelopes", json_boolean(perChannelEnvelopes));
+        json_object_set_new(root, "levelAffectsEnv", json_boolean(levelAffectsEnv));
         // Stored as a string: a 64-bit seed does not survive JSON's double.
         json_object_set_new(root, "baseSeed",
                             json_string(string::f("%" PRIu64, baseSeed).c_str()));
@@ -341,6 +369,8 @@ struct SideChain : Module {
             freezeJitter = json_boolean_value(j);
         if (json_t* j = json_object_get(root, "perChannelEnvelopes"))
             perChannelEnvelopes = json_boolean_value(j);
+        if (json_t* j = json_object_get(root, "levelAffectsEnv"))
+            levelAffectsEnv = json_boolean_value(j);
         if (json_t* j = json_object_get(root, "baseSeed")) {
             if (json_is_string(j))
                 baseSeed = strtoull(json_string_value(j), NULL, 10);
@@ -400,27 +430,41 @@ struct LevelSlider : app::SliderKnob {
 
             float gain = module ? clamp(module->meterGain, 0.f, 1.f) : 1.f;
             float env = module ? clamp(module->meterEnv, 0.f, 1.f) : 1.f;
-            // Brightness follows the envelope, so a duck reads twice: the bar
-            // gets shorter and dims at the same time. The floor keeps it from
+            // Brightness follows the envelope, so a duck reads twice: the bars
+            // get shorter and dim at the same time. The floor keeps them from
             // vanishing outright at full depth.
             float lit = 0.30f + 0.70f * env;
 
-            float barH = track * gain;
-            if (barH > 0.5f) {
-                float y = h - inset - barH;
-                float bw = w - inset * 2.f;
+            // With audio patched each bar follows its own output; without it
+            // they both fall back to the gain, so the duck stays visible when
+            // the module is used as a bare envelope generator.
+            float left = gain, right = gain;
+            if (module && module->audioPatched) {
+                left = clamp(module->meterL, 0.f, 1.f);
+                right = clamp(module->meterR, 0.f, 1.f);
+            }
 
-                // Soft bloom around the bar, the same trick Rack's lights use.
+            const float gap = 0.8f;
+            const float bw = (w - inset * 2.f - gap) * 0.5f;
+            const float xs[2] = {inset, inset + bw + gap};
+            const float vals[2] = {left, right};
+
+            for (int i = 0; i < 2; i++) {
+                float barH = track * vals[i];
+                if (barH <= 0.5f)
+                    continue;
+                float y = h - inset - barH;
+
                 nvgBeginPath(args.vg);
-                nvgRect(args.vg, -7.f, y - 7.f, w + 14.f, barH + 14.f);
-                nvgFillPaint(args.vg, nvgBoxGradient(args.vg, inset, y, bw, barH,
-                                                     3.f, 9.f,
-                                                     AnimatekUI::logoBlue((uint8_t)(110.f * lit)),
+                nvgRect(args.vg, xs[i] - 7.f, y - 7.f, bw + 14.f, barH + 14.f);
+                nvgFillPaint(args.vg, nvgBoxGradient(args.vg, xs[i], y, bw, barH,
+                                                     2.f, 8.f,
+                                                     AnimatekUI::logoBlue((uint8_t)(95.f * lit)),
                                                      nvgRGBA(0, 0, 0, 0)));
                 nvgFill(args.vg);
 
                 nvgBeginPath(args.vg);
-                nvgRoundedRect(args.vg, inset, y, bw, barH, 1.f);
+                nvgRoundedRect(args.vg, xs[i], y, bw, barH, 1.f);
                 nvgFillColor(args.vg, AnimatekUI::logoBlue((uint8_t)(255.f * lit)));
                 nvgFill(args.vg);
             }
@@ -541,6 +585,11 @@ struct SideChainWidget : ModuleWidget {
             "Per-channel envelopes", "",
             [=]() { return module->perChannelEnvelopes; },
             [=]() { module->perChannelEnvelopes ^= true; }));
+
+        menu->addChild(createCheckMenuItem(
+            "Level attenuates ENV", "",
+            [=]() { return module->levelAffectsEnv; },
+            [=]() { module->levelAffectsEnv ^= true; }));
 
         menu->addChild(createMenuItem("Reset jitter seed", "", [=]() {
             module->baseSeed = random::u64();

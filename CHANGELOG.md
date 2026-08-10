@@ -30,7 +30,13 @@ Registro de cambios de los módulos Animatek. Formato basado en
     con un halo suave, así que sigue encendida al bajar el brillo de sala.
     Su **intensidad sigue a la envolvente** (no a la ganancia), de modo que un
     duck se lee dos veces —la barra se acorta y se atenúa— pero bajar el techo
-    con el slider solo la acorta, sin apagarla.
+    con el slider solo la acorta, sin apagarla. Va **partido en dos barras**,
+    L y R: con audio conectado cada una sigue el pico de su propia salida, y
+    sin audio ambas caen a mostrar la ganancia.
+  - Menú **"Level attenuates ENV"**, apagado por defecto: con él, el slider
+    atenúa también la salida ENV y sirve de atenuador de CV. Apagado, ENV sigue
+    siendo la envolvente completa de 0 a 10 V. EOC nunca se atenúa, porque un
+    trigger a media altura es un trigger que algunos módulos se pierden.
   - Salida **EOC**: trigger de 1 ms cuando la recuperación termina y la
     envolvente vuelve al reposo. Un retrigger que corte la recuperación no
     dispara nada, para que EOC signifique siempre "el duck se ha soltado del

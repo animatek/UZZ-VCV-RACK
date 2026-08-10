@@ -31,8 +31,9 @@ Registro de cambios de los módulos Animatek. Formato basado en
     Su **intensidad sigue a la envolvente** (no a la ganancia), de modo que un
     duck se lee dos veces —la barra se acorta y se atenúa— pero bajar el techo
     con el slider solo la acorta, sin apagarla. El número de barras es
-    **dinámico**: una en mono, dos al conectar un par estéreo, y una por canal
-    —hasta 16— con `Per-channel envelopes`. Cada barra dibuja la ganancia de su
+    **dinámico**: una en mono, dos en cuanto están conectadas IN L e IN R
+    (sea cual sea la polifonía: dos cables mono siguen siendo dos caminos), y
+    una por canal —hasta 16— con `Per-channel envelopes`. Cada barra dibuja la ganancia de su
     canal, deliberadamente no el nivel de audio: eso lo convertiría en un VU de
     salida y el ducking dejaría de leerse, que es lo que el medidor tiene que
     contar. La separación entre barras se estrecha al crecer el número, porque

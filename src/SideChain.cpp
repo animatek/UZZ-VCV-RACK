@@ -311,14 +311,22 @@ struct SideChain : Module {
                                                  inputs[IN_R_INPUT].getChannels()));
         }
 
+        // Two separate paths are being ducked the moment both jacks are in,
+        // whatever the polyphony says: two mono cables are one channel each,
+        // so counting channels alone would collapse a stereo pair into a
+        // single bar.
+        int minBars = rightPatched ? 2 : 1;
+
         if (perChannelEnvelopes) {
             // Follow whatever is actually being ducked; without audio, fall
             // back to the envelopes so the meter still says something.
-            meterBars = clamp(audioChannels > 0 ? audioChannels : channels, 1, 16);
+            int n = audioChannels > 0 ? audioChannels : channels;
+            meterBars = clamp(std::max(n, minBars), 1, 16);
         }
         else {
-            // A single shared gain: one bar, or two once a stereo pair is in.
-            meterBars = (rightPatched || audioChannels >= 2) ? 2 : 1;
+            // A single shared gain, so more than a side per bar would just be
+            // the same reading repeated.
+            meterBars = std::max(minBars, audioChannels >= 2 ? 2 : 1);
         }
         for (int i = 0; i < meterBars; i++) {
             int e = perChannelEnvelopes ? std::min(i, channels - 1) : 0;

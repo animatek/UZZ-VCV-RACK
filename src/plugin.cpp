@@ -9,6 +9,7 @@ void init(Plugin* p) {
 	// Add modules here
 
 		p->addModel(modelUZZ);    // UZZ step sequencer
+		p->addModel(modelUzzX);   // UZZ-X CV expander for UZZ
 		p->addModel(modelOxiCv);  // OXI-CV (6HP MIDI-to-CV for Oxi One)
 		p->addModel(modelOxiCvExp); // OXI-CV EXPANSOR
 		p->addModel(modelApc40Ctrl); // APC40 controller CV bridge

@@ -747,6 +747,25 @@ struct UnitDistanceSeq : Module {
         clockPulse.trigger(0.03f);
     }
 
+    json_t* dataToJson() override {
+        json_t* root = json_object();
+        json_object_set_new(root, "polyVoices", json_integer(polyVoices));
+        json_object_set_new(root, "polyUseVoiceSeeds",
+                            json_boolean(polyUseVoiceSeeds));
+        return root;
+    }
+
+    void dataFromJson(json_t* root) override {
+        if (!root)
+            return;
+        if (json_t* j = json_object_get(root, "polyVoices"))
+            polyVoices = clamp((int)json_integer_value(j), 1, MAX_POLY_VOICES);
+        if (json_t* j = json_object_get(root, "polyUseVoiceSeeds"))
+            polyUseVoiceSeeds = json_is_true(j);
+        rebuildGraph(true);
+        resetPolyVoices();
+    }
+
     void process(const ProcessArgs& args) override {
         clockTimer += args.sampleTime;
 

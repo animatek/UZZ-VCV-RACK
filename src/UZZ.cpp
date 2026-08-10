@@ -128,6 +128,15 @@ struct UZZ : Module {
 
   int accumOffset[16] = {};
 
+  // UZZ-X expander (left) state
+  bool xLinked = false;
+  uint32_t xLastAccumRst = 0;
+  uint32_t xLastRotFwd = 0;
+  uint32_t xLastRotBack = 0;
+  // Effective window (knob + expander CV), refreshed every frame in process()
+  int effSteps = 16;
+  int effStart = 0;
+
   // Pulse mode
   enum PulseMode { PM_PULSE = 0, PM_GATED = 1, PM_HOLD = 2 };
   int pulseMode = PM_PULSE;
@@ -397,9 +406,9 @@ struct UZZ : Module {
   }
 
   void get_active_window(int &start_idx, int &count) {
-    count = clamp((int)std::round(params[STEPS_PARAM].getValue()), 1, 16);
-    start_idx =
-        clamp((int)std::round(params[START_PARAM].getValue()) - 1, 0, 15);
+    // Effective window including any UZZ-X expander CV offsets.
+    count = effSteps;
+    start_idx = effStart;
   }
 
   void shift_row_int(int base_param, int dir, int start_idx, int count,
@@ -463,6 +472,31 @@ struct UZZ : Module {
     int s, c;
     get_active_window(s, c);
     shift_row_float(PROB_PARAMS, dir, s, c, 1.f, -100.f, 7.f, true);
+  }
+
+  // Rotate every per-step lane (and the runtime accumulator offsets) one
+  // position within the active window, wrapping. dir=+1 moves each step's
+  // content forward (to the right).
+  void rotateSequence(int dir) {
+    int s, c;
+    get_active_window(s, c);
+    if (c <= 1)
+      return;
+    static const int laneBases[] = {PITCH_PARAMS, OCT_PARAMS,
+                                    STEP_MODE_PARAMS, DUR_PARAMS,
+                                    M1_PARAMS, M2_PARAMS, PROB_PARAMS};
+    float tmp[16];
+    for (int base : laneBases) {
+      for (int i = 0; i < c; ++i)
+        tmp[i] = params[base + wrap16(s + i)].getValue();
+      for (int i = 0; i < c; ++i)
+        params[base + wrap16(s + i)].setValue(tmp[(i - dir + c) % c]);
+    }
+    int tmpA[16];
+    for (int i = 0; i < c; ++i)
+      tmpA[i] = accumOffset[wrap16(s + i)];
+    for (int i = 0; i < c; ++i)
+      accumOffset[wrap16(s + i)] = tmpA[(i - dir + c) % c];
   }
 
   json_t *dataToJson() override {
@@ -595,10 +629,29 @@ struct UZZ : Module {
     bool clkConnected = inputs[CLK_INPUT].isConnected();
     bool updateLights = lightDivider.process();
     float lightDt = args.sampleTime * lightDivider.getDivision();
-    int ratioIdx = clamp((int)std::round(params[RATIO_IDX_PARAM].getValue()), 0,
-                         NUM_RATIOS - 1);
+
+    // UZZ-X expander (left): CV offsets around knobs + trigger events.
+    UzzExpMsg *xmsg = nullptr;
+    if (leftExpander.module && leftExpander.module->model == modelUzzX)
+      xmsg = (UzzExpMsg *)leftExpander.consumerMessage;
+    if (xmsg && !xLinked) {
+      // First frame after linking: adopt counters without firing events.
+      xLastAccumRst = xmsg->accumRstCount;
+      xLastRotFwd = xmsg->rotFwdCount;
+      xLastRotBack = xmsg->rotBackCount;
+    }
+    xLinked = (xmsg != nullptr);
+    auto xcv = [&](int id) -> float {
+      return (xmsg && xmsg->connected[id]) ? xmsg->cv[id] : 0.f;
+    };
+
+    int ratioIdx = clamp((int)std::round(params[RATIO_IDX_PARAM].getValue()) +
+                             (int)std::round(xcv(UZZX_CV_RATIO)),
+                         0, NUM_RATIOS - 1);
     float ratio = RATIO_TABLE[ratioIdx];
-    float swing = clamp(params[SWING_PARAM].getValue(), 0.f, 0.6f);
+    float swing = clamp(params[SWING_PARAM].getValue() +
+                            xcv(UZZX_CV_SWING) * (0.6f / 5.f),
+                        0.f, 0.6f);
 
     bool wasClkConnected = clock.prevClkConnected;
     bool clockNow =
@@ -660,10 +713,32 @@ struct UZZ : Module {
         (this->*shiftFns[r])(-1);
     }
 
-    // Window
-    int steps = clamp((int)std::round(params[STEPS_PARAM].getValue()), 1, 16);
-    int start =
-        clamp((int)std::round(params[START_PARAM].getValue()) - 1, 0, 15);
+    // Window (knob + expander offsets)
+    int steps = clamp((int)std::round(params[STEPS_PARAM].getValue()) +
+                          (int)std::round(xcv(UZZX_CV_STEPS)),
+                      1, 16);
+    int start = clamp((int)std::round(params[START_PARAM].getValue()) - 1 +
+                          (int)std::round(xcv(UZZX_CV_START)),
+                      0, 15);
+    effSteps = steps;
+    effStart = start;
+
+    // Expander trigger events (counter deltas; at most one per sample each)
+    if (xmsg) {
+      if (xmsg->accumRstCount != xLastAccumRst) {
+        xLastAccumRst = xmsg->accumRstCount;
+        for (int i = 0; i < 16; ++i)
+          accumOffset[i] = 0;
+      }
+      if (xmsg->rotFwdCount != xLastRotFwd) {
+        xLastRotFwd = xmsg->rotFwdCount;
+        rotateSequence(+1);
+      }
+      if (xmsg->rotBackCount != xLastRotBack) {
+        xLastRotBack = xmsg->rotBackCount;
+        rotateSequence(-1);
+      }
+    }
 
     int rel = (step - start + 16) & 15;
     if (rel >= steps) {
@@ -774,17 +849,40 @@ struct UZZ : Module {
       }
 
       if (!holdFired) {
-        int modeDir = clamp((int)std::round(params[DIR_MODE_PARAM].getValue()),
+        int modeDir = clamp((int)std::round(params[DIR_MODE_PARAM].getValue()) +
+                                (int)std::round(xcv(UZZX_CV_DIR)),
                             DIR_MODE_MIN, DIR_MODE_MAX);
+        // Momentary reverse gate from the expander: swap FWD/REV while high.
+        if (xmsg && xmsg->revGate) {
+          if (modeDir == DIR_FWD)
+            modeDir = DIR_REV;
+          else if (modeDir == DIR_REV)
+            modeDir = DIR_FWD;
+        }
 
         bool allSkip = false;
         bool wrapped = false;
-        int nextStep = navigator.getNextStep(
-            step, start, steps, modeDir,
-            [this](int idx) {
-              return params[STEP_MODE_PARAMS + idx].getValue();
-            },
-            playCurrentOnNextTick, wrapped, allSkip, jumpN);
+        int nextStep;
+        if (xmsg && xmsg->connected[UZZX_CV_ADDR]) {
+          // Absolute step addressing: 0-10 V spans the active window and
+          // bypasses the navigator (skip modes are not consulted). EOC fires
+          // when the address falls back below the previous position.
+          float av = clamp(xcv(UZZX_CV_ADDR), 0.f, 10.f);
+          int relAddr =
+              (steps > 1) ? clamp((int)std::round(av / 10.f * (float)(steps - 1)),
+                                  0, steps - 1)
+                          : 0;
+          int prevRel = (step - start + 16) & 15;
+          nextStep = wrap16(start + relAddr);
+          wrapped = relAddr < prevRel;
+        } else {
+          nextStep = navigator.getNextStep(
+              step, start, steps, modeDir,
+              [this](int idx) {
+                return params[STEP_MODE_PARAMS + idx].getValue();
+              },
+              playCurrentOnNextTick, wrapped, allSkip, jumpN);
+        }
 
         playCurrentOnNextTick = false;
         step = nextStep;
@@ -819,7 +917,10 @@ struct UZZ : Module {
           // Bipolar prob/pulse knob: >=0 = probability, <0 = pulse count
           float ppVal = params[PROB_PARAMS + step].getValue();
           float pGlobal =
-              clamp(params[PROB_GLOBAL_PARAM].getValue(), 0.f, 100.f) / 100.f;
+              clamp(clamp(params[PROB_GLOBAL_PARAM].getValue(), 0.f, 100.f) /
+                        100.f +
+                        xcv(UZZX_CV_PROB) / 10.f,
+                    0.f, 1.f);
           // Left side (<=0): probability 0–100%; right side (>0): 100% prob
           // (right side = pulse count for SM_PULSE/GATED/HOLD).
           float pStep =
@@ -829,7 +930,9 @@ struct UZZ : Module {
         }
         if (playing) {
           if (mode == SM_ACCUM_UP || mode == SM_ACCUM_DOWN) {
-            int amt = (int)std::round(params[ACCUM_AMT_PARAM].getValue());
+            int amt = clamp((int)std::round(params[ACCUM_AMT_PARAM].getValue()) +
+                                (int)std::round(xcv(UZZX_CV_ACCUM)),
+                            0, 24);
             int wrap = (int)std::round(params[ACCUM_CLIP_PARAM].getValue());
             int signedAmt = (mode == SM_ACCUM_UP) ? amt : -amt;
             int v = accumOffset[step] + signedAmt;

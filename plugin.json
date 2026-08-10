@@ -1,7 +1,7 @@
 {
     "slug": "Animatek",
     "name": "Animatek",
-    "version": "2.5.4",
+    "version": "2.5.5",
     "license": "GPL-3.0-or-later",
     "brand": "Animatek",
     "author": "Javier Melgar",
@@ -15,6 +15,12 @@
             "name": "UZZ",
             "description": "Ultimate Ztep Zequencer. 16-step sequencer with per-step Pitch/Octave/Duration/Mod1/Mod2 and bipolar Prob/Pulse, eight step modes (Play/Mute/Skip/Accum±/Pulse/Gated/Hold), per-row randomize and shift, multiple direction modes (Forward/Backward/Pendulum/Ping-Pong/Random/Drunk/Odd-Even/Jump/Converge/Diverge), accumulator with modulo wrap, swing, slew, polyphonic step-gates output and EOC.",
             "tags": ["Sequencer", "Clock modulator", "Polyphonic", "Random"]
+        },
+        {
+            "slug": "UzzX",
+            "name": "UZZ-X",
+            "description": "CV expander for UZZ: modulate steps, start, direction, clock ratio, swing, probability and accumulator; step-address CV, row-shift and accumulator-reset triggers, reverse gate",
+            "tags": ["Expander", "Sequencer", "Utility"]
         },
         {
             "slug": "OxiCv",

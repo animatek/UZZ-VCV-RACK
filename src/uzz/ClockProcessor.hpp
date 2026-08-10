@@ -108,9 +108,13 @@ struct ClockProcessor {
       havePhase = needsVirtualClock && lastPeriod > 1e-4f;
     }
 
+    // Phase timeout must comfortably exceed one external period, otherwise
+    // slow clocks (> 60 BPM quarter = 1 s period) lose the virtual phase
+    // between edges and clock division never ticks. acceptPeriod allows
+    // periods up to 5 s, so scale with the measured period up to 6 s.
     float timeout = 0.5f;
     if (lastPeriod > 1e-4f)
-      timeout = clamp(lastPeriod * 2.f, 0.1f, 1.0f);
+      timeout = clamp(lastPeriod * 2.5f, 0.1f, 6.f);
 
     if (havePhase && sinceLastEdge > timeout) {
       havePhase = false;

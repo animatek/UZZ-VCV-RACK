@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 
+using AnimatekUI::ConnectorLine;
 using AnimatekUI::TekInputPort;
 using AnimatekUI::TekOutputPort;
 using AnimatekUI::TextLabel;
@@ -350,7 +351,7 @@ struct LevelSlider : app::SliderKnob {
     SideChain* module = NULL;
 
     LevelSlider() {
-        box.size = mm2px(Vec(8.f, 51.f));
+        box.size = mm2px(Vec(8.f, 54.f));
     }
 
     void draw(const DrawArgs& args) override {
@@ -430,23 +431,15 @@ struct SideChainWidget : ModuleWidget {
                 mm2px(Vec(KX, y + 8.5f)), module, paramId));
         };
 
-        addKnob("RECOVERY", 11.0f, SideChain::RECOVERY_PARAM);
-        addKnob("DEPTH", 26.0f, SideChain::DEPTH_PARAM);
-        addKnob("JITTER", 41.0f, SideChain::JITTER_PARAM);
+        addKnob("RECOVERY", 4.0f, SideChain::RECOVERY_PARAM);
+        addKnob("DEPTH", 18.0f, SideChain::DEPTH_PARAM);
+        addKnob("JITTER", 32.0f, SideChain::JITTER_PARAM);
 
-        // Header strip: manual trigger. Patch EOC back into TRIG and one press
-        // sets the module cycling on its own as a jittered LFO.
-        addParam(createParamCentered<TL1105>(mm2px(Vec(5.2f, 5.6f)), module,
-                                             SideChain::TRIG_PARAM));
-        addLabel("TRIG", 13.5f, 4.2f, 9.f);
-
-        auto* slider = createParam<LevelSlider>(mm2px(Vec(18.0f, 3.0f)), module,
+        auto* slider = createParam<LevelSlider>(mm2px(Vec(18.0f, 4.0f)), module,
                                                 SideChain::LEVEL_PARAM);
         slider->module = module;
         addParam(slider);
 
-        // Four jack rows 16 mm apart, read top to bottom as signal flow:
-        // control in, audio in, audio out, CV out.
         auto addIn = [&](const char* text, float cx, float y, int inputId) {
             addLabel(text, cx, y, 14.f);
             addInput(createInputCentered<TekInputPort>(
@@ -457,13 +450,27 @@ struct SideChainWidget : ModuleWidget {
             addOutput(createOutputCentered<TekOutputPort>(
                 mm2px(Vec(cx, y + 7.5f)), module, outputId));
         };
+        auto line = [&](float ax, float ay, float bx, float by) {
+            addChild(new ConnectorLine(mm2px(ax), mm2px(ay), mm2px(bx), mm2px(by)));
+        };
 
-        addIn("TRIG", X1, 59.0f, SideChain::TRIG_INPUT);
-        addIn("D-CV", X2, 59.0f, SideChain::DEPTH_CV_INPUT);
-        addIn("IN L", X1, 75.0f, SideChain::IN_L_INPUT);
-        addIn("IN R", X2, 75.0f, SideChain::IN_R_INPUT);
-        addOut("OUT L", X1, 91.0f, SideChain::OUT_L_OUTPUT);
-        addOut("OUT R", X2, 91.0f, SideChain::OUT_R_OUTPUT);
+        // TRIG jack closes the left column, level with the foot of the slider.
+        addIn("TRIG", X1, 46.0f, SideChain::TRIG_INPUT);
+        // The button carries no label of its own: the line down from the jack
+        // says what it is, which is the whole point of drawing it.
+        addParam(createParamCentered<TL1105>(mm2px(Vec(X1, 67.5f)), module,
+                                             SideChain::TRIG_PARAM));
+        addIn("D-CV", X2, 60.0f, SideChain::DEPTH_CV_INPUT);
+
+        // Two hairlines tie the trigger group together: jack to slider, and
+        // jack down to the button that does the same job.
+        line(X1 + 4.6f, 53.5f, 17.6f, 53.5f);
+        line(X1, 58.1f, X1, 63.7f);
+
+        addIn("IN L", X1, 79.0f, SideChain::IN_L_INPUT);
+        addIn("IN R", X2, 79.0f, SideChain::IN_R_INPUT);
+        addOut("OUT L", X1, 93.0f, SideChain::OUT_L_OUTPUT);
+        addOut("OUT R", X2, 93.0f, SideChain::OUT_R_OUTPUT);
         addOut("ENV", X1, 107.0f, SideChain::ENV_OUTPUT);
         addOut("EOC", X2, 107.0f, SideChain::EOC_OUTPUT);
     }

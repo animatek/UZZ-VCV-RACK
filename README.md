@@ -98,7 +98,7 @@ What separates it from any inverted envelope patched by hand is that **each hit 
 - Fixed 2 ms fall and 12 ms hold at the floor, so retriggering mid-recovery never clicks or steps the level upward.
 - **ENV** rests at 10 V and dips, following TRIG's channel count. Handy for ducking a reverb return or driving a filter in step with the audio path.
 - **EOC** fires a 1 ms trigger when the recovery completes and the envelope is back at rest. A retrigger that cuts the recovery short fires nothing, so EOC always means "the duck has fully released" rather than turning into a copy of TRIG at fast tempos.
-- Jacks read top to bottom as signal flow: **TRIG · D-CV**, **IN L · IN R**, **OUT L · OUT R**, **ENV · EOC**. A **manual trigger button** sits in the header.
+- Layout: knobs down the left with the **TRIG** jack closing the column, the meter-slider alongside them, then **D-CV**, and the audio and CV jacks below — **IN L · IN R**, **OUT L · OUT R**, **ENV · EOC**. Two hairlines tie the trigger group together: one from the TRIG jack across to the slider, one down to the **manual trigger button**, which carries no label because the line already says what it is.
 - **Self-patch EOC into TRIG** and one press of the button sets it free-running: the cycle is 2 ms fall + 12 ms hold + recovery, so it oscillates from about 1 Hz to 18.5 Hz — a function generator whose every cycle differs, which a plain LFO cannot do.
 - **DEPTH CV** input, summed with the knob (10 V = 100 %) and clamped.
 - Context menu: **recovery curve** (exponential / linear / logarithmic), **freeze jitter** for A/B comparison, **per-channel envelopes**, **reset jitter seed**, and the standard **Panel** theme menu.

@@ -95,6 +95,24 @@ Registro de cambios de los módulos Animatek. Formato basado en
   medido (×2.5, techo 6 s, alineado con el máximo de período aceptado de 5 s).
 
 ### Known issues / Pendiente
+- **CAP**: a **audio rate el VCA no modula**. Metiendo un oscilador cuadrado en
+  TRIG y subiendo su frecuencia, la salida deja de modularse y se queda en una
+  atenuación constante. No es un defecto suelto sino la consecuencia de los
+  tiempos fijos de la envolvente: caída de 2 ms + meseta de 12 ms + recuperación
+  mínima de 40 ms dan un **ciclo mínimo de 54 ms, o sea un techo de 18.5 Hz**.
+  Por encima de eso cada nuevo trigger cae dentro del ataque o la meseta del
+  anterior, y como `floorLevel = min(1 - depth, level)` el suelo solo puede
+  bajar, el nivel se queda clavado abajo y no vuelve a subir.
+  Caminos posibles para la próxima sesión, por orden de menor a mayor cambio:
+  (a) escalar ATTACK y HOLD con RECOVERY en vez de dejarlos fijos, de modo que
+  con recuperaciones cortas se encojan solos; (b) un modo "fast" de menú que
+  reduzca los tres tiempos; (c) asumir que es un ducker y no un VCA de
+  modulación, y documentar el techo. La opción (a) es la que menos superficie
+  nueva añade, pero hay que comprobar que no reaparecen los clicks que el
+  ataque de 2 ms vino a eliminar.
+- **CAP**: sin manual de usuario. UNIT-D y Sacromonte tienen el suyo en
+  `Manuals/`; el módulo ya tiene tres formas de curva, dos modos de envolvente,
+  el atenuador de ENV y el modo LFO por autoparcheo, y el README se queda corto.
 - **UNIT-D**: sin `onReset` — "Initialize" no limpia lock loop, historial de
   walk ni posiciones de voz.
 - **Apc40Ctrl**: fuerza `midiInput.channel = -1` en cada sample de `process()`;

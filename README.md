@@ -89,13 +89,16 @@ What separates it from any inverted envelope patched by hand is that **each hit 
 
 ### Features
 
-- **RECOVERY** (40 ms – 1 s, exponential), **DEPTH** (0–100 %) and **JITTER** (0–100 %).
+- **RECOVERY** (40 ms – 1 s, exponential), **DEPTH** (0–100 %) and **JITTER** (0–100 %) down the left, with the **LEVEL slider** filling the right.
+- The slider is also the **meter**: the bar draws the gain actually applied, so the duck is visible on every hit, and the handle sets the VCA ceiling. At 100 % (the default) the audio passes untouched at rest.
 - **Stereo audio path**: patch **IN L** and **IN R** for true stereo, or just **IN L** — right is normalled to left, so one cable turns it into a mono-to-stereo ducker. Unity gain at rest.
 - **Humanisation** across three dimensions per hit: recovery time (±20 %), depth (±12 %) and curve exponent (±15 %) at full jitter, scaled linearly by the knob. At JITTER = 0 the module is perfectly deterministic and repeatable.
 - The variation is a **correlated random walk**, not white noise: each hit relates to the previous one, which is what makes it read as human rather than as random.
 - By default every audio channel shares one envelope, so a stereo pair ducks symmetrically and the image does not wobble. **Per-channel envelopes** in the menu gives each channel its own generator instead — for ducking several unrelated tracks through one polyphonic cable.
 - Fixed 2 ms fall and 12 ms hold at the floor, so retriggering mid-recovery never clicks or steps the level upward.
 - **ENV** rests at 10 V and dips, following TRIG's channel count. Handy for ducking a reverb return or driving a filter in step with the audio path.
+- **EOC** fires a 1 ms trigger when the recovery completes and the envelope is back at rest. A retrigger that cuts the recovery short fires nothing, so EOC always means "the duck has fully released" rather than turning into a copy of TRIG at fast tempos.
+- Jacks read top to bottom as signal flow: **TRIG · D-CV**, **IN L · IN R**, **OUT L · OUT R**, **ENV · EOC**.
 - **DEPTH CV** input, summed with the knob (10 V = 100 %) and clamped.
 - Context menu: **recovery curve** (exponential / linear / logarithmic), **freeze jitter** for A/B comparison, **per-channel envelopes**, **reset jitter seed**, and the standard **Panel** theme menu.
 

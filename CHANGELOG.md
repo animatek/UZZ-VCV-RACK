@@ -22,6 +22,17 @@ Registro de cambios de los módulos Animatek. Formato basado en
     menú "Per-channel envelopes" da a cada canal su propio generador, para
     duckear varias pistas independientes por un cable polifónico.
   - Entradas TRIG (polifónica) y DEPTH CV (10 V = 100 %, sumada y clampeada).
+  - **Slider LEVEL + medidor** ocupando la mitad derecha del panel, al estilo
+    del VCA-1: el mango fija el techo del VCA (100 % por defecto, o sea audio
+    intacto en reposo) y la barra dibuja la ganancia que se está aplicando de
+    verdad, así que el duck se ve caer en cada golpe. Los knobs se desplazan
+    a la columna izquierda.
+  - Salida **EOC**: trigger de 1 ms cuando la recuperación termina y la
+    envolvente vuelve al reposo. Un retrigger que corte la recuperación no
+    dispara nada, para que EOC signifique siempre "el duck se ha soltado del
+    todo" y no degenere en una copia de TRIG a tempos rápidos.
+  - Orden de jacks de arriba abajo siguiendo el flujo de señal: TRIG · D-CV,
+    IN L · IN R, OUT L · OUT R, ENV · EOC.
   - **Humanización**: en cada golpe se sortean tiempo de recuperación (±20 %),
     profundidad (±12 %) y exponente de la curva (±15 %) a JITTER 100 %,
     escalados linealmente por el knob. Con JITTER a 0 es determinista.

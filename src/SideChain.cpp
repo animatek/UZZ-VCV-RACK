@@ -67,11 +67,11 @@ static const char* CURVE_NAMES[NUM_CURVE_SHAPES] = {
 
 
 struct SideChain : Module {
-    enum ParamId { RECOVERY_PARAM, DEPTH_PARAM, JITTER_PARAM, PARAMS_LEN };
+    // New entries go at the end of each enum: the indices are what patches
+    // store, so appending keeps older patches loading onto the right jacks.
+    enum ParamId { RECOVERY_PARAM, DEPTH_PARAM, JITTER_PARAM, LEVEL_PARAM, PARAMS_LEN };
     enum InputId { TRIG_INPUT, DEPTH_CV_INPUT, IN_L_INPUT, IN_R_INPUT, INPUTS_LEN };
-    // ENV keeps index 0 so cables saved against the CV-only version still land
-    // on the right jack.
-    enum OutputId { ENV_OUTPUT, OUT_L_OUTPUT, OUT_R_OUTPUT, OUTPUTS_LEN };
+    enum OutputId { ENV_OUTPUT, OUT_L_OUTPUT, OUT_R_OUTPUT, EOC_OUTPUT, OUTPUTS_LEN };
     enum LightId { LIGHTS_LEN };
 
     enum Stage { STAGE_IDLE, STAGE_ATTACK, STAGE_HOLD, STAGE_RECOVER };
@@ -90,6 +90,7 @@ struct SideChain : Module {
         float walkRecovery = 0.f;
         float walkDepth = 0.f;
         float walkCurve = 0.f;
+        dsp::PulseGenerator eocPulse;
         random::Xoroshiro128Plus rng;
     };
 
@@ -102,6 +103,10 @@ struct SideChain : Module {
     // sideways on every hit. Worth turning on only to duck several unrelated
     // tracks through one polyphonic cable.
     bool perChannelEnvelopes = false;
+    // Live VCA gain of channel 0, for the meter to draw. Written from the
+    // audio thread and read from the UI thread; a torn float here would just
+    // mean one wrong frame of a meter, so no synchronisation.
+    float meterGain = 1.f;
 
     SideChain() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
@@ -117,6 +122,9 @@ struct SideChain : Module {
                     std::log2(0.250f), "Recovery", " ms", 2.f, 1000.f);
         configParam(DEPTH_PARAM, 0.f, 1.f, 0.80f, "Depth", "%", 0.f, 100.f);
         configParam(JITTER_PARAM, 0.f, 1.f, 0.25f, "Jitter", "%", 0.f, 100.f);
+        // Ceiling of the VCA. At 100% the module behaves exactly as before it
+        // had a slider, so old patches sound unchanged.
+        configParam(LEVEL_PARAM, 0.f, 1.f, 1.f, "Level", "%", 0.f, 100.f);
 
         configInput(TRIG_INPUT, "Trigger");
         configInput(DEPTH_CV_INPUT, "Depth CV");
@@ -125,6 +133,7 @@ struct SideChain : Module {
         configOutput(ENV_OUTPUT, "Ducked envelope");
         configOutput(OUT_L_OUTPUT, "Ducked audio left");
         configOutput(OUT_R_OUTPUT, "Ducked audio right");
+        configOutput(EOC_OUTPUT, "End of cycle");
         configBypass(IN_L_INPUT, OUT_L_OUTPUT);
         configBypass(IN_R_INPUT, OUT_R_OUTPUT);
 
@@ -231,6 +240,11 @@ struct SideChain : Module {
                         v.level = 1.f;
                         v.phase = 0.f;
                         v.stage = STAGE_IDLE;
+                        // Only a recovery that ran to completion counts as a
+                        // cycle. A retrigger cuts it short and fires nothing,
+                        // otherwise EOC would degrade into a copy of TRIG at
+                        // fast tempos.
+                        v.eocPulse.trigger(1e-3f);
                     }
                     else {
                         v.level = v.floorLevel +
@@ -244,9 +258,14 @@ struct SideChain : Module {
             }
 
             outputs[ENV_OUTPUT].setVoltage(10.f * v.level, c);
+            outputs[EOC_OUTPUT].setVoltage(v.eocPulse.process(args.sampleTime) ? 10.f : 0.f, c);
         }
 
         outputs[ENV_OUTPUT].setChannels(channels);
+        outputs[EOC_OUTPUT].setChannels(channels);
+
+        float baseLevel = params[LEVEL_PARAM].getValue();
+        meterGain = voices[0].level * baseLevel;
 
         // -- VCA ------------------------------------------------------------
         //
@@ -268,7 +287,7 @@ struct SideChain : Module {
             // One envelope for everything unless the user asked otherwise, so
             // a stereo pair ducks symmetrically.
             int e = perChannelEnvelopes ? std::min(c, channels - 1) : 0;
-            float gain = voices[e].level;
+            float gain = voices[e].level * baseLevel;
 
             float left = inputs[IN_L_INPUT].getPolyVoltage(c);
             // Right is normalled to left: one cable feeds both outputs, which
@@ -312,6 +331,51 @@ struct SideChain : Module {
 };
 
 
+/** Vertical slider that sets the VCA ceiling and doubles as the gain meter,
+the way Fundamental's VCA-1 does. The bar is the gain actually applied, so the
+duck is visible on every hit; the handle is where the ceiling sits. */
+struct LevelSlider : app::SliderKnob {
+    SideChain* module = NULL;
+
+    LevelSlider() {
+        box.size = mm2px(Vec(8.f, 40.f));
+    }
+
+    void draw(const DrawArgs& args) override {
+        const float w = box.size.x;
+        const float h = box.size.y;
+        const float inset = 1.5f;
+
+        nvgBeginPath(args.vg);
+        nvgRoundedRect(args.vg, 0.f, 0.f, w, h, 2.f);
+        nvgFillColor(args.vg, nvgRGB(0x14, 0x16, 0x1c));
+        nvgFill(args.vg);
+        nvgStrokeWidth(args.vg, 0.8f);
+        nvgStrokeColor(args.vg, nvgRGB(0x33, 0x38, 0x4a));
+        nvgStroke(args.vg);
+
+        const float track = h - inset * 2.f;
+        float gain = module ? clamp(module->meterGain, 0.f, 1.f) : 1.f;
+        float barH = track * gain;
+        if (barH > 0.5f) {
+            nvgBeginPath(args.vg);
+            nvgRoundedRect(args.vg, inset, h - inset - barH, w - inset * 2.f, barH, 1.f);
+            nvgFillColor(args.vg, AnimatekUI::logoBlue(210));
+            nvgFill(args.vg);
+        }
+
+        float value = 1.f;
+        if (engine::ParamQuantity* pq = getParamQuantity())
+            value = pq->getScaledValue();
+        float y = h - inset - track * value;
+        nvgBeginPath(args.vg);
+        nvgRect(args.vg, 0.5f, y - 1.f, w - 1.f, 2.f);
+        nvgFillColor(args.vg, nvgRGB(0xe8, 0xe8, 0xe8));
+        nvgFill(args.vg);
+    }
+};
+
+
 struct SideChainWidget : ModuleWidget {
     SideChainWidget(SideChain* module) {
         setModule(module);
@@ -337,17 +401,25 @@ struct SideChainWidget : ModuleWidget {
             addChild(label);
         };
 
+        // Knobs stacked down the left, meter-slider filling the right.
+        constexpr float KX = 9.5f;
         auto addKnob = [&](const char* text, float y, int paramId) {
-            addLabel(text, C, y, 24.f);
+            addLabel(text, KX, y, 16.f);
             addParam(createParamCentered<RoundBlackKnob>(
-                mm2px(Vec(C, y + 8.0f)), module, paramId));
+                mm2px(Vec(KX, y + 7.0f)), module, paramId));
         };
 
         addKnob("RECOVERY", 12.0f, SideChain::RECOVERY_PARAM);
-        addKnob("DEPTH", 28.0f, SideChain::DEPTH_PARAM);
-        addKnob("JITTER", 44.0f, SideChain::JITTER_PARAM);
+        addKnob("DEPTH", 27.0f, SideChain::DEPTH_PARAM);
+        addKnob("JITTER", 42.0f, SideChain::JITTER_PARAM);
 
-        // Four jack rows 16 mm apart: audio in, audio out, control in, envelope.
+        auto* slider = createParam<LevelSlider>(mm2px(Vec(18.0f, 13.0f)), module,
+                                                SideChain::LEVEL_PARAM);
+        slider->module = module;
+        addParam(slider);
+
+        // Four jack rows 16 mm apart, read top to bottom as signal flow:
+        // control in, audio in, audio out, CV out.
         auto addIn = [&](const char* text, float cx, float y, int inputId) {
             addLabel(text, cx, y, 14.f);
             addInput(createInputCentered<TekInputPort>(
@@ -359,13 +431,14 @@ struct SideChainWidget : ModuleWidget {
                 mm2px(Vec(cx, y + 7.5f)), module, outputId));
         };
 
-        addIn("IN L", X1, 59.0f, SideChain::IN_L_INPUT);
-        addIn("IN R", X2, 59.0f, SideChain::IN_R_INPUT);
-        addOut("OUT L", X1, 75.0f, SideChain::OUT_L_OUTPUT);
-        addOut("OUT R", X2, 75.0f, SideChain::OUT_R_OUTPUT);
-        addIn("TRIG", X1, 91.0f, SideChain::TRIG_INPUT);
-        addIn("D-CV", X2, 91.0f, SideChain::DEPTH_CV_INPUT);
-        addOut("ENV", C, 107.0f, SideChain::ENV_OUTPUT);
+        addIn("TRIG", X1, 59.0f, SideChain::TRIG_INPUT);
+        addIn("D-CV", X2, 59.0f, SideChain::DEPTH_CV_INPUT);
+        addIn("IN L", X1, 75.0f, SideChain::IN_L_INPUT);
+        addIn("IN R", X2, 75.0f, SideChain::IN_R_INPUT);
+        addOut("OUT L", X1, 91.0f, SideChain::OUT_L_OUTPUT);
+        addOut("OUT R", X2, 91.0f, SideChain::OUT_R_OUTPUT);
+        addOut("ENV", X1, 107.0f, SideChain::ENV_OUTPUT);
+        addOut("EOC", X2, 107.0f, SideChain::EOC_OUTPUT);
     }
 
     void appendContextMenu(ui::Menu* menu) override {

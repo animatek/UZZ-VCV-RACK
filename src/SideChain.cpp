@@ -119,13 +119,13 @@ struct SideChain : Module {
     // alone. Pulling the slider down should shorten the bar, not dim it.
     float meterGain = 1.f;
     float meterEnv = 1.f;
-    // Peak followers on each output, normalised to 10 V. With audio patched
-    // these drive the two bars, which is the only way splitting the meter says
-    // anything: by default both channels share one envelope, so two bars of
-    // gain would be the same bar twice.
-    float meterL = 0.f;
-    float meterR = 0.f;
-    bool audioPatched = false;
+    // Gain applied to each side. Deliberately not the audio level: metering
+    // the signal turns this into an output VU and the ducking stops being
+    // legible, which is the whole point of the module. With the shared
+    // envelope both bars move together; they only part company under
+    // per-channel envelopes.
+    float meterGainL = 1.f;
+    float meterGainR = 1.f;
 
     bool levelAffectsEnv = false;
 
@@ -296,14 +296,11 @@ struct SideChain : Module {
         outputs[ENV_OUTPUT].setChannels(channels);
         outputs[EOC_OUTPUT].setChannels(channels);
 
+        int envR = perChannelEnvelopes ? std::min(1, channels - 1) : 0;
         meterEnv = voices[0].level;
         meterGain = meterEnv * baseLevel;
-
-        // Linear peak decay: full scale to zero in a quarter second. Cheaper
-        // than an exponential and easier to read on a short bar.
-        float fall = args.sampleTime * 4.f;
-        meterL = std::max(meterL - fall, 0.f);
-        meterR = std::max(meterR - fall, 0.f);
+        meterGainL = meterGain;
+        meterGainR = voices[envR].level * baseLevel;
 
         // -- VCA ------------------------------------------------------------
         //
@@ -312,8 +309,7 @@ struct SideChain : Module {
         // rather than silence.
         bool leftPatched = inputs[IN_L_INPUT].isConnected();
         bool rightPatched = inputs[IN_R_INPUT].isConnected();
-        audioPatched = leftPatched || rightPatched;
-        if (!audioPatched) {
+        if (!leftPatched && !rightPatched) {
             outputs[OUT_L_OUTPUT].setChannels(0);
             outputs[OUT_R_OUTPUT].setChannels(0);
             return;
@@ -333,15 +329,8 @@ struct SideChain : Module {
             // turns the module into a mono-to-stereo ducker for free.
             float right = rightPatched ? inputs[IN_R_INPUT].getPolyVoltage(c) : left;
 
-            float outL = left * gain;
-            float outR = right * gain;
-            outputs[OUT_L_OUTPUT].setVoltage(outL, c);
-            outputs[OUT_R_OUTPUT].setVoltage(outR, c);
-
-            // Loudest channel wins, so a polyphonic cable still reads as one
-            // bar per side rather than only showing channel 0.
-            meterL = std::max(meterL, std::fabs(outL) * 0.1f);
-            meterR = std::max(meterR, std::fabs(outR) * 0.1f);
+            outputs[OUT_L_OUTPUT].setVoltage(left * gain, c);
+            outputs[OUT_R_OUTPUT].setVoltage(right * gain, c);
         }
 
         outputs[OUT_L_OUTPUT].setChannels(audioChannels);
@@ -435,14 +424,8 @@ struct LevelSlider : app::SliderKnob {
             // vanishing outright at full depth.
             float lit = 0.30f + 0.70f * env;
 
-            // With audio patched each bar follows its own output; without it
-            // they both fall back to the gain, so the duck stays visible when
-            // the module is used as a bare envelope generator.
-            float left = gain, right = gain;
-            if (module && module->audioPatched) {
-                left = clamp(module->meterL, 0.f, 1.f);
-                right = clamp(module->meterR, 0.f, 1.f);
-            }
+            float left = module ? clamp(module->meterGainL, 0.f, 1.f) : gain;
+            float right = module ? clamp(module->meterGainR, 0.f, 1.f) : gain;
 
             const float gap = 0.8f;
             const float bw = (w - inset * 2.f - gap) * 0.5f;

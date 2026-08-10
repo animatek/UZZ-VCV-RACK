@@ -367,12 +367,17 @@ struct CapybaraWidget : Widget {
       applyTransform(args.vg);
       nvgGlobalCompositeOperation(args.vg, NVG_LIGHTER);
 
-      nvgGlobalAlpha(args.vg, 0.22f);
+      // The artwork is a 2.2 px outline with no fill, so a single additive
+      // pass barely registers. Stacking passes builds the core up until the
+      // line actually reads as lit; two at rest, four more on a flash.
+      nvgGlobalAlpha(args.vg, 0.40f);
+      svg->draw(args.vg);
       svg->draw(args.vg);
 
       if (flash > 0.f) {
-        nvgGlobalAlpha(args.vg, flash * 0.75f);
-        svg->draw(args.vg);
+        nvgGlobalAlpha(args.vg, flash * 0.55f);
+        for (int i = 0; i < 4; i++)
+          svg->draw(args.vg);
       }
       nvgRestore(args.vg);
     }

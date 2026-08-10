@@ -31,8 +31,9 @@ Registro de cambios de los módulos Animatek. Formato basado en
     Su **intensidad sigue a la envolvente** (no a la ganancia), de modo que un
     duck se lee dos veces —la barra se acorta y se atenúa— pero bajar el techo
     con el slider solo la acorta, sin apagarla. Va **partido en dos barras**,
-    L y R: con audio conectado cada una sigue el pico de su propia salida, y
-    sin audio ambas caen a mostrar la ganancia.
+    L y R, cada una con la ganancia de su lado. Deliberadamente no miden el
+    nivel de audio: eso lo convertiría en un VU de salida y el ducking dejaría
+    de leerse, que es justo lo que el medidor tiene que contar.
   - Menú **"Level attenuates ENV"**, apagado por defecto: con él, el slider
     atenúa también la salida ENV y sirve de atenuador de CV. Apagado, ENV sigue
     siendo la envolvente completa de 0 a 10 V. EOC nunca se atenúa, porque un

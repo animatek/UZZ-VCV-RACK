@@ -36,8 +36,6 @@ Thumbs.db
 docs/superpowers/
 .fuse_hidden*
 
-# Documentos de trabajo privados (Sacromonte vive en sacromonte-private).
-# Sin esto, un `git add -A` en la rama pública los publicaría.
+# Documentos de trabajo privados. Sacromonte ya no vive aquí: tiene su propio
+# repo en ../Sacromonte, con sus notas dentro.
 /Documentos/
-SACROMONTE.md
-SACROMONTE_TODO.md

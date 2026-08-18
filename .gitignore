@@ -1,7 +1,11 @@
 # VCV Rack plugin
 /build/
 /dist/
-/dep/
+/dep/*
+# ...salvo el motor Open303 vendorizado, que es código fuente y va al repo. Se
+# excluye el contenido de /dep/ y no el directorio, porque git no puede volver a
+# incluir algo cuyo directorio padre está excluido.
+!/dep/open303/
 /.cache/
 /bin/
 /obj/

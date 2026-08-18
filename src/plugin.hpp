@@ -64,6 +64,16 @@ inline void appendPanelThemeMenu(ui::Menu* menu) {
     }));
 }
 
+// Mensaje del expander ATEK303: el SEQ lo escribe a su derecha y la voz lo lee a su
+// izquierda. Solo se usa para los jacks que la voz tenga sin cablear, así que un cable
+// siempre manda sobre el expander.
+struct Atek303SeqMessage {
+    float voct = 0.f;
+    bool gate = false;
+    bool accent = false;
+    bool slide = false;
+};
+
 // Declare each Model, defined in each module source file
 // extern Model* modelMyModule;
 extern Model* modelUZZ;    // UZZ step sequencer
@@ -74,6 +84,8 @@ extern Model* modelApc40Ctrl; // APC40 controller CV bridge
 extern Model* modelSideChain; // SIDECHAIN trigger-fired ducking envelope
 extern Model* modelUnitDistanceSeq; // UNIT-D unit-distance graph sequencer
 extern Model* modelBlank3; // 3HP blank panel
+extern Model* modelAtek303;    // ATEK303 TB-303 voice
+extern Model* modelAtek303Seq; // ATEK303 SEQ acid pattern generator
 
 
 

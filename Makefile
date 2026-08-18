@@ -3,6 +3,8 @@ RACK_DIR ?= ../..
 
 # FLAGS will be passed to both the C and C++ compiler
 FLAGS += -fno-math-errno
+# Motor Open303 vendorizado (MIT), que usan ATEK303 y ATEK303 SEQ.
+FLAGS += -Idep/open303
 CFLAGS +=
 CXXFLAGS +=
 
@@ -13,11 +15,15 @@ LDFLAGS +=
 # Add .cpp files to the build
 SOURCES += $(wildcard src/*.cpp)
 
+# fft4g.c no se lista: lo incluye directamente rosic_FourierTransformerRadix2.cpp.
+SOURCES += $(wildcard dep/open303/*.cpp)
+
 # Add files to the ZIP package when running `make dist`
 # The compiled plugin and "plugin.json" are automatically added.
 DISTRIBUTABLES += res
 DISTRIBUTABLES += $(wildcard LICENSE*)
 DISTRIBUTABLES += $(wildcard presets)
+DISTRIBUTABLES += dep/open303/LICENSE-open303.txt
 
 # Include the Rack plugin Makefile framework
 include $(RACK_DIR)/plugin.mk

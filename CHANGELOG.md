@@ -6,6 +6,31 @@ Registro de cambios de los módulos Animatek. Formato basado en
 
 **Regla del repo: no se commitea nada sin apuntar el cambio aquí.**
 
+## [2.6.0]
+
+### Added
+- **ATEK303** (20 HP entre los dos) y **ATEK303 SEQ**: emulación del Roland TB-303 y su
+  generador de patrones acid, que llegan desde su propio repo
+  ([animatek/ATEK303](https://github.com/animatek/ATEK303)).
+  - **ATEK303** (12 HP): VCO de rampa modelado del esquema, ladder de diodos con no
+    linealidad por célula, envolvente de decay y acento de dos etapas. Secciones FILTER,
+    ENVELOPE y VOICE, con entrada de CV y atenuverter en los seis mandos. Dos modelos de
+    sonido conmutables (Circuito / Open303) y ajuste fino por bloques en el menú.
+  - **ATEK303 SEQ** (20 HP): generador algorítmico de líneas acid de 16 pasos, con seed
+    persistente y bloqueable, y mutación por capas de tiempo, alturas y articulación.
+    Funciona como expander de ATEK303 si se pega a su izquierda.
+  - Motor **Open303** de Robin Schmidt vendorizado en `dep/open303` (MIT, compatible con
+    la GPL-3.0-or-later del plugin), con cinco ganchos documentados en su
+    `PROVENANCE.md`. El Makefile lo compila con `-Idep/open303`, y `.gitignore` exceptúa
+    ese directorio del `/dep/` ignorado, porque es código fuente y no una dependencia
+    descargada.
+  - `src/ui/AtekWidgets.hpp` añade `SectionLabel` y `GroupBox` sobre `CommonWidgets.hpp`.
+  - **La colección no es la fuente de verdad de estos dos módulos.** El análisis, el banco
+    de medida y el generador de paneles se quedan en el repo ATEK303, y de allí llega lo
+    esencial con `make sync-apply`. No editar aquí `Atek303*.cpp`, `Atek*.hpp`,
+    `Acid*.hpp`, `ui/AtekWidgets.hpp`, `dep/open303` ni `res/ATEK303*.svg`: el script
+    avisa si lo has hecho, pero el cambio hay que llevarlo al otro repo.
+
 ## [2.5.5]
 
 ### Added
@@ -46,8 +71,10 @@ Registro de cambios de los módulos Animatek. Formato basado en
     envolvente vuelve al reposo. Un retrigger que corte la recuperación no
     dispara nada, para que EOC signifique siempre "el duck se ha soltado del
     todo" y no degenere en una copia de TRIG a tempos rápidos.
-  - Orden de jacks de arriba abajo siguiendo el flujo de señal: TRIG · D-CV,
-    IN L · IN R, OUT L · OUT R, ENV · EOC.
+  - Orden de jacks de arriba abajo agrupado por lo que es cada cosa, no por el
+    flujo: primero lo que el módulo fabrica —TRIG · D-CV y, cerrando la mitad
+    de arriba con los knobs y el slider, ENV · EOC—, y bajo la raya del panel
+    solo el audio, IN L · IN R y después OUT L · OUT R.
   - **Botón de trigger manual** en la cabecera. El nombre del módulo baja a la
     esquina inferior izquierda junto al logo, como en los demás módulos, y ese
     hueco de arriba es el que ocupa el botón; el slider aprovecha para crecer

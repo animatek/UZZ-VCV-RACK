@@ -92,9 +92,7 @@ struct ExpChannelLabel : widget::TransparentWidget {
 struct OxiCvExpWidget : ModuleWidget {
     OxiCvExpWidget(OxiCvExp* module) {
         setModule(module);
-        setPanel(createPanel(
-            asset::plugin(pluginInstance, "res/OxiCvExp-light.svg"),
-            asset::plugin(pluginInstance, "res/OxiCvExp.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/OxiCvExp.svg")));
 
         auto* moduleName = new TextLabel("MULTI", mm2px(Vec(0.8f, 119.9f)), mm2px(Vec(21.8f, 5.8f)));
         moduleName->fontSize = 16.f;
@@ -138,7 +136,6 @@ struct OxiCvExpWidget : ModuleWidget {
 
     void appendContextMenu(ui::Menu* menu) override {
         ModuleWidget::appendContextMenu(menu);
-        appendPanelThemeMenu(menu);
     }
 };
 

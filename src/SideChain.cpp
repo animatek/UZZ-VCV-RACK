@@ -488,8 +488,7 @@ struct LevelSlider : app::SliderKnob {
 struct SideChainWidget : ModuleWidget {
     SideChainWidget(SideChain* module) {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/SideChain-light.svg"),
-                             asset::plugin(pluginInstance, "res/SideChain.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/SideChain.svg")));
 
         constexpr float W = 30.48f;  // 6 HP
         constexpr float X1 = 8.6f;
@@ -617,7 +616,6 @@ struct SideChainWidget : ModuleWidget {
             module->reseedVoices(module->baseSeed);
         }));
 
-        appendPanelThemeMenu(menu);
     }
 };
 

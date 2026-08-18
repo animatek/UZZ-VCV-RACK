@@ -79,8 +79,7 @@ struct UzzX : Module {
 struct UzzXWidget : ModuleWidget {
     UzzXWidget(UzzX* module) {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/UzzX-light.svg"),
-                             asset::plugin(pluginInstance, "res/UzzX.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/UzzX.svg")));
 
         constexpr float W = 30.48f;  // 6 HP
         constexpr float C = W * 0.5f;
@@ -126,7 +125,6 @@ struct UzzXWidget : ModuleWidget {
 
     void appendContextMenu(ui::Menu* menu) override {
         ModuleWidget::appendContextMenu(menu);
-        appendPanelThemeMenu(menu);
     }
 };
 

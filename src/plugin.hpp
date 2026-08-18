@@ -47,23 +47,6 @@ struct UzzExpMsg {
 // Declare the Plugin, defined in plugin.cpp
 extern Plugin* pluginInstance;
 
-// Adds a "Panel" submenu (Light / Dark) that toggles the global
-// settings::preferDarkPanels, so each module can switch the Rack-wide
-// theme from its right-click menu.
-inline void appendPanelThemeMenu(ui::Menu* menu) {
-    menu->addChild(new ui::MenuSeparator);
-    menu->addChild(createSubmenuItem("Panel", "", [](ui::Menu* sub) {
-        sub->addChild(createCheckMenuItem(
-            "Light", "",
-            []() { return !settings::preferDarkPanels; },
-            []() { settings::preferDarkPanels = false; }));
-        sub->addChild(createCheckMenuItem(
-            "Dark", "",
-            []() { return settings::preferDarkPanels; },
-            []() { settings::preferDarkPanels = true; }));
-    }));
-}
-
 // Mensaje del expander ATEK303: el SEQ lo escribe a su derecha y la voz lo lee a su
 // izquierda. Solo se usa para los jacks que la voz tenga sin cablear, así que un cable
 // siempre manda sobre el expander.
@@ -84,6 +67,7 @@ extern Model* modelApc40Ctrl; // APC40 controller CV bridge
 extern Model* modelSideChain; // SIDECHAIN trigger-fired ducking envelope
 extern Model* modelUnitDistanceSeq; // UNIT-D unit-distance graph sequencer
 extern Model* modelBlank3; // 3HP blank panel
+extern Model* modelBlankAcid; // 3HP blank panel, acid smiley marks
 extern Model* modelAtek303;    // ATEK303 TB-303 voice
 extern Model* modelAtek303Seq; // ATEK303 SEQ acid pattern generator
 

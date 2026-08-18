@@ -22,14 +22,16 @@ inline NVGcolor displayBlue(uint8_t alpha = 255) {
   return nvgRGBA(DISPLAY_BLUE_R, DISPLAY_BLUE_G, DISPLAY_BLUE_B, alpha);
 }
 
+// Los paneles Animatek son oscuros y punto: no hay variante clara. Estos colores no
+// pueden depender de settings::preferDarkPanels, que es un ajuste de Rack entero — si
+// alguien lo pone en claro por otros plugins, nuestros paneles seguirían siendo negros
+// y el texto se volvería negro sobre negro.
 inline NVGcolor panelTextColor() {
-  return settings::preferDarkPanels ? nvgRGB(0xC8, 0xD4, 0xE3)
-                                    : nvgRGB(0x14, 0x18, 0x22);
+  return nvgRGB(0xC8, 0xD4, 0xE3);
 }
 
 inline NVGcolor panelSeparatorColor(uint8_t alpha = 180) {
-  return settings::preferDarkPanels ? nvgRGBA(0x9A, 0xA2, 0xB5, alpha)
-                                    : nvgRGBA(0x55, 0x5A, 0x6A, alpha);
+  return nvgRGBA(0x9A, 0xA2, 0xB5, alpha);
 }
 
 inline std::shared_ptr<window::Svg> loadPluginSvg(const char *relPath) {
@@ -142,7 +144,7 @@ struct ConnectorLine : TransparentWidget {
   void draw(const DrawArgs &args) override {
     uint8_t alpha = (uint8_t)((fixedAlpha >= 0)
                                   ? fixedAlpha
-                                  : (settings::preferDarkPanels ? 160 : 180));
+                                  : 160);
     nvgBeginPath(args.vg);
     nvgMoveTo(args.vg, x1 - box.pos.x, y1 - box.pos.y);
     nvgLineTo(args.vg, x2 - box.pos.x, y2 - box.pos.y);

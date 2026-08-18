@@ -699,9 +699,7 @@ using SeparatorLine = HorizontalSeparator;
 struct OxiCvWidget : ModuleWidget {
     OxiCvWidget(OxiCv* module) {
         setModule(module);
-        setPanel(createPanel(
-            asset::plugin(pluginInstance, "res/OxiCv-light.svg"),
-            asset::plugin(pluginInstance, "res/OxiCv.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/OxiCv.svg")));
 
         // Panel is 8HP = 40.64 mm wide (see res/OxiCv.svg)
         static constexpr float LX = 12.0f;
@@ -847,7 +845,6 @@ struct OxiCvWidget : ModuleWidget {
             app::appendMidiMenu(menu, &m->midiInput);
         }
         appendOxiContextMenu(menu, m);
-        appendPanelThemeMenu(menu);
     }
 };
 

@@ -617,8 +617,7 @@ struct Atek303Widget : ModuleWidget {
 
 	Atek303Widget(Atek303* module) {
 		setModule(module);
-		setPanel(createPanel(asset::plugin(pluginInstance, "res/ATEK303-light.svg"),
-		                     asset::plugin(pluginInstance, "res/ATEK303.svg")));
+		setPanel(createPanel(asset::plugin(pluginInstance, "res/ATEK303.svg")));
 
 		auto label = [&](const char* text, float x, float y, float w, float size) {
 			auto* l = new AnimatekUI::TextLabel(text, mm2px(Vec(x - w * 0.5f, y)),
@@ -714,7 +713,6 @@ struct Atek303Widget : ModuleWidget {
 
 	void appendContextMenu(Menu* menu) override {
 		Atek303* module = getModule<Atek303>();
-		appendPanelThemeMenu(menu);
 
 		static const char* MODEL_NAME[3] = {"Circuit", "Open303", "Custom"};
 

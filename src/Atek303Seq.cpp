@@ -561,8 +561,7 @@ struct Atek303SeqWidget : ModuleWidget {
 
 	Atek303SeqWidget(Atek303Seq* module) {
 		setModule(module);
-		setPanel(createPanel(asset::plugin(pluginInstance, "res/ATEK303SEQ-light.svg"),
-		                     asset::plugin(pluginInstance, "res/ATEK303SEQ.svg")));
+		setPanel(createPanel(asset::plugin(pluginInstance, "res/ATEK303SEQ.svg")));
 
 		auto label = [&](const char* text, float x, float y, float w, float size) {
 			auto* l = new AnimatekUI::TextLabel(text, mm2px(Vec(x - w * 0.5f, y)),
@@ -691,7 +690,6 @@ struct Atek303SeqWidget : ModuleWidget {
 
 	void appendContextMenu(Menu* menu) override {
 		Atek303Seq* module = getModule<Atek303Seq>();
-		appendPanelThemeMenu(menu);
 		menu->addChild(new MenuSeparator);
 		menu->addChild(createMenuLabel(string::f("Pattern v%d · seed %08X",
 		                                     module->pattern.algorithmVersion,

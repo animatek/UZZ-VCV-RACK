@@ -180,9 +180,7 @@ struct ApcVerticalSeparator : widget::TransparentWidget {
 struct Apc40CtrlWidget : ModuleWidget {
     Apc40CtrlWidget(Apc40Ctrl* module) {
         setModule(module);
-        setPanel(createPanel(
-            asset::plugin(pluginInstance, "res/Apc40Ctrl-light.svg"),
-            asset::plugin(pluginInstance, "res/Apc40Ctrl.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/Apc40Ctrl.svg")));
 
         auto title = createWidget<ApcLabel>(mm2px(Vec(0.f, 4.0f)));
         title->box.size = mm2px(Vec(50.8f, 3.5f));
@@ -296,7 +294,6 @@ struct Apc40CtrlWidget : ModuleWidget {
             menu->addChild(new MenuSeparator);
             app::appendMidiMenu(menu, &m->midiInput);
         }
-        appendPanelThemeMenu(menu);
     }
 };
 

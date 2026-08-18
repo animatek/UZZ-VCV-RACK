@@ -1079,8 +1079,7 @@ struct UZZ : Module {
 struct UZZWidget : ModuleWidget {
   UZZWidget(UZZ *module) {
     setModule(module);
-    setPanel(createPanel(asset::plugin(pluginInstance, "res/UZZ-light.svg"),
-                         asset::plugin(pluginInstance, "res/UZZ.svg")));
+    setPanel(createPanel(asset::plugin(pluginInstance, "res/UZZ.svg")));
 
     const int cols = UI::COLS;
     auto Xc = [&](int i) { return UI::colCenter(box.size.x, i); };
@@ -1415,7 +1414,6 @@ struct UZZWidget : ModuleWidget {
     ModuleWidget::appendContextMenu(menu);
     auto *m = dynamic_cast<UZZ *>(module);
 
-    appendPanelThemeMenu(menu);
 
     menu->addChild(new ui::MenuSeparator());
     menu->addChild(createCheckMenuItem(

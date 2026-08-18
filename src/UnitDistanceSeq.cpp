@@ -925,8 +925,7 @@ struct UnitDistanceGraphDisplay : TransparentWidget {
 struct UnitDistanceSeqWidget : ModuleWidget {
     UnitDistanceSeqWidget(UnitDistanceSeq* module) {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/UnitDistanceSeq-light.svg"),
-                             asset::plugin(pluginInstance, "res/UnitDistanceSeq.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/UnitDistanceSeq.svg")));
 
         auto label = [&](const char* text, float x, float y, float w = 20.f) {
             auto* l = new TextLabel(text, mm2px(Vec(x - w * 0.5f, y)), mm2px(Vec(w, 4.f)));
@@ -992,7 +991,6 @@ struct UnitDistanceSeqWidget : ModuleWidget {
     void appendContextMenu(ui::Menu* menu) override {
         ModuleWidget::appendContextMenu(menu);
         auto* m = dynamic_cast<UnitDistanceSeq*>(module);
-        appendPanelThemeMenu(menu);
 
         menu->addChild(new ui::MenuSeparator());
         menu->addChild(createSubmenuItem(

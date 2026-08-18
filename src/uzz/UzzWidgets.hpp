@@ -106,9 +106,7 @@ struct UzzArcKnob : RoundSmallBlackKnob {
         // Track (faint full arc).
         nvgBeginPath(vg);
         nvgArc(vg, cx, cy, r, a0, a0 + sweep, NVG_CW);
-        nvgStrokeColor(vg, settings::preferDarkPanels
-                               ? nvgRGBA(0xFF, 0xFF, 0xFF, 40)
-                               : nvgRGBA(0x00, 0x00, 0x00, 50));
+        nvgStrokeColor(vg, nvgRGBA(0xFF, 0xFF, 0xFF, 40));
         nvgStrokeWidth(vg, 1.4f);
         nvgLineCap(vg, NVG_ROUND);
         nvgStroke(vg);

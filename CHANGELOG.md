@@ -31,6 +31,55 @@ Registro de cambios de los módulos Animatek. Formato basado en
     `Acid*.hpp`, `ui/AtekWidgets.hpp`, `dep/open303` ni `res/ATEK303*.svg`: el script
     avisa si lo has hecho, pero el cambio hay que llevarlo al otro repo.
 
+### Changed
+- **La colección pasa a ser dark-only.** Se borran los diez paneles claros
+  (`res/*-light.svg`) y los diez módulos cargan un único SVG. Desaparece el submenú
+  `Panel` (Light / Dark), que ya no significaría nada.
+  - **No basta con borrar los ficheros**: `panelTextColor()`, `panelSeparatorColor()`,
+    el arco de los knobs de UZZ y la tapa de junta del blank decidían su color según
+    `settings::preferDarkPanels`, que es un ajuste **de Rack entero**, no nuestro. Si se
+    dejaran así, alguien con Rack en modo claro por otros plugins vería nuestros paneles
+    negros con el texto negro. Ahora esos colores son fijos.
+
+### Added (2.6.0, continuación)
+- **BLANK ACID** (slug `BlankAcid`): la variante del blank con caritas acid en vez del
+  logo Animatek. La marca fija inferior también usa la carita para distinguirla de
+  **BLANK 3**. `Blank3.cpp` sirve a las dos variantes.
+- **Lienzo compartido entre blanks contiguos.** Las marcas ya no viven en el panel sino
+  en el grupo: su posición se mide desde el borde izquierdo del bloque de blanks
+  pegados, así que al juntar varios el lienzo se ensancha y una marca cruza de un panel
+  al de al lado sin salto. Cada panel dibuja su rodaja y descarta lo que no le roza. El
+  grupo se corta en cuanto hay un módulo que no es blank, y meter uno por la izquierda
+  desplaza las marcas con su panel para que no den un brinco.
+- **Paleta de la guía de estilo** (artifact "Animatek — Paleta de colores"): cada blank
+  del grupo coge el siguiente color, empezando por el azul primario `#2C7FFF`, el
+  naranja secundario `#FD9A00` —que es justo su complementario— y el verde de acento
+  `#24B979`. Los SVG se tiñen en memoria sobre una copia privada, no sobre la caché de
+  `Svg::load()`, que la comparte todo el plugin.
+- **Dos marcas por panel** en vez de siete, con más opacidad: con siete se solapaban
+  tanto que el conjunto se leía como una mancha en vez de como caras.
+- Menú de botón derecho: **Speed** (0,25x a 8x) y **Mark colour** (Auto por posición, o
+  forzado). Los dos se guardan en el patch y **se aplican a todo el grupo**: si el lienzo
+  es común, sus mandos también lo son. Con "Auto" el grupo sale multicolor; forzando un
+  color, se pinta entero de ese.
+- **Un grupo se ve como un lienzo y no como una reja.** Rack pinta un borde gris
+  alrededor de cada panel; con varios blanks pegados eso dejaba líneas por el medio. Se
+  apaga el `PanelBorder` de serie (vive dentro del framebuffer del panel, así que no
+  puede reaccionar a los vecinos) y se dibuja uno propio que solo pinta los lados que dan
+  al exterior del grupo. Encima queda la hilera del corte entre framebuffers, que se tapa
+  con una tira del color del fondo por debajo de las marcas — si fuera por encima
+  partiría el lienzo justo donde se intenta disimular.
+- **La marca fija de la esquina distingue la variante**: logo Animatek en el BLANK 3 y
+  carita en el BLANK ACID.
+- **Cada blank se queda con su color.** Al entrar en un grupo coge el primer color libre
+  y lo fija; a partir de ahí duplicarlo, copiarlo o moverlo de sitio no se lo cambia. El
+  reparto lo hace solo el primero del grupo: cuando cada módulo se asignaba el suyo,
+  varios lo hacían a la vez leyendo un estado a medias y acababan todos del mismo color.
+  "Auto" en el menú los suelta a todos para volver a repartir.
+- **El logo fijo de la esquina también sigue el color del grupo.** Estaba dentro del SVG
+  del panel, donde no se puede teñir; ahora lo dibuja `BlankBottomLogo` reproduciendo el
+  mismo transform que tenía. En `Blank3.svg` solo quedan el fondo y las dos barras.
+
 ## [2.5.5]
 
 ### Added

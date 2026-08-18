@@ -95,6 +95,15 @@
       ]
     },
     {
+      "slug": "BlankAcid",
+      "name": "BLANK ACID",
+      "description": "3HP blank panel with drifting acid smileys.",
+      "tags": [
+        "Blank",
+        "Utility"
+      ]
+    },
+    {
       "slug": "ATEK303",
       "name": "ATEK303",
       "description": "Emulation of the Roland TB-303 voice: VCO, diode-ladder filter, decay envelope and accent. Cut Off, Resonance, Env Mod, Decay, Accent and Tuning, all six with a CV input and attenuverter. V/Oct, Gate, Accent and Slide inputs.",

@@ -16,6 +16,7 @@ void init(Plugin* p) {
 		p->addModel(modelSideChain); // SIDECHAIN trigger-fired ducking envelope
 		p->addModel(modelUnitDistanceSeq); // UNIT-D unit-distance graph sequencer
 		p->addModel(modelBlank3); // 3HP blank panel
+		p->addModel(modelBlankAcid); // 3HP blank panel, acid smiley marks
 		p->addModel(modelAtek303);    // ATEK303 TB-303 voice
 		p->addModel(modelAtek303Seq); // ATEK303 SEQ acid pattern generator
 

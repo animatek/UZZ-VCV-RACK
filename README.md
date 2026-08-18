@@ -2,6 +2,8 @@
 
 Eleven modules for VCV Rack 2.x by **Javier Melgar (Animatek)**.
 
+![Animatek modules: CAP, ATEK303 SEQ, ATEK303 and blank panels](Manuals/Modulos_animatek.png)
+
 - **UZZ** — Ultimate Ztep Zequencer: a 16-step sequencer with per-row shift, probability, accumulator, and flexible clock.
 - **UZZ-X** — 6HP CV expander for UZZ: bipolar offsets for steps, start, direction, ratio, swing, probability and accumulator, plus absolute step addressing, rotation triggers and a reverse gate.
 - **CAP** — 6HP ducking VCA with sidechain envelope: stereo audio in/out, humanised per hit so the ducking breathes, and self-patchable into a jittered LFO.
@@ -13,6 +15,19 @@ Eleven modules for VCV Rack 2.x by **Javier Melgar (Animatek)**.
 - **BLANK ACID** — 3HP blank panel with animated acid smileys and a shared canvas between adjacent blanks.
 - **ATEK303** — TB-303 voice emulation with circuit, Open303 and custom sound models.
 - **ATEK303 SEQ** — 16-step algorithmic acid pattern generator and ATEK303 expander.
+
+## Manuals
+
+| Modules | English | Español |
+| --- | --- | --- |
+| UZZ + UZZ-X | [Manual](Manuals/UZZ_UZZ-X_Manual_EN.md) | [Manual](Manuals/UZZ_UZZ-X_Manual_ES.md) |
+| ONE + MULTI | [Manual](Manuals/ONE_MULTI_Manual_EN.md) | [Manual](Manuals/ONE_MULTI_Manual_ES.md) |
+| APC40 CTRL | [Manual](Manuals/APC40_CTRL_Manual_EN.md) | [Manual](Manuals/APC40_CTRL_Manual_ES.md) |
+| CAP | [Manual](Manuals/CAP_Manual_EN.md) | [Manual](Manuals/CAP_Manual_ES.md) |
+| UNIT-D | [Manual](Manuals/UNIT-D_Manual_EN.md) | [Manual](Manuals/UNIT-D_Manual_ES.md) |
+| BLANK 3 + BLANK ACID | [Manual](Manuals/BLANKS_Manual_EN.md) | [Manual](Manuals/BLANKS_Manual_ES.md) |
+| ATEK303 | [Manual](Manuals/ATEK303_Manual_EN.md) | [Manual](Manuals/ATEK303_Manual_ES.md) |
+| ATEK303 SEQ | [Manual](Manuals/ATEK303SEQ_Manual_EN.md) | [Manual](Manuals/ATEK303SEQ_Manual_ES.md) |
 
 ---
 

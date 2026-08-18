@@ -1,7 +1,11 @@
 # UNIT-D — Expanded User Manual
 
-**Manual version:** expanded draft 0.2  
-**Module:** UNIT-D for VCV Rack  
+**Manual version:** 1.0
+
+**Plugin version:** Animatek 2.5.5
+
+**Module:** UNIT-D for VCV Rack
+
 **Concept:** compact generative sequencer inspired by unit-distance graphs
 
 ---

@@ -6,10 +6,10 @@ Registro de cambios de los módulos Animatek. Formato basado en
 
 **Regla del repo: no se commitea nada sin apuntar el cambio aquí.**
 
-## [2.6.0]
+## [2.5.5]
 
 ### Added
-- **ATEK303** (20 HP entre los dos) y **ATEK303 SEQ**: emulación del Roland TB-303 y su
+- **ATEK303** y **ATEK303 SEQ** (32 HP entre los dos): emulación del Roland TB-303 y su
   generador de patrones acid, que llegan desde su propio repo
   ([animatek/ATEK303](https://github.com/animatek/ATEK303)).
   - **ATEK303** (12 HP): VCO de rampa modelado del esquema, ladder de diodos con no
@@ -41,7 +41,7 @@ Registro de cambios de los módulos Animatek. Formato basado en
     dejaran así, alguien con Rack en modo claro por otros plugins vería nuestros paneles
     negros con el texto negro. Ahora esos colores son fijos.
 
-### Added (2.6.0, continuación)
+### Added (continuación)
 - **BLANK ACID** (slug `BlankAcid`): la variante del blank con caritas acid en vez del
   logo Animatek. La marca fija inferior también usa la carita para distinguirla de
   **BLANK 3**. `Blank3.cpp` sirve a las dos variantes.
@@ -84,10 +84,10 @@ Registro de cambios de los módulos Animatek. Formato basado en
   un límite interno incoherente de 64 paneles.
 - El generador de UZZ deja de recrear `res/UZZ-light.svg`, y el README refleja el
   inventario, los paneles dark-only y el nuevo orden de jacks de CAP.
+- Manuales completos en español e inglés para UZZ/UZZ-X, ONE/MULTI, APC40 CTRL,
+  CAP, BLANK 3/BLANK ACID, ATEK303 y ATEK303 SEQ. El README añade un índice común
+  y una imagen de los módulos nuevos.
 
-## [2.5.5]
-
-### Added
 - **CAP** (slug `SideChain`): nuevo módulo (6HP) — **VCA de ducking** disparado por trigger,
   para hacer pumping sin compresor. Knobs RECOVERY (40 ms–1 s, exponencial,
   250 ms por defecto), DEPTH y JITTER.

@@ -1,7 +1,11 @@
 # UNIT-D — Manual ampliado
 
-**Versión del manual:** borrador ampliado 0.2  
-**Módulo:** UNIT-D para VCV Rack  
+**Versión del manual:** 1.0
+
+**Versión del plugin:** Animatek 2.5.5
+
+**Módulo:** UNIT-D para VCV Rack
+
 **Concepto:** secuenciador generativo compacto inspirado en grafos de distancia unidad
 
 ---

@@ -2,7 +2,7 @@
 
 Eleven modules for VCV Rack 2.x by **Javier Melgar (Animatek)**.
 
-![Animatek modules: CAP, ATEK303 SEQ, ATEK303 and blank panels](Manuals/Modulos_animatek.png)
+![Complete Animatek module collection](Manuals/animatekModules_all.png)
 
 - **UZZ** — Ultimate Ztep Zequencer: a 16-step sequencer with per-row shift, probability, accumulator, and flexible clock.
 - **UZZ-X** — 6HP CV expander for UZZ: bipolar offsets for steps, start, direction, ratio, swing, probability and accumulator, plus absolute step addressing, rotation triggers and a reverse gate.

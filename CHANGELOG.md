@@ -32,6 +32,8 @@ Registro de cambios de los módulos Animatek. Formato basado en
     avisa si lo has hecho, pero el cambio hay que llevarlo al otro repo.
 
 ### Changed
+- Las descripciones del navegador de módulos son más cortas y accesibles: explican el
+  propósito de cada módulo sin enumerar todos sus controles ni detalles internos.
 - **La colección pasa a ser dark-only.** Se borran los diez paneles claros
   (`res/*-light.svg`) y los diez módulos cargan un único SVG. Desaparece el submenú
   `Panel` (Light / Dark), que ya no significaría nada.
@@ -86,7 +88,7 @@ Registro de cambios de los módulos Animatek. Formato basado en
   inventario, los paneles dark-only y el nuevo orden de jacks de CAP.
 - Manuales completos en español e inglés para UZZ/UZZ-X, ONE/MULTI, APC40 CTRL,
   CAP, BLANK 3/BLANK ACID, ATEK303 y ATEK303 SEQ. El README añade un índice común
-  y una imagen de los módulos nuevos.
+  y una imagen de la colección completa.
 
 - **CAP** (slug `SideChain`): nuevo módulo (6HP) — **VCA de ducking** disparado por trigger,
   para hacer pumping sin compresor. Knobs RECOVERY (40 ms–1 s, exponencial,
@@ -167,6 +169,8 @@ Registro de cambios de los módulos Animatek. Formato basado en
   junto al panel al bajar el brillo de sala; ahora sigue visible y late.
 
 ### Fixed
+- `plugin.json` usa únicamente etiquetas oficiales y canónicas del Rack SDK; se elimina
+  `Monophonic`, que no existe en el catálogo de tags.
 - **UNIT-D**: `polyVoices` y `polyUseVoiceSeeds` (menú contextual) ahora se
   persisten en el patch (`dataToJson`/`dataFromJson`); antes cada recarga
   volvía a 1 voz con seed compartida.

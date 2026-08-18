@@ -1,6 +1,6 @@
 # Animatek VCV Rack Plugin
 
-Eight modules for VCV Rack 2.x by **Javier Melgar (Animatek)**.
+Eleven modules for VCV Rack 2.x by **Javier Melgar (Animatek)**.
 
 - **UZZ** — Ultimate Ztep Zequencer: a 16-step sequencer with per-row shift, probability, accumulator, and flexible clock.
 - **UZZ-X** — 6HP CV expander for UZZ: bipolar offsets for steps, start, direction, ratio, swing, probability and accumulator, plus absolute step addressing, rotation triggers and a reverse gate.
@@ -10,6 +10,9 @@ Eight modules for VCV Rack 2.x by **Javier Melgar (Animatek)**.
 - **APC40 CTRL** — 13HP MIDI-to-CV bridge for the Akai APC40, with all knobs, faders and the master fader on a single panel.
 - **UNIT-D** — deterministic polyphonic generative sequencer based on unit-distance graph walks. Manuals: [EN](Manuals/UNIT-D_Manual_EN.md) / [ES](Manuals/UNIT-D_Manual_ES.md).
 - **BLANK 3** — 3HP blank panel with animated low-opacity Animatek logo pattern and global pause option.
+- **BLANK ACID** — 3HP blank panel with animated acid smileys and a shared canvas between adjacent blanks.
+- **ATEK303** — TB-303 voice emulation with circuit, Open303 and custom sound models.
+- **ATEK303 SEQ** — 16-step algorithmic acid pattern generator and ATEK303 expander.
 
 ---
 
@@ -98,10 +101,10 @@ What separates it from any inverted envelope patched by hand is that **each hit 
 - Fixed 2 ms fall and 12 ms hold at the floor, so retriggering mid-recovery never clicks or steps the level upward.
 - **ENV** rests at 10 V and dips, following TRIG's channel count. Handy for ducking a reverb return or driving a filter in step with the audio path.
 - **EOC** fires a 1 ms trigger when the recovery completes and the envelope is back at rest. A retrigger that cuts the recovery short fires nothing, so EOC always means "the duck has fully released" rather than turning into a copy of TRIG at fast tempos.
-- Layout: knobs down the left with the **TRIG** jack closing the column, the meter-slider alongside them, then **D-CV**, and the audio and CV jacks below — **IN L · IN R**, **OUT L · OUT R**, **ENV · EOC**. Two hairlines tie the trigger group together: one from the TRIG jack across to the slider, one down to the **manual trigger button**, which carries no label because the line already says what it is.
+- Layout: knobs down the left with the **TRIG** jack closing the column, the meter-slider alongside them, then **D-CV**. **ENV · EOC** close the control section above the divider; below it, the audio rows are **IN L · IN R** and **OUT L · OUT R**. Two hairlines tie the trigger group together: one from the TRIG jack across to the slider, one down to the **manual trigger button**, which carries no label because the line already says what it is.
 - **Self-patch EOC into TRIG** and one press of the button sets it free-running: the cycle is 2 ms fall + 12 ms hold + recovery, so it oscillates from about 1 Hz to 18.5 Hz — a function generator whose every cycle differs, which a plain LFO cannot do.
 - **DEPTH CV** input, summed with the knob (10 V = 100 %) and clamped.
-- Context menu: **recovery curve** (exponential / linear / logarithmic), **freeze jitter** for A/B comparison, **per-channel envelopes**, **level attenuates ENV** (off by default, so ENV stays a full 0–10 V envelope unless you want the slider to double as a CV attenuator), **reset jitter seed**, and the standard **Panel** theme menu.
+- Context menu: **recovery curve** (exponential / linear / logarithmic), **freeze jitter** for A/B comparison, **per-channel envelopes**, **level attenuates ENV** (off by default, so ENV stays a full 0–10 V envelope unless you want the slider to double as a CV attenuator), and **reset jitter seed**.
 
 ---
 
@@ -120,20 +123,18 @@ A compact deterministic generative sequencer based on unit-distance graph walks.
 - Polyphonic operation from the context menu: **1–8 voices**, with shared seed or per-voice seed graphs.
 - Inputs: **Clock**, **Reset**, **Seed CV** and **Density CV**.
 - Outputs: **V/oct**, **Gate**, **Accent**, **X CV** and **Y CV**.
-- **Panel theme** menu (Dark / Light).
 
 ---
 
-## BLANK 3
+## BLANK 3 / BLANK ACID
 
-A 3HP blank panel for filling small gaps in a Rack patch while keeping the Animatek visual language.
+Two 3HP blank panels for filling small gaps in a Rack patch while keeping the Animatek visual language.
 
 ### Features
 
-- 3HP utility blank with **dark / light** panel artwork.
-- Subtle animated background pattern using the Animatek logo.
+- Dark-only 3HP utility blanks with Animatek logos or acid smileys.
+- Adjacent blanks form a shared animated canvas with configurable speed and colour.
 - Context-menu **Pause animation** option.
-- **Panel theme** menu (Dark / Light).
 
 ---
 

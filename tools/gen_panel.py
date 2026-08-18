@@ -82,10 +82,10 @@ SEPARATOR_WIDTH  = 0.6
 
 THEMES = {
     "dark": {
-        "bg":               "#1A1A1A",
+        "bg":               "#212121",
         "ring":             "#3A4150",
         "separator":        "#33384A",
-        "separator_bright": "#5A6278",
+        "separator_bright": ACCENT_COLOR,
     },
     "light": {
         "bg":               "#E5E5E5",
@@ -106,9 +106,10 @@ def circle(cx, cy, r, stroke, sw=RING_WIDTH, fill="none") -> str:
     return (f'    <circle cx="{cx:g}" cy="{cy:g}" r="{r:g}" '
             f'fill="{fill}" stroke="{stroke}" stroke-width="{sw:g}" />')
 
-def line(x1, y1, x2, y2, stroke, sw=SEPARATOR_WIDTH) -> str:
+def line(x1, y1, x2, y2, stroke, sw=SEPARATOR_WIDTH, opacity=None) -> str:
+    opacity_attr = f' stroke-opacity="{opacity}"' if opacity is not None else ""
     return (f'    <line x1="{x1:g}" y1="{y1:g}" x2="{x2:g}" y2="{y2:g}" '
-            f'stroke="{stroke}" stroke-width="{sw:g}" stroke-linecap="round" />')
+            f'stroke="{stroke}" stroke-width="{sw:g}" stroke-linecap="round"{opacity_attr} />')
 
 def group(ident: str, body: list[str]) -> list[str]:
     out = [f'  <g id="{ident}">']
@@ -172,7 +173,8 @@ def build_svg(theme: str = "dark") -> str:
     # Dividers that extend ALL the way to the bottom accent bar.
     # Index 0 = LEFT (x=48, before step 1); index i = LEFT + i*col_w.
     FULL_HEIGHT_DIVIDERS = {0, 2, 5, 8, 9, 13, 15}  # extend to bottom accent bar
-    BRIGHT_DIVIDERS      = {4, 9, 13}               # slightly brighter colour
+    BRIGHT_DIVIDERS      = {4, 8, 12}               # blue section accents
+    SPLIT_DIVIDERS       = {8, 9, 13}               # separate step and bottom areas
 
     # Pick stroke colour for a given divider index.
     def sep_color(i):
@@ -186,12 +188,14 @@ def build_svg(theme: str = "dark") -> str:
     for i in range(1, COLS):          # 15 vertical lines between steps
         x   = LEFT + i * col_w
         end = y_bot_ex if i in FULL_HEIGHT_DIVIDERS else y_bot
-        if i in BRIGHT_DIVIDERS and i in FULL_HEIGHT_DIVIDERS:
-            # Bright only through the step area; gray for the bottom extension.
-            col_seps.append(line(x, y_top, x, y_bot, stroke=sep_color(i)))
+        if i in SPLIT_DIVIDERS:
+            # Keep the step and bottom sections as separate paths.
+            col_seps.append(line(x, y_top, x, y_bot, stroke=sep_color(i),
+                                 opacity="0.75" if i in BRIGHT_DIVIDERS else None))
             col_seps.append(line(x, y_bot, x, end,   stroke=SEPARATOR_COLOR))
         else:
-            col_seps.append(line(x, y_top, x, end, stroke=sep_color(i)))
+            col_seps.append(line(x, y_top, x, end, stroke=sep_color(i),
+                                 opacity="0.75" if i in BRIGHT_DIVIDERS else None))
     lines += group("col_separators", col_seps)
 
     # (Knob rings are drawn in C++ as value arcs around each UzzArcKnob.)
@@ -231,15 +235,11 @@ def build_svg(theme: str = "dark") -> str:
 
 def main() -> None:
     root = Path(__file__).resolve().parent.parent
-    targets = [
-        ("dark",  root / "res" / "UZZ.svg"),
-        ("light", root / "res" / "UZZ-light.svg"),
-    ]
-    for theme, out in targets:
-        svg = build_svg(theme)
-        out.write_text(svg, encoding="utf-8")
-        print(f"Wrote {out} ({len(svg):,} bytes, theme={theme}, "
-              f"{HP} HP, {WIDTH}x{HEIGHT} px)")
+    out = root / "res" / "UZZ.svg"
+    svg = build_svg("dark")
+    out.write_text(svg, encoding="utf-8")
+    print(f"Wrote {out} ({len(svg):,} bytes, theme=dark, "
+          f"{HP} HP, {WIDTH}x{HEIGHT} px)")
 
 
 if __name__ == "__main__":

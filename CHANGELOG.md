@@ -79,6 +79,11 @@ Registro de cambios de los módulos Animatek. Formato basado en
 - **El logo fijo de la esquina también sigue el color del grupo.** Estaba dentro del SVG
   del panel, donde no se puede teñir; ahora lo dibuja `BlankBottomLogo` reproduciendo el
   mismo transform que tenía. En `Blank3.svg` solo quedan el fondo y las dos barras.
+- Los blanks en bypass siguen actualizando la geometría del grupo; al unir dos grupos,
+  la velocidad del panel izquierdo se aplica a todo el lienzo, y los grupos ya no tienen
+  un límite interno incoherente de 64 paneles.
+- El generador de UZZ deja de recrear `res/UZZ-light.svg`, y el README refleja el
+  inventario, los paneles dark-only y el nuevo orden de jacks de CAP.
 
 ## [2.5.5]
 

@@ -57,6 +57,10 @@ static std::shared_ptr<window::Svg> blankTintedSvg(const char* path, int colorId
 
 // Ancho de un blank, en mm. Todo el lienzo compartido se mide en múltiplos de esto.
 static constexpr float BLANK_PANEL_W = 15.24f;
+// Evita bloquear Rack si la UI observa punteros de expander transitorios durante un
+// movimiento. Es muy superior a cualquier grupo práctico, pero todos los recorridos
+// comparten el mismo límite para no producir geometrías distintas.
+static constexpr int BLANK_GROUP_LIMIT = 1024;
 
 // ¿Es este módulo uno de los blanks? Las dos variantes comparten clase de módulo y
 // solo se distinguen por el Model, así que la cadena admite mezclar logos y caritas.
@@ -147,10 +151,12 @@ struct Blank3 : Module {
     // de process(), que es donde se llama a esto.
     void updateChain() {
         int left = 0, right = 0;
-        for (const Module* m = leftExpander.module; isBlankModule(m); m = m->leftExpander.module)
-            if (++left > 64) break;
-        for (const Module* m = rightExpander.module; isBlankModule(m); m = m->rightExpander.module)
-            if (++right > 64) break;
+        const Module* m = leftExpander.module;
+        for (; left < BLANK_GROUP_LIMIT && isBlankModule(m); m = m->leftExpander.module)
+            left++;
+        m = rightExpander.module;
+        for (; right < BLANK_GROUP_LIMIT && isBlankModule(m); m = m->rightExpander.module)
+            right++;
 
         const int newIndex = left;
         const int newCount = left + right + 1;
@@ -178,21 +184,32 @@ struct Blank3 : Module {
         // repartirían a la vez leyendo un estado a medias —y acababan todos del mismo
         // color—; y al soltar un blank en el rack hay unos milisegundos en los que
         // todavía está solo, antes de que Rack le enganche los vecinos.
-        if (chainStable >= 3 && groupIndex == 0)
+        if (chainStable >= 3 && groupIndex == 0) {
+            // Al unir grupos puede haber velocidades distintas. El primer blank manda,
+            // igual que cuando el menú aplica un ajuste a todo el lienzo compartido.
+            Module* m = rightExpander.module;
+            for (int guard = 0; guard < BLANK_GROUP_LIMIT && isBlankModule(m); guard++) {
+                static_cast<Blank3*>(m)->speed = speed;
+                m = m->rightExpander.module;
+            }
             assignGroupColors();
+        }
     }
 
     /** Reparte colores libres a los blanks del grupo que aún no tengan. Respeta los ya
         asignados, así que un módulo que llega nuevo se coloca en un hueco de la paleta. */
     void assignGroupColors() {
         bool used[BLANK_PALETTE_LEN] = {};
-        for (Module* m = this; isBlankModule(m); m = m->rightExpander.module) {
+        Module* m = this;
+        for (int guard = 0; guard < BLANK_GROUP_LIMIT && isBlankModule(m); guard++) {
             const Blank3* b = static_cast<const Blank3*>(m);
             if (b->colorMode >= 0)
                 used[b->colorMode % BLANK_PALETTE_LEN] = true;
+            m = m->rightExpander.module;
         }
         int seen = 0;
-        for (Module* m = this; isBlankModule(m); m = m->rightExpander.module) {
+        m = this;
+        for (int guard = 0; guard < BLANK_GROUP_LIMIT && isBlankModule(m); guard++) {
             Blank3* b = static_cast<Blank3*>(m);
             if (b->colorMode < 0) {
                 int c = -1;
@@ -205,6 +222,7 @@ struct Blank3 : Module {
                 b->colorMode = c;
             }
             seen++;
+            m = m->rightExpander.module;
         }
     }
 
@@ -246,6 +264,12 @@ struct Blank3 : Module {
             }
         }
     }
+
+    void processBypass(const ProcessArgs& args) override {
+        Module::processBypass(args);
+        if (chainDivider.process())
+            updateChain();
+    }
 };
 
 template <typename F>
@@ -253,10 +277,12 @@ static void blankForEachInGroup(Module* start, F fn) {
     if (!isBlankModule(start))
         return;
     Module* first = start;
-    for (int guard = 0; guard < 64 && isBlankModule(first->leftExpander.module); guard++)
+    for (int guard = 0;
+         guard < BLANK_GROUP_LIMIT && isBlankModule(first->leftExpander.module);
+         guard++)
         first = first->leftExpander.module;
     Module* m = first;
-    for (int guard = 0; guard < 64 && isBlankModule(m); guard++) {
+    for (int guard = 0; guard < BLANK_GROUP_LIMIT && isBlankModule(m); guard++) {
         fn(static_cast<Blank3*>(m));
         m = m->rightExpander.module;
     }
@@ -327,11 +353,13 @@ struct BlankLogoPattern : TransparentWidget {
             // que cada panel dibuja su rodaja y una carita se ve cruzar de uno a otro.
             const float offsetPx = mm2px(module->groupIndex * BLANK_PANEL_W);
             const Module* first = module;
-            for (int guard = 0; guard < 64 && isBlankModule(first->leftExpander.module); guard++)
+            for (int guard = 0;
+                 guard < BLANK_GROUP_LIMIT && isBlankModule(first->leftExpander.module);
+                 guard++)
                 first = first->leftExpander.module;
 
             const Module* m = first;
-            for (int guard = 0; guard < 64 && isBlankModule(m); guard++) {
+            for (int guard = 0; guard < BLANK_GROUP_LIMIT && isBlankModule(m); guard++) {
                 const Blank3* b = static_cast<const Blank3*>(m);
                 const bool acid = (m->model == modelBlankAcid);
                 // Cada panel aporta sus marcas con SU color y SU forma, así que un grupo

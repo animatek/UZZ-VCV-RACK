@@ -564,12 +564,21 @@ struct SideChainWidget : ModuleWidget {
         line(X1 + 4.6f, 54.5f, 17.6f, 54.5f);
         line(X1, 59.1f, X1, 63.7f);
 
-        addIn("IN L", X1, 79.0f, SideChain::IN_L_INPUT);
-        addIn("IN R", X2, 79.0f, SideChain::IN_R_INPUT);
-        addOut("OUT L", X1, 93.0f, SideChain::OUT_L_OUTPUT);
-        addOut("OUT R", X2, 93.0f, SideChain::OUT_R_OUTPUT);
-        addOut("ENV", X1, 107.0f, SideChain::ENV_OUTPUT);
-        addOut("EOC", X2, 107.0f, SideChain::EOC_OUTPUT);
+        // ENV and EOC close the top half: they are what the module makes, same
+        // as the knobs and the slider. The panel hairline (y = 88 in the SVG)
+        // runs just below them and leaves the bottom half to audio alone, what
+        // goes in first and what comes out after.
+        //
+        // Each row is a label plus a jack: the jack centre sits 7.5 mm below
+        // the label and its edge 4.25 mm past that, so 88.0 leaves 2.25 mm of
+        // air above the line and 2.5 mm below. The enum indices stay as they
+        // were, since that is what patches store.
+        addOut("ENV", X1, 74.0f, SideChain::ENV_OUTPUT);
+        addOut("EOC", X2, 74.0f, SideChain::EOC_OUTPUT);
+        addIn("IN L", X1, 90.5f, SideChain::IN_L_INPUT);
+        addIn("IN R", X2, 90.5f, SideChain::IN_R_INPUT);
+        addOut("OUT L", X1, 104.5f, SideChain::OUT_L_OUTPUT);
+        addOut("OUT R", X2, 104.5f, SideChain::OUT_R_OUTPUT);
     }
 
     void appendContextMenu(ui::Menu* menu) override {

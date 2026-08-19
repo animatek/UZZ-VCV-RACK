@@ -6,6 +6,29 @@ Registro de cambios de los módulos Animatek. Formato basado en
 
 **Regla del repo: no se commitea nada sin apuntar el cambio aquí.**
 
+## [2.5.6]
+
+### Fixed
+- **UNIT DISTANCE**: `chooseNextNodeForVoice()` comprueba el rango entero de la voz antes
+  de indexar. En la práctica nunca se desbordaba —todas las llamadas vienen de bucles
+  limitados por `polyVoices`, que ya está acotado—, pero cppcheck no podía demostrarlo y
+  lo marcaba como `containerOutOfBounds` en el análisis estático de la librería de VCV
+  ([#4](https://github.com/animatek/UZZ-VCV-RACK/issues/4)). Se comprueba con una guarda
+  y no con `clamp()` porque cppcheck no sigue el valor de retorno de esa función.
+- **UZZ**: las dieciséis etiquetas de nota y la capibara ya se dibujan en el navegador de
+  módulos y en la web de la librería. Ambos widgets salían con `if (!module) return;`, y
+  ahí el panel se renderiza sin instancia, así que se veía a medias. Las notas caen ahora
+  en los valores por defecto (`C4`) y el contorno de la capibara no depende del módulo;
+  el destello sigue en la capa de luz, que sí lo comprueba.
+- **UNIT DISTANCE**: el display del grafo pintaba solo el recuadro sin módulo. Ahora
+  muestra un anillo de muestra fijo, para que la miniatura no salga hueca.
+- **ONE**: `module` y `ccIndex` de los rótulos dinámicos se declaran inicializados. Se
+  asignaban siempre nada más crear el widget, así que no llegaba a leerse basura, pero
+  cppcheck lo marcaba y no cuesta nada cerrarlo.
+- **CAP**: el miembro `module` de `LevelSlider` pasa a llamarse `sideChain`. Sombreaba el
+  `module` que `ParamWidget` ya trae, que es de otro tipo; con dos nombres iguales en la
+  misma jerarquía es fácil coger el que no es sin que el compilador diga nada.
+
 ## [2.5.5]
 
 ### Added

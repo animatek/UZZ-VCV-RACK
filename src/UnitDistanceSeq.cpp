@@ -621,7 +621,10 @@ struct UnitDistanceSeq : Module {
     }
 
     int chooseNextNodeForVoice(int voice) {
-        if (voice <= 0)
+        // El rango se comprueba entero aquí, no con un clamp: cppcheck no puede
+        // seguir el valor de retorno de clamp() y marcaba los accesos de abajo
+        // como fuera de rango. Una voz inválida cae en la principal.
+        if (voice <= 0 || voice >= MAX_POLY_VOICES)
             return chooseNextNode();
 
         int node = clamp(voiceNodes[voice], 0, nodeCount - 1);
@@ -849,6 +852,48 @@ struct UnitDistanceGraphDisplay : TransparentWidget {
 
     explicit UnitDistanceGraphDisplay(UnitDistanceSeq* module) : module(module) {}
 
+    /** Grafo de muestra para cuando no hay módulo: doce nodos en anillo, las
+    aristas del anillo y sus diagonales cortas, con uno marcado como el actual.
+    Mismo dibujo en cada frame. */
+    template <typename PxFn, typename PyFn>
+    void drawPreviewGraph(const DrawArgs& args, PxFn px, PyFn py) {
+        constexpr int PREVIEW_NODES = 12;
+        constexpr float RADIUS = 0.38f;
+        float nx[PREVIEW_NODES], ny[PREVIEW_NODES];
+        for (int i = 0; i < PREVIEW_NODES; ++i) {
+            float a = 2.f * (float)M_PI * (float)i / (float)PREVIEW_NODES;
+            nx[i] = 0.5f + RADIUS * std::cos(a);
+            ny[i] = 0.5f + RADIUS * std::sin(a);
+        }
+
+        // Cada arista sale una sola vez: yendo siempre hacia adelante, {i, i+1} y
+        // {i, i+2} no se repiten ni chocan entre sí. Nada de saltarse las que dan
+        // la vuelta, o el anillo quedaría abierto por un lado.
+        const int current = 0;
+        for (int i = 0; i < PREVIEW_NODES; ++i) {
+            for (int step : {1, 2}) {
+                int j = (i + step) % PREVIEW_NODES;
+                bool currentEdge = i == current || j == current;
+                nvgBeginPath(args.vg);
+                nvgMoveTo(args.vg, px(nx[i]), py(ny[i]));
+                nvgLineTo(args.vg, px(nx[j]), py(ny[j]));
+                nvgStrokeColor(args.vg, currentEdge ? nvgRGBA(93, 183, 255, 135)
+                                                    : nvgRGBA(130, 150, 170, 45));
+                nvgStrokeWidth(args.vg, currentEdge ? 1.1f : 0.45f);
+                nvgStroke(args.vg);
+            }
+        }
+
+        for (int i = 0; i < PREVIEW_NODES; ++i) {
+            bool cur = i == current;
+            nvgBeginPath(args.vg);
+            nvgCircle(args.vg, px(nx[i]), py(ny[i]), cur ? 3.0f : 1.6f);
+            nvgFillColor(args.vg, cur ? nvgRGBA(225, 80, 220, 245)
+                                      : nvgRGBA(110, 170, 200, 150));
+            nvgFill(args.vg);
+        }
+    }
+
     void draw(const DrawArgs& args) override {
         nvgBeginPath(args.vg);
         nvgRoundedRect(args.vg, 0.f, 0.f, box.size.x, box.size.y, 3.f);
@@ -861,12 +906,17 @@ struct UnitDistanceGraphDisplay : TransparentWidget {
         nvgStrokeWidth(args.vg, 1.f);
         nvgStroke(args.vg);
 
-        if (!module)
-            return;
-
         float pad = 4.f;
         auto px = [&](float x) { return pad + x * (box.size.x - 2.f * pad); };
         auto py = [&](float y) { return pad + (1.f - y) * (box.size.y - 2.f * pad); };
+
+        // El navegador de módulos y la web de la librería dibujan con module ==
+        // nullptr. Sin esto el display sale como un recuadro vacío, así que se
+        // pinta un grafo de muestra: un anillo fijo, sin estado ni aleatoriedad.
+        if (!module) {
+            drawPreviewGraph(args, px, py);
+            return;
+        }
 
         for (int i = 0; i < module->nodeCount; ++i) {
             uint64_t mask = module->neighbors[i];

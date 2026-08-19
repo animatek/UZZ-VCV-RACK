@@ -304,18 +304,19 @@ struct NoteLabel : TransparentWidget {
   }
 
   void draw(const DrawArgs &args) override {
-    if (!module)
-      return;
     if (!font)
       font = APP->window->loadFont(asset::system("res/fonts/ShareTechMono-Regular.ttf"));
     if (!font)
       return;
 
-    int s = (int)std::round(
-        module->params[UZZ::PITCH_PARAMS + stepIndex].getValue());
-    int oct = (int)std::round(
-                  module->params[UZZ::OCT_PARAMS + stepIndex].getValue()) +
-              4;
+    // Sin módulo (navegador y web de la librería) se pintan los valores por
+    // defecto de configParam, que es lo mismo que muestra un UZZ recién puesto.
+    auto paramOr = [&](int paramId, int fallback) {
+      return module ? (int)std::round(module->params[paramId].getValue())
+                    : fallback;
+    };
+    int s = paramOr(UZZ::PITCH_PARAMS + stepIndex, 0);
+    int oct = paramOr(UZZ::OCT_PARAMS + stepIndex, 0) + 4;
     static const char *N[12] = {"C",  "C#", "D",  "D#", "E",  "F",
                                 "F#", "G",  "G#", "A",  "A#", "B"};
     std::string txt = string::f("%s%d", N[(s % 12 + 12) % 12], oct);
@@ -344,11 +345,12 @@ struct CapybaraWidget : Widget {
   }
 
   void draw(const DrawArgs &args) override {
-    if (!module || !svg)
+    if (!svg)
       return;
 
     // Base outline only. The flash moved to the light layer, so it survives
-    // the room dimming instead of fading out with the panel around it.
+    // the room dimming instead of fading out with the panel around it. No
+    // depende del módulo, así que la capibara también sale en el navegador.
     nvgSave(args.vg);
     applyTransform(args.vg);
     svg->draw(args.vg);

@@ -591,7 +591,7 @@ static void appendOxiContextMenu(ui::Menu* menu, OxiCv* m) {
 using StaticLabel = TextLabel;
 
 struct DynamicModeLabel : widget::TransparentWidget {
-    OxiCv* module;
+    OxiCv* module = nullptr;
 
     void drawLayer(const DrawArgs& args, int layer) override {
         if (layer != 1) return;
@@ -650,8 +650,8 @@ struct DynamicModeLabel : widget::TransparentWidget {
 };
 
 struct DynamicCcLabel : widget::TransparentWidget {
-    OxiCv* module;
-    int ccIndex;
+    OxiCv* module = nullptr;
+    int ccIndex = 0;
 
     void drawLayer(const DrawArgs& args, int layer) override {
         if (layer != 1) return;
@@ -671,7 +671,7 @@ struct DynamicCcLabel : widget::TransparentWidget {
 };
 
 struct DynamicClkDivLabel : widget::TransparentWidget {
-    OxiCv* module;
+    OxiCv* module = nullptr;
 
     void drawLayer(const DrawArgs& args, int layer) override {
         if (layer != 1) return;

@@ -399,7 +399,9 @@ struct SideChain : Module {
 the way Fundamental's VCA-1 does. The bar is the gain actually applied, so the
 duck is visible on every hit; the handle is where the ceiling sits. */
 struct LevelSlider : app::SliderKnob {
-    SideChain* module = NULL;
+    // No se llama 'module': ParamWidget ya trae uno (engine::Module*) y
+    // sombrearlo confunde tanto al lector como al análisis estático.
+    SideChain* sideChain = NULL;
 
     LevelSlider() {
         box.size = mm2px(Vec(8.f, 54.f));
@@ -443,14 +445,14 @@ struct LevelSlider : app::SliderKnob {
             const float inset = 1.5f;
             const float track = h - inset * 2.f;
 
-            float gain = module ? clamp(module->meterGain, 0.f, 1.f) : 1.f;
-            float env = module ? clamp(module->meterEnv, 0.f, 1.f) : 1.f;
+            float gain = sideChain ? clamp(sideChain->meterGain, 0.f, 1.f) : 1.f;
+            float env = sideChain ? clamp(sideChain->meterEnv, 0.f, 1.f) : 1.f;
             // Brightness follows the envelope, so a duck reads twice: the bars
             // get shorter and dim at the same time. The floor keeps them from
             // vanishing outright at full depth.
             float lit = 0.30f + 0.70f * env;
 
-            int bars = module ? clamp(module->meterBars, 1, 16) : 1;
+            int bars = sideChain ? clamp(sideChain->meterBars, 1, 16) : 1;
             // The gap has to shrink as bars multiply or there is nothing left
             // to draw: at sixteen, a fixed 0.8 px would eat more than half the
             // 20.6 px of usable width.
@@ -459,7 +461,7 @@ struct LevelSlider : app::SliderKnob {
             const float rounding = (bw < 2.f) ? 0.f : 1.f;
 
             for (int i = 0; i < bars; i++) {
-                float value = module ? clamp(module->meterBar[i], 0.f, 1.f) : gain;
+                float value = sideChain ? clamp(sideChain->meterBar[i], 0.f, 1.f) : gain;
                 float barH = track * value;
                 if (barH <= 0.5f)
                     continue;
@@ -533,7 +535,7 @@ struct SideChainWidget : ModuleWidget {
 
         auto* slider = createParam<LevelSlider>(mm2px(Vec(18.0f, 4.0f)), module,
                                                 SideChain::LEVEL_PARAM);
-        slider->module = module;
+        slider->sideChain = module;
         addParam(slider);
 
         auto addIn = [&](const char* text, float cx, float y, int inputId) {

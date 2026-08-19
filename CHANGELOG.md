@@ -8,6 +8,11 @@ Registro de cambios de los módulos Animatek. Formato basado en
 
 ## [2.5.6]
 
+### Documentation and release tooling
+- Añadido el post bilingüe de Patreon para presentar la colección 2.5.6.
+- Añadida una build de GitHub Actions para generar paquetes Linux x64, Windows x64,
+  macOS Intel y macOS Apple Silicon, y adjuntarlos automáticamente a cada release.
+
 ### Fixed
 - **UNIT DISTANCE**: `chooseNextNodeForVoice()` comprueba el rango entero de la voz antes
   de indexar. En la práctica nunca se desbordaba —todas las llamadas vienen de bucles

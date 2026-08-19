@@ -1,0 +1,118 @@
+name: Build release binaries
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing tag to build and attach to its GitHub release
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  RACK_VERSION: 2.6.6
+
+jobs:
+  build-unix:
+    name: Build ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: lin-x64
+            runner: ubuntu-22.04
+          - arch: mac-x64
+            runner: macos-15-intel
+          - arch: mac-arm64
+            runner: macos-15
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
+
+      - name: Download Rack SDK
+        shell: bash
+        run: |
+          curl --fail --location --retry 3 \
+            "https://vcvrack.com/downloads/Rack-SDK-${RACK_VERSION}-${{ matrix.arch }}.zip" \
+            --output Rack-SDK.zip
+          unzip -q Rack-SDK.zip -d .rack-sdk
+
+      - name: Build package
+        shell: bash
+        run: make -j2 dist RACK_DIR="$PWD/.rack-sdk/Rack-SDK"
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Animatek-${{ matrix.arch }}
+          path: dist/*.vcvplugin
+          if-no-files-found: error
+
+  build-windows:
+    name: Build win-x64
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
+
+      - name: Set up MinGW
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            make
+            unzip
+            zstd
+            mingw-w64-x86_64-gcc
+
+      - name: Download Rack SDK
+        run: |
+          curl --fail --location --retry 3 \
+            "https://vcvrack.com/downloads/Rack-SDK-${RACK_VERSION}-win-x64.zip" \
+            --output Rack-SDK.zip
+          unzip -q Rack-SDK.zip -d .rack-sdk
+
+      - name: Build package
+        run: make -j2 dist RACK_DIR="$PWD/.rack-sdk/Rack-SDK"
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Animatek-win-x64
+          path: dist/*.vcvplugin
+          if-no-files-found: error
+
+  publish:
+    name: Attach packages to release
+    if: startsWith(github.ref, 'refs/tags/') || inputs.release_tag != ''
+    needs:
+      - build-unix
+      - build-windows
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: Animatek-*
+          path: packages
+          merge-multiple: true
+
+      - name: Attach packages to GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: gh release upload "$RELEASE_TAG" packages/*.vcvplugin --clobber --repo "$GITHUB_REPOSITORY"

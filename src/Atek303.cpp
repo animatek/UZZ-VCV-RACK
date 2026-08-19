@@ -10,7 +10,7 @@
 // ---------------------------------------------------------------------------
 // ATEK303 — voz TB-303.
 //
-// Motor actual: Open303 (Robin Schmidt, MIT — ver dep/open303/PROVENANCE.md).
+// Motor actual: Open303 (Robin Schmidt, MIT — ver thirdparty/open303/PROVENANCE.md).
 // Es el motor de referencia; el motor propio derivado del esquema llegará como
 // segunda opción seleccionable, ver ANALISIS.md §9.
 // ---------------------------------------------------------------------------

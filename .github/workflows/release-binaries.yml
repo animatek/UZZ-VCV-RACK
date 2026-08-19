@@ -47,7 +47,15 @@ jobs:
 
       - name: Build package
         shell: bash
-        run: make -j2 dist RACK_DIR="$PWD/.rack-sdk/Rack-SDK"
+        # Misma secuencia que el toolchain de la librería de VCV. El cleandep
+        # es el que importa: borra dep/ entero, así que un fallo por meter
+        # fuentes ahí salta aquí y no en su servidor de compilación.
+        run: |
+          export RACK_DIR="$PWD/.rack-sdk/Rack-SDK"
+          make clean
+          make cleandep
+          make dep
+          make -j2 dist
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
@@ -88,7 +96,15 @@ jobs:
           unzip -q Rack-SDK.zip -d .rack-sdk
 
       - name: Build package
-        run: make -j2 dist RACK_DIR="$PWD/.rack-sdk/Rack-SDK"
+        # Misma secuencia que el toolchain de la librería de VCV. El cleandep
+        # es el que importa: borra dep/ entero, así que un fallo por meter
+        # fuentes ahí salta aquí y no en su servidor de compilación.
+        run: |
+          export RACK_DIR="$PWD/.rack-sdk/Rack-SDK"
+          make clean
+          make cleandep
+          make dep
+          make -j2 dist
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4

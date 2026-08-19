@@ -1,11 +1,10 @@
 # VCV Rack plugin
 /build/
 /dist/
-/dep/*
-# ...salvo el motor Open303 vendorizado, que es código fuente y va al repo. Se
-# excluye el contenido de /dep/ y no el directorio, porque git no puede volver a
-# incluir algo cuyo directorio padre está excluido.
-!/dep/open303/
+# dep/ es del SDK: ahí instala las dependencias que compila el plugin, y
+# `make cleandep` lo borra entero. No poner código fuente aquí; el Open303
+# vendorizado vive en thirdparty/open303/ y sí va al repo.
+/dep/
 /.cache/
 /bin/
 /obj/

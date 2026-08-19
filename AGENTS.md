@@ -27,6 +27,9 @@ Never invent a tag or a category for `plugin.json`. Only the canonical VCV tags 
 
 Every widget that draws must also work with `module == nullptr`: the module browser and the library website render the panel with no instance. Bail out on a missing font or SVG if you like, but never on a missing module — fall back to the `configParam` defaults instead, or the panel shows up blank there. VCV's automated pattern check flags this on submission.
 
+## Vendored Third-Party Code
+Never put hand-vendored source under `dep/`. That path belongs to the SDK: it is where a plugin's own compiled dependencies get installed (`DEP_LOCAL ?= dep` in `dep.mk`), and `make cleandep` does an unconditional `rm -rf dep/`. The library's build toolchain runs `make clean && make cleandep && make dep && make dist` for every platform, so anything of ours living there is deleted before it is ever compiled. Vendored source goes in `thirdparty/<name>/`, with its licence and a `PROVENANCE.md` alongside it.
+
 ## Release Workflow
 Both steps are needed, and a git tag alone is not a release:
 1. Bump `version` in `plugin.json`, add the `CHANGELOG.md` section, and commit.

@@ -3,8 +3,10 @@ RACK_DIR ?= ../..
 
 # FLAGS will be passed to both the C and C++ compiler
 FLAGS += -fno-math-errno
-# Motor Open303 vendorizado (MIT), que usan ATEK303 y ATEK303 SEQ.
-FLAGS += -Idep/open303
+# Motor Open303 vendorizado (MIT), que usan ATEK303 y ATEK303 SEQ. Vive en
+# thirdparty/ y no en dep/: dep/ es el directorio de salida del SDK para las
+# dependencias que un plugin compila, y `make cleandep` lo borra entero.
+FLAGS += -Ithirdparty/open303
 CFLAGS +=
 CXXFLAGS +=
 
@@ -16,14 +18,14 @@ LDFLAGS +=
 SOURCES += $(wildcard src/*.cpp)
 
 # fft4g.c no se lista: lo incluye directamente rosic_FourierTransformerRadix2.cpp.
-SOURCES += $(wildcard dep/open303/*.cpp)
+SOURCES += $(wildcard thirdparty/open303/*.cpp)
 
 # Add files to the ZIP package when running `make dist`
 # The compiled plugin and "plugin.json" are automatically added.
 DISTRIBUTABLES += res
 DISTRIBUTABLES += $(wildcard LICENSE*)
 DISTRIBUTABLES += $(wildcard presets)
-DISTRIBUTABLES += dep/open303/LICENSE-open303.txt
+DISTRIBUTABLES += thirdparty/open303/LICENSE-open303.txt
 
 # Include the Rack plugin Makefile framework
 include $(RACK_DIR)/plugin.mk

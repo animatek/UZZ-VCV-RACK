@@ -6,6 +6,23 @@ Registro de cambios de los módulos Animatek. Formato basado en
 
 **Regla del repo: no se commitea nada sin apuntar el cambio aquí.**
 
+## [2.5.7]
+
+### Fixed
+- **Compilación en la librería de VCV**: el motor Open303 vendorizado se mueve de
+  `dep/open303/` a `thirdparty/open303/`. `dep/` es el directorio de salida del SDK para
+  las dependencias que un plugin compila, y su `make cleandep` hace `rm -rf dep/` sin
+  mirar qué hay dentro. El toolchain de la librería encadena
+  `clean && cleandep && dep && dist` por cada plataforma, así que borraba los 42 ficheros
+  del motor antes de compilarlos y el build moría con `'rosic_Open303.h' file not found`
+  ([#5](https://github.com/animatek/UZZ-VCV-RACK/issues/5)). El `.gitignore` se simplifica:
+  ya no necesita la excepción `!/dep/open303/`.
+
+### Changed
+- El workflow de binarios encadena `clean`, `cleandep`, `dep` y `dist` en vez de llamar a
+  `dist` a secas. Es lo que hace el toolchain de la librería, y es la razón de que este
+  fallo pasara el CI propio y muriese en el suyo.
+
 ## [2.5.6]
 
 ### Documentation and release tooling

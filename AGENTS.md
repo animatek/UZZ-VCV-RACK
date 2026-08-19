@@ -21,3 +21,16 @@ Use Conventional Commits subjects (`feat: add trigger probability control`) writ
 
 ## Asset & UI Workflow
 Editable panels reside in `res/*.afdesign`; export updated SVGs with the same filename using Affinity Designer's "SVG (digital)" preset at 96 DPI. After exporting, confirm knob and port positions match the constants in `UZZ.cpp`, then run `make install` so Rack picks up the art.
+
+## Adding a Module
+Never invent a tag or a category for `plugin.json`. Only the canonical VCV tags are accepted, spelled exactly as the SDK spells them — the authoritative list is `tagAliases` in Rack's `src/tag.cpp` (documented at <https://vcvrack.com/manual/Manifest#modules-tags>), and any alias in the same row is equally valid. An unrecognised tag is silently dropped, so the module ends up unfindable in the browser and on the library website.
+
+Every widget that draws must also work with `module == nullptr`: the module browser and the library website render the panel with no instance. Bail out on a missing font or SVG if you like, but never on a missing module — fall back to the `configParam` defaults instead, or the panel shows up blank there. VCV's automated pattern check flags this on submission.
+
+## Release Workflow
+Both steps are needed, and a git tag alone is not a release:
+1. Bump `version` in `plugin.json`, add the `CHANGELOG.md` section, and commit.
+2. `git tag -a vX.Y.Z` and `git push --follow-tags`.
+3. `gh release create vX.Y.Z --verify-tag --title "vX.Y.Z"` with notes in English: an `Animatek X.Y.Z` line, then `Highlights:` bullets. No binaries are attached — the library builds from source.
+
+Before tagging, run `cppcheck --enable=warning --std=c++11 -I src -I ../Rack-SDK/include src/`; the VCV library runs static analysis on submission and files an issue on this repo when it fails. Note that `clamp()` does not satisfy cppcheck's bounds analysis — it does not follow the return value, so guard indices with an explicit comparison.

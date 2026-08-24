@@ -571,16 +571,30 @@ struct SideChainWidget : ModuleWidget {
                 mm2px(Vec(cx, y + 7.5f)), module, outputId));
         };
 
+        // Un jack sin etiqueta, colocado por su centro y no por la etiqueta que no
+        // tiene. Lo nombra la línea que sube hasta el control que modula.
+        auto addBareIn = [&](float cx, float cy, int inputId) {
+            addInput(createInputCentered<TekInputPort>(
+                mm2px(Vec(cx, cy)), module, inputId));
+        };
         auto line = [&](float ax, float ay, float bx, float by) {
             addChild(new ConnectorLine(mm2px(ax), mm2px(ay), mm2px(bx), mm2px(by)));
         };
 
-        // La fila de los dos CV, al pie del fader. D-CV cuelga del DEPTH: el jack que
-        // modula un mando va debajo del mando, no al otro lado del panel. VCA se le
-        // alinea al lado, y por eso el fader se acorta hasta y = 45: los dos CV que
-        // gobiernan la ganancia y la profundidad se leen en la misma línea.
-        addIn("D-CV", X1, 47.0f, SideChain::DEPTH_CV_INPUT);
-        addIn("VCA", X2, 47.0f, SideChain::VCA_CV_INPUT);
+        // La fila de los dos CV, al pie de la columna de mandos y del fader. Ninguno
+        // lleva etiqueta: cada uno sube por una línea hasta el control al que modula,
+        // que dice más que un texto de cuatro letras —D-CV al mando DEPTH que tiene
+        // justo encima, VCA al fader—. Es el mismo recurso que une el jack TRIG con
+        // su botón, y la razón de que el fader se acorte hasta y = 45.
+        //
+        // Las dos líneas arrancan a la misma altura aunque lo que hay encima no acabe
+        // a la misma: el borde del mando está en 45.24 y el pie del fader en 45.0. A
+        // ojo pesa más que arranquen parejas que el milímetro de aire que se lleva
+        // cada una.
+        addBareIn(X1, 54.5f, SideChain::DEPTH_CV_INPUT);
+        addBareIn(X2, 54.5f, SideChain::VCA_CV_INPUT);
+        line(X1, 45.9f, X1, 49.9f);
+        line(X2, 45.9f, X2, 49.9f);
 
         // La fila del disparo: el jack y el botón que hace su mismo trabajo, unidos
         // por la línea. El botón no lleva etiqueta propia, que es justo para lo que

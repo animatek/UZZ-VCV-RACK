@@ -89,11 +89,11 @@ El número de canales de `TRIG` determina la polifonía de la envolvente y de la
 
 ### D-CV
 
-CV polifónico de profundidad, debajo del mando `DEPTH` al que modula. **10 V suman un 100% de profundidad** y un voltaje negativo la reduce. El resultado de `DEPTH + D-CV / 10 V` se limita a 0-100% y después se aplica la variación con jitter del golpe. El CV se muestrea cuando se dispara cada canal.
+CV polifónico de profundidad. El jack no lleva etiqueta: una línea del panel sube desde él hasta el mando `DEPTH`, que es al que modula. **10 V suman un 100% de profundidad** y un voltaje negativo la reduce. El resultado de `DEPTH + D-CV / 10 V` se limita a 0-100% y después se aplica la variación con jitter del golpe. El CV se muestrea cuando se dispara cada canal.
 
 ### VCA
 
-CV polifónico de ganancia, unipolar y lineal: **0 V cierra la VCA y 10 V deja pasar el tope entero**, y los voltajes negativos se tratan como 0 V. Multiplica lo que fija `LEVEL` en vez de sustituirlo, así que `LEVEL` sigue siendo el techo y el CV recorta desde ahí. Sin cable no atenúa nada, de modo que un patch anterior suena exactamente igual.
+CV polifónico de ganancia. Como `D-CV`, no lleva etiqueta: la línea del panel sube desde el jack hasta el fader `LEVEL`, que es lo que este CV escala. Es unipolar y lineal: **0 V cierra la VCA y 10 V deja pasar el tope entero**, y los voltajes negativos se tratan como 0 V. Multiplica lo que fija `LEVEL` en vez de sustituirlo, así que `LEVEL` sigue siendo el techo y el CV recorta desde ahí. Sin cable no atenúa nada, de modo que un patch anterior suena exactamente igual.
 
 Esta entrada es lo que convierte a CAP en una VCA controlada por tensión de las de siempre: conéctale una envolvente y tienes una VCA normal, con el ducking por trigger disponible encima si lo necesitas. No afecta a `ENV` ni a `EOC`: la envolvente es lo que el módulo genera, no lo que amplifica. El medidor sí la tiene en cuenta, porque muestra la ganancia realmente aplicada.
 

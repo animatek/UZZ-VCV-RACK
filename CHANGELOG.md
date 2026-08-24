@@ -23,7 +23,10 @@ Registro de cambios de los módulos Animatek. Formato basado en
   `DEPTH` pasa a ser el tercer mando para quedar justo encima de `D-CV`, que se muda a la
   columna izquierda: el jack que modula un mando va debajo del mando. `VCA` se le alinea
   al lado, así que los dos CV se leen en la misma fila, y el fader se acorta de 54 a 41 mm
-  para dejarles sitio —sigue siendo el recorrido más largo del panel—. Debajo va la fila
+  para dejarles sitio —sigue siendo el recorrido más largo del panel—. Ninguno de los dos
+  jacks lleva etiqueta: una línea sube desde cada uno hasta el control al que modula,
+  `D-CV` al mando `DEPTH` y `VCA` al fader, que es el mismo recurso con el que el panel
+  une el jack `TRIG` con su botón. Debajo va la fila
   del disparo: el jack `TRIG` y el botón de disparo manual, que se muda a su derecha y
   queda unido a él por la línea del panel, como estaba. `IN L` / `IN R` cierran el bloque,
   así que **todas las entradas quedan por encima de la línea del panel y todas las salidas

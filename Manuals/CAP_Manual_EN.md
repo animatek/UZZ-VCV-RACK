@@ -89,11 +89,11 @@ The number of `TRIG` channels sets the envelope and utility-output polyphony, wi
 
 ### D-CV
 
-Polyphonic depth CV, sitting below the `DEPTH` knob it modulates. **10 V adds 100% depth** and negative voltage reduces depth. The result of `DEPTH + D-CV / 10 V` is limited to 0-100%, then the hit's jitter variation is applied. CV is sampled when the channel triggers.
+Polyphonic depth CV. The jack carries no label: a panel hairline runs from it up to the `DEPTH` knob, which is what it modulates. **10 V adds 100% depth** and negative voltage reduces depth. The result of `DEPTH + D-CV / 10 V` is limited to 0-100%, then the hit's jitter variation is applied. CV is sampled when the channel triggers.
 
 ### VCA
 
-Polyphonic gain CV, unipolar and linear: **0 V closes the VCA and 10 V passes the full ceiling**, with negative voltage treated as 0 V. It multiplies what `LEVEL` sets rather than replacing it, so `LEVEL` stays the ceiling and the CV trims down from there. Unpatched, it attenuates nothing, so an older patch sounds exactly as it did.
+Polyphonic gain CV. Like `D-CV` it carries no label: the panel hairline runs from the jack up to the `LEVEL` fader, which is what this CV scales. It is unipolar and linear: **0 V closes the VCA and 10 V passes the full ceiling**, with negative voltage treated as 0 V. It multiplies what `LEVEL` sets rather than replacing it, so `LEVEL` stays the ceiling and the CV trims down from there. Unpatched, it attenuates nothing, so an older patch sounds exactly as it did.
 
 This input is what makes CAP an ordinary voltage-controlled amplifier: patch an envelope into it and you have a plain VCA, with trigger-fired ducking available on top when you want it. It does not affect `ENV` or `EOC`: the envelope is what the module generates, not what it amplifies. The meter does follow it, since the meter shows the gain actually applied.
 

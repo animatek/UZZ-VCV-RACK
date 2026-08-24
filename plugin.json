@@ -66,7 +66,7 @@
     {
       "slug": "SideChain",
       "name": "CAP",
-      "description": "Stereo ducking VCA that lowers audio on each trigger and recovers with adjustable depth, timing and natural variation. It also provides envelope and end-of-cycle outputs.",
+      "description": "Stereo ducking VCA that lowers audio on each trigger and recovers with adjustable depth, timing and natural variation. A VCA CV input gives ordinary voltage control over gain, and envelope and end-of-cycle outputs are provided.",
       "tags": [
         "Voltage-controlled amplifier",
         "Dynamics",

@@ -28,8 +28,9 @@ CAP handles stereo and polyphonic audio. By default, one envelope is shared by a
 4. Start with `RECOVERY` at **250 ms**, `DEPTH` at **80%**, `JITTER` at **25%**, and `LEVEL` at **100%**.
 5. Shorten `RECOVERY` for tight rhythmic gaps or lengthen it for audible pumping.
 6. Reduce `DEPTH` for subtle movement. Increase `JITTER` when repeated hits should breathe rather than repeat identically.
+7. Patch `VCA` for voltage control over gain: the CV multiplies what `LEVEL` sets, so CAP works as an ordinary VCA even with no trigger arriving.
 
-Press the panel trigger button to audition the duck without patching a trigger source.
+Press the panel trigger button, beside the `TRIG` jack and tied to it by a hairline, to audition the duck without patching a trigger source.
 
 ---
 
@@ -74,7 +75,7 @@ Sets the VCA's maximum gain from **0% to 100%**. Default: **100%**. It scales th
 
 ### Manual trigger button
 
-Starts a duck without an external trigger. The button fires all current envelope channels together and is edge-sensitive, so holding it does not repeatedly retrigger CAP.
+Starts a duck without an external trigger. It takes the left column of the `TRIG` row and a panel hairline ties it to the labelled jack on its right, because they do the same job. Like `D-CV` and `VCA` it carries no label of its own: the line says what it is. The button fires all current envelope channels together and is edge-sensitive, so holding it does not repeatedly retrigger CAP.
 
 ---
 
@@ -82,13 +83,19 @@ Starts a duck without an external trigger. The button fires all current envelope
 
 ### TRIG
 
-Trigger or gate input. It accepts polyphonic signals and uses Schmitt-trigger thresholds: the signal becomes high at **1 V** and must return below **0.1 V** before another rising edge can fire. A sustained gate therefore triggers once.
+Trigger or gate input, in the right column of the `TRIG` row and under its label. It accepts polyphonic signals and uses Schmitt-trigger thresholds: the signal becomes high at **1 V** and must return below **0.1 V** before another rising edge can fire. A sustained gate therefore triggers once.
 
 The number of `TRIG` channels sets the envelope and utility-output polyphony, with a minimum of one channel when no cable is connected.
 
 ### D-CV
 
-Polyphonic depth CV. **10 V adds 100% depth** and negative voltage reduces depth. The result of `DEPTH + D-CV / 10 V` is limited to 0-100%, then the hit's jitter variation is applied. CV is sampled when the channel triggers.
+Polyphonic depth CV. The jack carries no label: a panel hairline runs from it up to the `DEPTH` knob, which is what it modulates. **10 V adds 100% depth** and negative voltage reduces depth. The result of `DEPTH + D-CV / 10 V` is limited to 0-100%, then the hit's jitter variation is applied. CV is sampled when the channel triggers.
+
+### VCA
+
+Polyphonic gain CV. Like `D-CV` it carries no label: the panel hairline runs from the jack up to the `LEVEL` fader, which is what this CV scales. It is unipolar and linear: **0 V closes the VCA and 10 V passes the full ceiling**, with negative voltage treated as 0 V. It multiplies what `LEVEL` sets rather than replacing it, so `LEVEL` stays the ceiling and the CV trims down from there. Unpatched, it attenuates nothing, so an older patch sounds exactly as it did.
+
+This input is what makes CAP an ordinary voltage-controlled amplifier: patch an envelope into it and you have a plain VCA, with trigger-fired ducking available on top when you want it. It does not affect `ENV` or `EOC`: the envelope is what the module generates, not what it amplifies. The meter does follow it, since the meter shows the gain actually applied.
 
 ### IN L
 
@@ -196,7 +203,7 @@ Leave audio unpatched and send triggers to `TRIG`. Patch `ENV` to a filter, wave
 
 ### Self-cycling function generator
 
-Patch `EOC` back to `TRIG`. After one press of the manual trigger button, each completed recovery starts the next cycle. The period is approximately the 2 ms fall, 12 ms hold, and selected recovery combined; jitter makes successive cycles breathe. Break the feedback cable or interrupt the trigger path to stop it.
+Patch `EOC` back to `TRIG`. After pressing the manual trigger button once, each completed recovery starts the next cycle. The period is approximately the 2 ms fall, 12 ms hold, and selected recovery combined; jitter makes successive cycles breathe. Break the feedback cable or interrupt the trigger path to stop it.
 
 ---
 

@@ -28,8 +28,9 @@ CAP admite audio estéreo y polifónico. Por defecto, todo el audio comparte una
 4. Empieza con `RECOVERY` en **250 ms**, `DEPTH` al **80%**, `JITTER` al **25%** y `LEVEL` al **100%**.
 5. Acorta `RECOVERY` para abrir huecos rítmicos ajustados o alárgalo para obtener bombeo audible.
 6. Reduce `DEPTH` para un movimiento sutil. Aumenta `JITTER` cuando quieras que los golpes repetidos respiren en vez de ser idénticos.
+7. Conecta `VCA` si quieres controlar la ganancia por tensión: el CV multiplica lo que fija `LEVEL`, así que CAP funciona como una VCA normal aunque no le llegue ningún trigger.
 
-Pulsa el botón de trigger del panel para escuchar el duck sin conectar una fuente de triggers.
+Pulsa el botón de trigger del panel, al lado del jack `TRIG` y unido a él por una línea, para escuchar el duck sin conectar una fuente de triggers.
 
 ---
 
@@ -74,7 +75,7 @@ Fija la ganancia máxima del VCA entre **0% y 100%**. Valor por defecto: **100%*
 
 ### Botón de trigger manual
 
-Inicia un duck sin trigger externo. El botón dispara a la vez todos los canales de envolvente actuales y detecta flancos, por lo que mantenerlo pulsado no redispara CAP continuamente.
+Inicia un duck sin trigger externo. Ocupa la columna izquierda de la fila `TRIG` y una línea del panel lo une con el jack etiquetado que tiene a la derecha, porque hacen el mismo trabajo. Como `D-CV` y `VCA`, no lleva etiqueta propia: la línea dice lo que es. El botón dispara a la vez todos los canales de envolvente actuales y detecta flancos, por lo que mantenerlo pulsado no redispara CAP continuamente.
 
 ---
 
@@ -82,13 +83,19 @@ Inicia un duck sin trigger externo. El botón dispara a la vez todos los canales
 
 ### TRIG
 
-Entrada de trigger o gate. Admite señales polifónicas y usa umbrales Schmitt: la señal pasa a estado alto al alcanzar **1 V** y debe volver por debajo de **0,1 V** antes de que otro flanco ascendente pueda disparar. Por tanto, un gate sostenido dispara una sola vez.
+Entrada de trigger o gate, en la columna derecha de la fila `TRIG` y bajo su etiqueta. Admite señales polifónicas y usa umbrales Schmitt: la señal pasa a estado alto al alcanzar **1 V** y debe volver por debajo de **0,1 V** antes de que otro flanco ascendente pueda disparar. Por tanto, un gate sostenido dispara una sola vez.
 
 El número de canales de `TRIG` determina la polifonía de la envolvente y de las salidas auxiliares, con un mínimo de un canal cuando no hay cable.
 
 ### D-CV
 
-CV polifónico de profundidad. **10 V suman un 100% de profundidad** y un voltaje negativo la reduce. El resultado de `DEPTH + D-CV / 10 V` se limita a 0-100% y después se aplica la variación con jitter del golpe. El CV se muestrea cuando se dispara cada canal.
+CV polifónico de profundidad. El jack no lleva etiqueta: una línea del panel sube desde él hasta el mando `DEPTH`, que es al que modula. **10 V suman un 100% de profundidad** y un voltaje negativo la reduce. El resultado de `DEPTH + D-CV / 10 V` se limita a 0-100% y después se aplica la variación con jitter del golpe. El CV se muestrea cuando se dispara cada canal.
+
+### VCA
+
+CV polifónico de ganancia. Como `D-CV`, no lleva etiqueta: la línea del panel sube desde el jack hasta el fader `LEVEL`, que es lo que este CV escala. Es unipolar y lineal: **0 V cierra la VCA y 10 V deja pasar el tope entero**, y los voltajes negativos se tratan como 0 V. Multiplica lo que fija `LEVEL` en vez de sustituirlo, así que `LEVEL` sigue siendo el techo y el CV recorta desde ahí. Sin cable no atenúa nada, de modo que un patch anterior suena exactamente igual.
+
+Esta entrada es lo que convierte a CAP en una VCA controlada por tensión de las de siempre: conéctale una envolvente y tienes una VCA normal, con el ducking por trigger disponible encima si lo necesitas. No afecta a `ENV` ni a `EOC`: la envolvente es lo que el módulo genera, no lo que amplifica. El medidor sí la tiene en cuenta, porque muestra la ganancia realmente aplicada.
 
 ### IN L
 

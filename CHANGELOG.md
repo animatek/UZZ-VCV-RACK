@@ -8,6 +8,31 @@ Registro de cambios de los módulos Animatek. Formato basado en
 
 ## [No publicado]
 
+### Added
+- **CAP: entrada `VCA`** ([#7](https://github.com/animatek/UZZ-VCV-RACK/issues/7)). CV de
+  ganancia polifónico, unipolar y lineal: 0 V cierra la VCA y 10 V deja pasar el tope
+  entero. Multiplica lo que fija `LEVEL` en vez de sustituirlo, así que el fader sigue
+  siendo el techo y el CV recorta desde ahí, y sin cable no atenúa nada —un patch
+  anterior suena igual—. Es lo que convierte a CAP en una VCA controlada por tensión de
+  las de siempre: con una envolvente conectada ahí es una VCA normal, y el ducking por
+  trigger queda encima para cuando haga falta. No toca `ENV` ni `EOC`; el medidor sí la
+  refleja, porque enseña la ganancia realmente aplicada.
+
+### Changed
+- **CAP: nueva disposición del panel** ([#7](https://github.com/animatek/UZZ-VCV-RACK/issues/7)).
+  `DEPTH` pasa a ser el tercer mando para quedar justo encima de `D-CV`, que se muda a la
+  columna izquierda: el jack que modula un mando va debajo del mando. `VCA` se le alinea
+  al lado, así que los dos CV se leen en la misma fila, y el fader se acorta de 54 a 41 mm
+  para dejarles sitio —sigue siendo el recorrido más largo del panel—. Ninguno de los dos
+  jacks lleva etiqueta: una línea sube desde cada uno hasta el control al que modula,
+  `D-CV` al mando `DEPTH` y `VCA` al fader, que es el mismo recurso con el que el panel
+  une el botón de disparo manual con el jack `TRIG`. Debajo va
+  esa misma fila: el botón a la izquierda, sin etiqueta como los dos CV, y el jack
+  `TRIG` a la derecha bajo la suya, unidos por la línea. `IN L` / `IN R` cierran el bloque,
+  así que **todas las entradas quedan por encima de la línea del panel y todas las salidas
+  por debajo**: `ENV` / `EOC` y luego `OUT L` / `OUT R`. La línea del panel no se mueve de
+  y = 88, así que el SVG no se toca.
+
 ### Fixed
 - **Los blanks se comían la gráfica y dejaban módulos transparentes**
   ([#6](https://github.com/animatek/UZZ-VCV-RACK/issues/6)). El lienzo animado de los

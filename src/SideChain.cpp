@@ -77,7 +77,8 @@ struct SideChain : Module {
     // store, so appending keeps older patches loading onto the right jacks.
     enum ParamId { RECOVERY_PARAM, DEPTH_PARAM, JITTER_PARAM, LEVEL_PARAM,
                    TRIG_PARAM, PARAMS_LEN };
-    enum InputId { TRIG_INPUT, DEPTH_CV_INPUT, IN_L_INPUT, IN_R_INPUT, INPUTS_LEN };
+    enum InputId { TRIG_INPUT, DEPTH_CV_INPUT, IN_L_INPUT, IN_R_INPUT,
+                   VCA_CV_INPUT, INPUTS_LEN };
     enum OutputId { ENV_OUTPUT, OUT_L_OUTPUT, OUT_R_OUTPUT, EOC_OUTPUT, OUTPUTS_LEN };
     enum LightId { LIGHTS_LEN };
 
@@ -153,6 +154,7 @@ struct SideChain : Module {
 
         configInput(TRIG_INPUT, "Trigger");
         configInput(DEPTH_CV_INPUT, "Depth CV");
+        configInput(VCA_CV_INPUT, "VCA CV");
         configInput(IN_L_INPUT, "Audio left");
         configInput(IN_R_INPUT, "Audio right (normalled to left)");
         configOutput(ENV_OUTPUT, "Ducked envelope");
@@ -217,6 +219,20 @@ struct SideChain : Module {
         // handling it apart means holding it down still only fires once: the
         // Schmitt trigger is edge-based.
         float manual = params[TRIG_PARAM].getValue() * 10.f;
+
+        // El atenuador de la VCA. Multiplica la ganancia en vez de sustituir al
+        // fader, así que el fader sigue siendo el tope y el CV recorta desde ahí:
+        // eso es lo que hace de CAP una VCA controlada por tensión normal y
+        // corriente. Unipolar y lineal, 0 V cierra y 10 V deja pasar el tope
+        // entero. Sin cable no atenúa, que es lo que mantiene los patches
+        // anteriores sonando igual. No toca ENV: la envolvente es lo que el módulo
+        // genera, no lo que amplifica.
+        const bool vcaPatched = inputs[VCA_CV_INPUT].isConnected();
+        auto vcaCv = [&](int c) {
+            if (!vcaPatched)
+                return 1.f;
+            return clamp(inputs[VCA_CV_INPUT].getPolyVoltage(c) / 10.f, 0.f, 1.f);
+        };
 
         for (int c = 0; c < channels; c++) {
             Voice& v = voices[c];
@@ -300,7 +316,7 @@ struct SideChain : Module {
         outputs[EOC_OUTPUT].setChannels(channels);
 
         meterEnv = voices[0].level;
-        meterGain = meterEnv * baseLevel;
+        meterGain = meterEnv * baseLevel * vcaCv(0);
 
         // -- Meter --------------------------------------------------------
         bool leftPatched = inputs[IN_L_INPUT].isConnected();
@@ -330,7 +346,7 @@ struct SideChain : Module {
         }
         for (int i = 0; i < meterBars; i++) {
             int e = perChannelEnvelopes ? std::min(i, channels - 1) : 0;
-            meterBar[i] = voices[e].level * baseLevel;
+            meterBar[i] = voices[e].level * baseLevel * vcaCv(i);
         }
 
         // -- VCA ------------------------------------------------------------
@@ -348,7 +364,7 @@ struct SideChain : Module {
             // One envelope for everything unless the user asked otherwise, so
             // a stereo pair ducks symmetrically.
             int e = perChannelEnvelopes ? std::min(c, channels - 1) : 0;
-            float gain = voices[e].level * baseLevel;
+            float gain = voices[e].level * baseLevel * vcaCv(c);
 
             float left = inputs[IN_L_INPUT].getPolyVoltage(c);
             // Right is normalled to left: one cable feeds both outputs, which
@@ -404,7 +420,11 @@ struct LevelSlider : app::SliderKnob {
     SideChain* sideChain = NULL;
 
     LevelSlider() {
-        box.size = mm2px(Vec(8.f, 54.f));
+        // 41 mm y no los 54 de antes: el fader llega hasta el pie de la columna de
+        // mandos y para ahí, porque debajo empieza la fila de D-CV y VCA. Sigue
+        // siendo el recorrido más largo del panel y el medidor no pierde resolución
+        // apreciable: 41 mm son 155 px, de sobra para dieciséis barras.
+        box.size = mm2px(Vec(8.f, 41.f));
     }
 
     void draw(const DrawArgs& args) override {
@@ -529,9 +549,11 @@ struct SideChainWidget : ModuleWidget {
                 mm2px(Vec(X1, y + 8.5f)), module, paramId));
         };
 
+        // DEPTH va el último de los tres para quedar justo encima de su jack de CV,
+        // que es el orden en que se leen: el mando y lo que lo modula, juntos.
         addKnob("RECOVERY", 4.0f, SideChain::RECOVERY_PARAM);
-        addKnob("DEPTH", 18.0f, SideChain::DEPTH_PARAM);
-        addKnob("JITTER", 32.0f, SideChain::JITTER_PARAM);
+        addKnob("JITTER", 18.0f, SideChain::JITTER_PARAM);
+        addKnob("DEPTH", 32.0f, SideChain::DEPTH_PARAM);
 
         auto* slider = createParam<LevelSlider>(mm2px(Vec(18.0f, 4.0f)), module,
                                                 SideChain::LEVEL_PARAM);
@@ -548,36 +570,56 @@ struct SideChainWidget : ModuleWidget {
             addOutput(createOutputCentered<TekOutputPort>(
                 mm2px(Vec(cx, y + 7.5f)), module, outputId));
         };
+
+        // Un jack sin etiqueta, colocado por su centro y no por la etiqueta que no
+        // tiene. Lo nombra la línea que sube hasta el control que modula.
+        auto addBareIn = [&](float cx, float cy, int inputId) {
+            addInput(createInputCentered<TekInputPort>(
+                mm2px(Vec(cx, cy)), module, inputId));
+        };
         auto line = [&](float ax, float ay, float bx, float by) {
             addChild(new ConnectorLine(mm2px(ax), mm2px(ay), mm2px(bx), mm2px(by)));
         };
 
-        // TRIG jack closes the left column, level with the foot of the slider.
-        addIn("TRIG", X1, 47.0f, SideChain::TRIG_INPUT);
-        // The button carries no label of its own: the line down from the jack
-        // says what it is, which is the whole point of drawing it.
+        // La fila de los dos CV, al pie de la columna de mandos y del fader. Ninguno
+        // lleva etiqueta: cada uno sube por una línea hasta el control al que modula,
+        // que dice más que un texto de cuatro letras —D-CV al mando DEPTH que tiene
+        // justo encima, VCA al fader—. Es el mismo recurso que une el jack TRIG con
+        // su botón, y la razón de que el fader se acorte hasta y = 45.
+        //
+        // Las dos líneas arrancan a la misma altura aunque lo que hay encima no acabe
+        // a la misma: el borde del mando está en 45.24 y el pie del fader en 45.0. A
+        // ojo pesa más que arranquen parejas que el milímetro de aire que se lleva
+        // cada una.
+        addBareIn(X1, 54.5f, SideChain::DEPTH_CV_INPUT);
+        addBareIn(X2, 54.5f, SideChain::VCA_CV_INPUT);
+        line(X1, 45.9f, X1, 49.9f);
+        line(X2, 45.9f, X2, 49.9f);
+
+        // La fila del disparo: el botón y el jack que hace su mismo trabajo, unidos
+        // por la línea. La etiqueta va encima del jack que nombra, como en el resto
+        // del panel; el botón no lleva la suya, que es justo para lo que está
+        // dibujada la línea que lo une al jack.
+        addLabel("TRIG", X2, 60.0f, 14.f);
         addParam(createParamCentered<TL1105>(mm2px(Vec(X1, 67.5f)), module,
                                              SideChain::TRIG_PARAM));
-        addIn("D-CV", X2, 60.0f, SideChain::DEPTH_CV_INPUT);
+        addBareIn(X2, 67.5f, SideChain::TRIG_INPUT);
+        // Del borde del botón (radio 2.6 mm) al del jack (radio 4.01 mm), dejando a
+        // cada uno el mismo aire que tenía antes de intercambiarlos.
+        line(X1 + 3.8f, 67.5f, X2 - 4.6f, 67.5f);
 
-        // Two hairlines tie the trigger group together: jack to slider, and
-        // jack down to the button that does the same job.
-        line(X1 + 4.6f, 54.5f, 17.6f, 54.5f);
-        line(X1, 59.1f, X1, 63.7f);
-
-        // ENV and EOC close the top half: they are what the module makes, same
-        // as the knobs and the slider. The panel hairline (y = 88 in the SVG)
-        // runs just below them and leaves the bottom half to audio alone, what
-        // goes in first and what comes out after.
+        // Todo lo que entra, arriba de la línea; todo lo que sale, debajo. La línea
+        // del panel (y = 88 en el SVG) separa los dos bloques sin moverse de donde
+        // estaba: cada fila es una etiqueta y un jack, con el centro del jack 7.5 mm
+        // por debajo de la etiqueta y su borde 4.25 mm más allá, así que 88.0 deja
+        // 2.25 mm de aire por arriba y 2.5 mm por abajo.
         //
-        // Each row is a label plus a jack: the jack centre sits 7.5 mm below
-        // the label and its edge 4.25 mm past that, so 88.0 leaves 2.25 mm of
-        // air above the line and 2.5 mm below. The enum indices stay as they
-        // were, since that is what patches store.
-        addOut("ENV", X1, 74.0f, SideChain::ENV_OUTPUT);
-        addOut("EOC", X2, 74.0f, SideChain::EOC_OUTPUT);
-        addIn("IN L", X1, 90.5f, SideChain::IN_L_INPUT);
-        addIn("IN R", X2, 90.5f, SideChain::IN_R_INPUT);
+        // Los índices de los enums se quedan como estaban, que es lo que guardan los
+        // patches: lo que cambia es dónde se dibuja cada jack, no qué número tiene.
+        addIn("IN L", X1, 74.0f, SideChain::IN_L_INPUT);
+        addIn("IN R", X2, 74.0f, SideChain::IN_R_INPUT);
+        addOut("ENV", X1, 90.5f, SideChain::ENV_OUTPUT);
+        addOut("EOC", X2, 90.5f, SideChain::EOC_OUTPUT);
         addOut("OUT L", X1, 104.5f, SideChain::OUT_L_OUTPUT);
         addOut("OUT R", X2, 104.5f, SideChain::OUT_R_OUTPUT);
     }

@@ -596,15 +596,17 @@ struct SideChainWidget : ModuleWidget {
         line(X1, 45.9f, X1, 49.9f);
         line(X2, 45.9f, X2, 49.9f);
 
-        // La fila del disparo: el jack y el botón que hace su mismo trabajo, unidos
-        // por la línea. El botón no lleva etiqueta propia, que es justo para lo que
-        // está dibujada la línea.
-        addIn("TRIG", X1, 60.0f, SideChain::TRIG_INPUT);
-        addParam(createParamCentered<TL1105>(mm2px(Vec(X2, 67.5f)), module,
+        // La fila del disparo: el botón y el jack que hace su mismo trabajo, unidos
+        // por la línea. La etiqueta se queda en la columna izquierda, encima del
+        // botón, porque nombra la fila entera y no un jack concreto; el botón sigue
+        // sin etiqueta propia, que es justo para lo que está dibujada la línea.
+        addLabel("TRIG", X1, 60.0f, 14.f);
+        addParam(createParamCentered<TL1105>(mm2px(Vec(X1, 67.5f)), module,
                                              SideChain::TRIG_PARAM));
-        // Del borde del jack (radio 4.01 mm) al del botón (radio 2.6 mm), dejando el
-        // mismo aire a cada lado que tenía la línea vertical anterior.
-        line(X1 + 4.6f, 67.5f, X2 - 3.8f, 67.5f);
+        addBareIn(X2, 67.5f, SideChain::TRIG_INPUT);
+        // Del borde del botón (radio 2.6 mm) al del jack (radio 4.01 mm), dejando a
+        // cada uno el mismo aire que tenía antes de intercambiarlos.
+        line(X1 + 3.8f, 67.5f, X2 - 4.6f, 67.5f);
 
         // Todo lo que entra, arriba de la línea; todo lo que sale, debajo. La línea
         // del panel (y = 88 en el SVG) separa los dos bloques sin moverse de donde

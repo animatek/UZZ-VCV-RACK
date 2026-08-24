@@ -75,7 +75,7 @@ Sets the VCA's maximum gain from **0% to 100%**. Default: **100%**. It scales th
 
 ### Manual trigger button
 
-Starts a duck without an external trigger. It sits in the `TRIG` jack's row, to its right and tied to it by a panel hairline, because they do the same job. The button fires all current envelope channels together and is edge-sensitive, so holding it does not repeatedly retrigger CAP.
+Starts a duck without an external trigger. It takes the left column of the `TRIG` row, under the label, and a panel hairline ties it to the jack on its right, because they do the same job. The button fires all current envelope channels together and is edge-sensitive, so holding it does not repeatedly retrigger CAP.
 
 ---
 
@@ -83,7 +83,7 @@ Starts a duck without an external trigger. It sits in the `TRIG` jack's row, to 
 
 ### TRIG
 
-Trigger or gate input. It accepts polyphonic signals and uses Schmitt-trigger thresholds: the signal becomes high at **1 V** and must return below **0.1 V** before another rising edge can fire. A sustained gate therefore triggers once.
+Trigger or gate input, in the right column of the `TRIG` row. The label stays on the left because it names the whole row, button included. It accepts polyphonic signals and uses Schmitt-trigger thresholds: the signal becomes high at **1 V** and must return below **0.1 V** before another rising edge can fire. A sustained gate therefore triggers once.
 
 The number of `TRIG` channels sets the envelope and utility-output polyphony, with a minimum of one channel when no cable is connected.
 

@@ -75,7 +75,7 @@ Fija la ganancia máxima del VCA entre **0% y 100%**. Valor por defecto: **100%*
 
 ### Botón de trigger manual
 
-Inicia un duck sin trigger externo. Está en la fila del jack `TRIG`, a su derecha y unido a él por una línea del panel, porque hacen el mismo trabajo. El botón dispara a la vez todos los canales de envolvente actuales y detecta flancos, por lo que mantenerlo pulsado no redispara CAP continuamente.
+Inicia un duck sin trigger externo. Ocupa la columna izquierda de la fila `TRIG`, bajo la etiqueta, y una línea del panel lo une con el jack que tiene a la derecha, porque hacen el mismo trabajo. El botón dispara a la vez todos los canales de envolvente actuales y detecta flancos, por lo que mantenerlo pulsado no redispara CAP continuamente.
 
 ---
 
@@ -83,7 +83,7 @@ Inicia un duck sin trigger externo. Está en la fila del jack `TRIG`, a su derec
 
 ### TRIG
 
-Entrada de trigger o gate. Admite señales polifónicas y usa umbrales Schmitt: la señal pasa a estado alto al alcanzar **1 V** y debe volver por debajo de **0,1 V** antes de que otro flanco ascendente pueda disparar. Por tanto, un gate sostenido dispara una sola vez.
+Entrada de trigger o gate, en la columna derecha de la fila `TRIG`. La etiqueta se queda en la izquierda porque nombra la fila entera, botón incluido. Admite señales polifónicas y usa umbrales Schmitt: la señal pasa a estado alto al alcanzar **1 V** y debe volver por debajo de **0,1 V** antes de que otro flanco ascendente pueda disparar. Por tanto, un gate sostenido dispara una sola vez.
 
 El número de canales de `TRIG` determina la polifonía de la envolvente y de las salidas auxiliares, con un mínimo de un canal cuando no hay cable.
 

@@ -21,13 +21,14 @@ Registro de cambios de los módulos Animatek. Formato basado en
 ### Changed
 - **CAP: nueva disposición del panel** ([#7](https://github.com/animatek/UZZ-VCV-RACK/issues/7)).
   `DEPTH` pasa a ser el tercer mando para quedar justo encima de `D-CV`, que se muda a la
-  columna izquierda: el jack que modula un mando va debajo del mando. `TRIG` y la nueva
-  `VCA` forman la fila siguiente, e `IN L` / `IN R` cierran el bloque, así que **todas las
-  entradas quedan por encima de la línea del panel y todas las salidas por debajo**:
-  `ENV` / `EOC` y luego `OUT L` / `OUT R`. La línea del panel no se mueve de y = 88.
-- **CAP: se quita el botón de disparo manual.** Era el último índice de `ParamId`, así que
-  los demás no se mueven y Rack descarta por rango los params sobrantes de un patch
-  antiguo. Para disparar a mano, un botón de trigger externo hace el mismo trabajo.
+  columna izquierda: el jack que modula un mando va debajo del mando. `VCA` se le alinea
+  al lado, así que los dos CV se leen en la misma fila, y el fader se acorta de 54 a 41 mm
+  para dejarles sitio —sigue siendo el recorrido más largo del panel—. Debajo va la fila
+  del disparo: el jack `TRIG` y el botón de disparo manual, que se muda a su derecha y
+  queda unido a él por la línea del panel, como estaba. `IN L` / `IN R` cierran el bloque,
+  así que **todas las entradas quedan por encima de la línea del panel y todas las salidas
+  por debajo**: `ENV` / `EOC` y luego `OUT L` / `OUT R`. La línea del panel no se mueve de
+  y = 88, así que el SVG no se toca.
 
 ### Fixed
 - **Los blanks se comían la gráfica y dejaban módulos transparentes**

@@ -30,6 +30,8 @@ CAP admite audio estéreo y polifónico. Por defecto, todo el audio comparte una
 6. Reduce `DEPTH` para un movimiento sutil. Aumenta `JITTER` cuando quieras que los golpes repetidos respiren en vez de ser idénticos.
 7. Conecta `VCA` si quieres controlar la ganancia por tensión: el CV multiplica lo que fija `LEVEL`, así que CAP funciona como una VCA normal aunque no le llegue ningún trigger.
 
+Pulsa el botón de trigger del panel, al lado del jack `TRIG` y unido a él por una línea, para escuchar el duck sin conectar una fuente de triggers.
+
 ---
 
 ## 3. Ciclo de la envolvente
@@ -70,6 +72,10 @@ Al 0%, todos los golpes usan los valores nominales. Los valores altos generan un
 ### LEVEL
 
 Fija la ganancia máxima del VCA entre **0% y 100%**. Valor por defecto: **100%**. Escala el audio tanto en reposo como durante el duck. Por defecto no escala `ENV`; la opción contextual **Level attenuates ENV** cambia este comportamiento.
+
+### Botón de trigger manual
+
+Inicia un duck sin trigger externo. Está en la fila del jack `TRIG`, a su derecha y unido a él por una línea del panel, porque hacen el mismo trabajo. El botón dispara a la vez todos los canales de envolvente actuales y detecta flancos, por lo que mantenerlo pulsado no redispara CAP continuamente.
 
 ---
 
@@ -197,7 +203,7 @@ No conectes audio, envía triggers a `TRIG` y conecta `ENV` a un filtro, wavefol
 
 ### Generador de funciones autocíclico
 
-Conecta `EOC` de vuelta a `TRIG`. Tras un primer trigger externo, cada recuperación completada inicia el siguiente ciclo. El periodo es aproximadamente la suma de la caída de 2 ms, el hold de 12 ms y la recuperación elegida; el jitter hace respirar los ciclos sucesivos. Desconecta el cable de realimentación o interrumpe la ruta de trigger para detenerlo.
+Conecta `EOC` de vuelta a `TRIG`. Tras pulsar una vez el botón de trigger manual, cada recuperación completada inicia el siguiente ciclo. El periodo es aproximadamente la suma de la caída de 2 ms, el hold de 12 ms y la recuperación elegida; el jitter hace respirar los ciclos sucesivos. Desconecta el cable de realimentación o interrumpe la ruta de trigger para detenerlo.
 
 ---
 

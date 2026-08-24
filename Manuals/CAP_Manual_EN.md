@@ -30,6 +30,8 @@ CAP handles stereo and polyphonic audio. By default, one envelope is shared by a
 6. Reduce `DEPTH` for subtle movement. Increase `JITTER` when repeated hits should breathe rather than repeat identically.
 7. Patch `VCA` for voltage control over gain: the CV multiplies what `LEVEL` sets, so CAP works as an ordinary VCA even with no trigger arriving.
 
+Press the panel trigger button, beside the `TRIG` jack and tied to it by a hairline, to audition the duck without patching a trigger source.
+
 ---
 
 ## 3. Envelope cycle
@@ -70,6 +72,10 @@ At 0%, every hit uses the nominal settings. Higher values create more organic mo
 ### LEVEL
 
 Sets the VCA's maximum gain from **0% to 100%**. Default: **100%**. It scales the audio at rest as well as during a duck. By default it does not scale `ENV`; the context-menu option **Level attenuates ENV** changes that behavior.
+
+### Manual trigger button
+
+Starts a duck without an external trigger. It sits in the `TRIG` jack's row, to its right and tied to it by a panel hairline, because they do the same job. The button fires all current envelope channels together and is edge-sensitive, so holding it does not repeatedly retrigger CAP.
 
 ---
 
@@ -197,7 +203,7 @@ Leave audio unpatched and send triggers to `TRIG`. Patch `ENV` to a filter, wave
 
 ### Self-cycling function generator
 
-Patch `EOC` back to `TRIG`. After one external trigger, each completed recovery starts the next cycle. The period is approximately the 2 ms fall, 12 ms hold, and selected recovery combined; jitter makes successive cycles breathe. Break the feedback cable or interrupt the trigger path to stop it.
+Patch `EOC` back to `TRIG`. After pressing the manual trigger button once, each completed recovery starts the next cycle. The period is approximately the 2 ms fall, 12 ms hold, and selected recovery combined; jitter makes successive cycles breathe. Break the feedback cable or interrupt the trigger path to stop it.
 
 ---
 

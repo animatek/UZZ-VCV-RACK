@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 
+using AnimatekUI::ConnectorLine;
 using AnimatekUI::TekInputPort;
 using AnimatekUI::TekOutputPort;
 using AnimatekUI::TextLabel;
@@ -75,10 +76,7 @@ struct SideChain : Module {
     // New entries go at the end of each enum: the indices are what patches
     // store, so appending keeps older patches loading onto the right jacks.
     enum ParamId { RECOVERY_PARAM, DEPTH_PARAM, JITTER_PARAM, LEVEL_PARAM,
-                   PARAMS_LEN };
-    // TRIG_PARAM, el botón de disparo manual, se quitó al reordenar el panel. Era el
-    // último índice, así que ninguno de los que quedan se mueve, y Rack descarta por
-    // rango los params sobrantes de un patch antiguo.
+                   TRIG_PARAM, PARAMS_LEN };
     enum InputId { TRIG_INPUT, DEPTH_CV_INPUT, IN_L_INPUT, IN_R_INPUT,
                    VCA_CV_INPUT, INPUTS_LEN };
     enum OutputId { ENV_OUTPUT, OUT_L_OUTPUT, OUT_R_OUTPUT, EOC_OUTPUT, OUTPUTS_LEN };
@@ -152,6 +150,8 @@ struct SideChain : Module {
         // Ceiling of the VCA. At 100% the module behaves exactly as before it
         // had a slider, so old patches sound unchanged.
         configParam(LEVEL_PARAM, 0.f, 1.f, 1.f, "Level", "%", 0.f, 100.f);
+        configButton(TRIG_PARAM, "Manual trigger");
+
         configInput(TRIG_INPUT, "Trigger");
         configInput(DEPTH_CV_INPUT, "Depth CV");
         configInput(VCA_CV_INPUT, "VCA CV");
@@ -214,6 +214,11 @@ struct SideChain : Module {
         float baseExponent = CURVE_EXPONENTS[curveShape];
         float baseLevel = params[LEVEL_PARAM].getValue();
         float envScale = levelAffectsEnv ? baseLevel : 1.f;
+        // The button fires every channel at once, which is what you want from
+        // a panel control. Summing it into the trigger voltage rather than
+        // handling it apart means holding it down still only fires once: the
+        // Schmitt trigger is edge-based.
+        float manual = params[TRIG_PARAM].getValue() * 10.f;
 
         // El atenuador de la VCA. Multiplica la ganancia en vez de sustituir al
         // fader, así que el fader sigue siendo el tope y el CV recorta desde ahí:
@@ -232,7 +237,7 @@ struct SideChain : Module {
         for (int c = 0; c < channels; c++) {
             Voice& v = voices[c];
 
-            if (v.trigger.process(inputs[TRIG_INPUT].getPolyVoltage(c), 0.1f, 1.0f)) {
+            if (v.trigger.process(inputs[TRIG_INPUT].getPolyVoltage(c) + manual, 0.1f, 1.0f)) {
                 if (!freezeJitter) {
                     v.walkRecovery = walkStep(v.rng, v.walkRecovery);
                     v.walkDepth = walkStep(v.rng, v.walkDepth);
@@ -415,7 +420,11 @@ struct LevelSlider : app::SliderKnob {
     SideChain* sideChain = NULL;
 
     LevelSlider() {
-        box.size = mm2px(Vec(8.f, 54.f));
+        // 41 mm y no los 54 de antes: el fader llega hasta el pie de la columna de
+        // mandos y para ahí, porque debajo empieza la fila de D-CV y VCA. Sigue
+        // siendo el recorrido más largo del panel y el medidor no pierde resolución
+        // apreciable: 41 mm son 155 px, de sobra para dieciséis barras.
+        box.size = mm2px(Vec(8.f, 41.f));
     }
 
     void draw(const DrawArgs& args) override {
@@ -562,15 +571,26 @@ struct SideChainWidget : ModuleWidget {
                 mm2px(Vec(cx, y + 7.5f)), module, outputId));
         };
 
-        // D-CV cuelga del DEPTH, en la columna izquierda: el jack que modula un mando
-        // va debajo del mando, no al otro lado del panel. Ocupa el hueco que deja el
-        // botón de disparo manual, que se ha quitado.
-        addIn("D-CV", X1, 47.0f, SideChain::DEPTH_CV_INPUT);
+        auto line = [&](float ax, float ay, float bx, float by) {
+            addChild(new ConnectorLine(mm2px(ax), mm2px(ay), mm2px(bx), mm2px(by)));
+        };
 
-        // La fila que convierte esto en una VCA normal y corriente: el disparo que
-        // hunde el audio y el CV que lo amplifica, uno al lado del otro.
+        // La fila de los dos CV, al pie del fader. D-CV cuelga del DEPTH: el jack que
+        // modula un mando va debajo del mando, no al otro lado del panel. VCA se le
+        // alinea al lado, y por eso el fader se acorta hasta y = 45: los dos CV que
+        // gobiernan la ganancia y la profundidad se leen en la misma línea.
+        addIn("D-CV", X1, 47.0f, SideChain::DEPTH_CV_INPUT);
+        addIn("VCA", X2, 47.0f, SideChain::VCA_CV_INPUT);
+
+        // La fila del disparo: el jack y el botón que hace su mismo trabajo, unidos
+        // por la línea. El botón no lleva etiqueta propia, que es justo para lo que
+        // está dibujada la línea.
         addIn("TRIG", X1, 60.0f, SideChain::TRIG_INPUT);
-        addIn("VCA", X2, 60.0f, SideChain::VCA_CV_INPUT);
+        addParam(createParamCentered<TL1105>(mm2px(Vec(X2, 67.5f)), module,
+                                             SideChain::TRIG_PARAM));
+        // Del borde del jack (radio 4.01 mm) al del botón (radio 2.6 mm), dejando el
+        // mismo aire a cada lado que tenía la línea vertical anterior.
+        line(X1 + 4.6f, 67.5f, X2 - 3.8f, 67.5f);
 
         // Todo lo que entra, arriba de la línea; todo lo que sale, debajo. La línea
         // del panel (y = 88 en el SVG) separa los dos bloques sin moverse de donde

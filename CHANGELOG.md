@@ -27,8 +27,8 @@ Registro de cambios de los módulos Animatek. Formato basado en
   jacks lleva etiqueta: una línea sube desde cada uno hasta el control al que modula,
   `D-CV` al mando `DEPTH` y `VCA` al fader, que es el mismo recurso con el que el panel
   une el botón de disparo manual con el jack `TRIG`. Debajo va
-  esa misma fila: el botón a la izquierda, bajo la etiqueta `TRIG` —que nombra la fila
-  entera y no un jack concreto—, y el jack a la derecha, unidos por la línea. `IN L` / `IN R` cierran el bloque,
+  esa misma fila: el botón a la izquierda, sin etiqueta como los dos CV, y el jack
+  `TRIG` a la derecha bajo la suya, unidos por la línea. `IN L` / `IN R` cierran el bloque,
   así que **todas las entradas quedan por encima de la línea del panel y todas las salidas
   por debajo**: `ENV` / `EOC` y luego `OUT L` / `OUT R`. La línea del panel no se mueve de
   y = 88, así que el SVG no se toca.

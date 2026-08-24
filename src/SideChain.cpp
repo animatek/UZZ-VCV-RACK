@@ -597,10 +597,10 @@ struct SideChainWidget : ModuleWidget {
         line(X2, 45.9f, X2, 49.9f);
 
         // La fila del disparo: el botón y el jack que hace su mismo trabajo, unidos
-        // por la línea. La etiqueta se queda en la columna izquierda, encima del
-        // botón, porque nombra la fila entera y no un jack concreto; el botón sigue
-        // sin etiqueta propia, que es justo para lo que está dibujada la línea.
-        addLabel("TRIG", X1, 60.0f, 14.f);
+        // por la línea. La etiqueta va encima del jack que nombra, como en el resto
+        // del panel; el botón no lleva la suya, que es justo para lo que está
+        // dibujada la línea que lo une al jack.
+        addLabel("TRIG", X2, 60.0f, 14.f);
         addParam(createParamCentered<TL1105>(mm2px(Vec(X1, 67.5f)), module,
                                              SideChain::TRIG_PARAM));
         addBareIn(X2, 67.5f, SideChain::TRIG_INPUT);

@@ -36,8 +36,11 @@ Thumbs.db
 
 # Claude Code / superpowers (local-only)
 .claude/
-docs/superpowers/
 .fuse_hidden*
+
+# docs/ es la carpeta de trabajo: notas, borradores y textos de promoción que
+# no van al repo público. Nada de aquí se publica.
+/docs/
 
 # Documentos de trabajo privados. Sacromonte ya no vive aquí: tiene su propio
 # repo en ../Sacromonte, con sus notas dentro.

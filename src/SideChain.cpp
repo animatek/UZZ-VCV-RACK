@@ -4,7 +4,6 @@
 #include <algorithm>
 #include <cmath>
 
-using AnimatekUI::ConnectorLine;
 using AnimatekUI::TekInputPort;
 using AnimatekUI::TekOutputPort;
 using AnimatekUI::TextLabel;
@@ -76,8 +75,12 @@ struct SideChain : Module {
     // New entries go at the end of each enum: the indices are what patches
     // store, so appending keeps older patches loading onto the right jacks.
     enum ParamId { RECOVERY_PARAM, DEPTH_PARAM, JITTER_PARAM, LEVEL_PARAM,
-                   TRIG_PARAM, PARAMS_LEN };
-    enum InputId { TRIG_INPUT, DEPTH_CV_INPUT, IN_L_INPUT, IN_R_INPUT, INPUTS_LEN };
+                   PARAMS_LEN };
+    // TRIG_PARAM, el botón de disparo manual, se quitó al reordenar el panel. Era el
+    // último índice, así que ninguno de los que quedan se mueve, y Rack descarta por
+    // rango los params sobrantes de un patch antiguo.
+    enum InputId { TRIG_INPUT, DEPTH_CV_INPUT, IN_L_INPUT, IN_R_INPUT,
+                   VCA_CV_INPUT, INPUTS_LEN };
     enum OutputId { ENV_OUTPUT, OUT_L_OUTPUT, OUT_R_OUTPUT, EOC_OUTPUT, OUTPUTS_LEN };
     enum LightId { LIGHTS_LEN };
 
@@ -149,10 +152,9 @@ struct SideChain : Module {
         // Ceiling of the VCA. At 100% the module behaves exactly as before it
         // had a slider, so old patches sound unchanged.
         configParam(LEVEL_PARAM, 0.f, 1.f, 1.f, "Level", "%", 0.f, 100.f);
-        configButton(TRIG_PARAM, "Manual trigger");
-
         configInput(TRIG_INPUT, "Trigger");
         configInput(DEPTH_CV_INPUT, "Depth CV");
+        configInput(VCA_CV_INPUT, "VCA CV");
         configInput(IN_L_INPUT, "Audio left");
         configInput(IN_R_INPUT, "Audio right (normalled to left)");
         configOutput(ENV_OUTPUT, "Ducked envelope");
@@ -212,16 +214,25 @@ struct SideChain : Module {
         float baseExponent = CURVE_EXPONENTS[curveShape];
         float baseLevel = params[LEVEL_PARAM].getValue();
         float envScale = levelAffectsEnv ? baseLevel : 1.f;
-        // The button fires every channel at once, which is what you want from
-        // a panel control. Summing it into the trigger voltage rather than
-        // handling it apart means holding it down still only fires once: the
-        // Schmitt trigger is edge-based.
-        float manual = params[TRIG_PARAM].getValue() * 10.f;
+
+        // El atenuador de la VCA. Multiplica la ganancia en vez de sustituir al
+        // fader, así que el fader sigue siendo el tope y el CV recorta desde ahí:
+        // eso es lo que hace de CAP una VCA controlada por tensión normal y
+        // corriente. Unipolar y lineal, 0 V cierra y 10 V deja pasar el tope
+        // entero. Sin cable no atenúa, que es lo que mantiene los patches
+        // anteriores sonando igual. No toca ENV: la envolvente es lo que el módulo
+        // genera, no lo que amplifica.
+        const bool vcaPatched = inputs[VCA_CV_INPUT].isConnected();
+        auto vcaCv = [&](int c) {
+            if (!vcaPatched)
+                return 1.f;
+            return clamp(inputs[VCA_CV_INPUT].getPolyVoltage(c) / 10.f, 0.f, 1.f);
+        };
 
         for (int c = 0; c < channels; c++) {
             Voice& v = voices[c];
 
-            if (v.trigger.process(inputs[TRIG_INPUT].getPolyVoltage(c) + manual, 0.1f, 1.0f)) {
+            if (v.trigger.process(inputs[TRIG_INPUT].getPolyVoltage(c), 0.1f, 1.0f)) {
                 if (!freezeJitter) {
                     v.walkRecovery = walkStep(v.rng, v.walkRecovery);
                     v.walkDepth = walkStep(v.rng, v.walkDepth);
@@ -300,7 +311,7 @@ struct SideChain : Module {
         outputs[EOC_OUTPUT].setChannels(channels);
 
         meterEnv = voices[0].level;
-        meterGain = meterEnv * baseLevel;
+        meterGain = meterEnv * baseLevel * vcaCv(0);
 
         // -- Meter --------------------------------------------------------
         bool leftPatched = inputs[IN_L_INPUT].isConnected();
@@ -330,7 +341,7 @@ struct SideChain : Module {
         }
         for (int i = 0; i < meterBars; i++) {
             int e = perChannelEnvelopes ? std::min(i, channels - 1) : 0;
-            meterBar[i] = voices[e].level * baseLevel;
+            meterBar[i] = voices[e].level * baseLevel * vcaCv(i);
         }
 
         // -- VCA ------------------------------------------------------------
@@ -348,7 +359,7 @@ struct SideChain : Module {
             // One envelope for everything unless the user asked otherwise, so
             // a stereo pair ducks symmetrically.
             int e = perChannelEnvelopes ? std::min(c, channels - 1) : 0;
-            float gain = voices[e].level * baseLevel;
+            float gain = voices[e].level * baseLevel * vcaCv(c);
 
             float left = inputs[IN_L_INPUT].getPolyVoltage(c);
             // Right is normalled to left: one cable feeds both outputs, which
@@ -529,9 +540,11 @@ struct SideChainWidget : ModuleWidget {
                 mm2px(Vec(X1, y + 8.5f)), module, paramId));
         };
 
+        // DEPTH va el último de los tres para quedar justo encima de su jack de CV,
+        // que es el orden en que se leen: el mando y lo que lo modula, juntos.
         addKnob("RECOVERY", 4.0f, SideChain::RECOVERY_PARAM);
-        addKnob("DEPTH", 18.0f, SideChain::DEPTH_PARAM);
-        addKnob("JITTER", 32.0f, SideChain::JITTER_PARAM);
+        addKnob("JITTER", 18.0f, SideChain::JITTER_PARAM);
+        addKnob("DEPTH", 32.0f, SideChain::DEPTH_PARAM);
 
         auto* slider = createParam<LevelSlider>(mm2px(Vec(18.0f, 4.0f)), module,
                                                 SideChain::LEVEL_PARAM);
@@ -548,36 +561,29 @@ struct SideChainWidget : ModuleWidget {
             addOutput(createOutputCentered<TekOutputPort>(
                 mm2px(Vec(cx, y + 7.5f)), module, outputId));
         };
-        auto line = [&](float ax, float ay, float bx, float by) {
-            addChild(new ConnectorLine(mm2px(ax), mm2px(ay), mm2px(bx), mm2px(by)));
-        };
 
-        // TRIG jack closes the left column, level with the foot of the slider.
-        addIn("TRIG", X1, 47.0f, SideChain::TRIG_INPUT);
-        // The button carries no label of its own: the line down from the jack
-        // says what it is, which is the whole point of drawing it.
-        addParam(createParamCentered<TL1105>(mm2px(Vec(X1, 67.5f)), module,
-                                             SideChain::TRIG_PARAM));
-        addIn("D-CV", X2, 60.0f, SideChain::DEPTH_CV_INPUT);
+        // D-CV cuelga del DEPTH, en la columna izquierda: el jack que modula un mando
+        // va debajo del mando, no al otro lado del panel. Ocupa el hueco que deja el
+        // botón de disparo manual, que se ha quitado.
+        addIn("D-CV", X1, 47.0f, SideChain::DEPTH_CV_INPUT);
 
-        // Two hairlines tie the trigger group together: jack to slider, and
-        // jack down to the button that does the same job.
-        line(X1 + 4.6f, 54.5f, 17.6f, 54.5f);
-        line(X1, 59.1f, X1, 63.7f);
+        // La fila que convierte esto en una VCA normal y corriente: el disparo que
+        // hunde el audio y el CV que lo amplifica, uno al lado del otro.
+        addIn("TRIG", X1, 60.0f, SideChain::TRIG_INPUT);
+        addIn("VCA", X2, 60.0f, SideChain::VCA_CV_INPUT);
 
-        // ENV and EOC close the top half: they are what the module makes, same
-        // as the knobs and the slider. The panel hairline (y = 88 in the SVG)
-        // runs just below them and leaves the bottom half to audio alone, what
-        // goes in first and what comes out after.
+        // Todo lo que entra, arriba de la línea; todo lo que sale, debajo. La línea
+        // del panel (y = 88 en el SVG) separa los dos bloques sin moverse de donde
+        // estaba: cada fila es una etiqueta y un jack, con el centro del jack 7.5 mm
+        // por debajo de la etiqueta y su borde 4.25 mm más allá, así que 88.0 deja
+        // 2.25 mm de aire por arriba y 2.5 mm por abajo.
         //
-        // Each row is a label plus a jack: the jack centre sits 7.5 mm below
-        // the label and its edge 4.25 mm past that, so 88.0 leaves 2.25 mm of
-        // air above the line and 2.5 mm below. The enum indices stay as they
-        // were, since that is what patches store.
-        addOut("ENV", X1, 74.0f, SideChain::ENV_OUTPUT);
-        addOut("EOC", X2, 74.0f, SideChain::EOC_OUTPUT);
-        addIn("IN L", X1, 90.5f, SideChain::IN_L_INPUT);
-        addIn("IN R", X2, 90.5f, SideChain::IN_R_INPUT);
+        // Los índices de los enums se quedan como estaban, que es lo que guardan los
+        // patches: lo que cambia es dónde se dibuja cada jack, no qué número tiene.
+        addIn("IN L", X1, 74.0f, SideChain::IN_L_INPUT);
+        addIn("IN R", X2, 74.0f, SideChain::IN_R_INPUT);
+        addOut("ENV", X1, 90.5f, SideChain::ENV_OUTPUT);
+        addOut("EOC", X2, 90.5f, SideChain::EOC_OUTPUT);
         addOut("OUT L", X1, 104.5f, SideChain::OUT_L_OUTPUT);
         addOut("OUT R", X2, 104.5f, SideChain::OUT_R_OUTPUT);
     }

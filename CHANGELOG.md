@@ -8,6 +8,27 @@ Registro de cambios de los módulos Animatek. Formato basado en
 
 ## [No publicado]
 
+### Added
+- **CAP: entrada `VCA`** ([#7](https://github.com/animatek/UZZ-VCV-RACK/issues/7)). CV de
+  ganancia polifónico, unipolar y lineal: 0 V cierra la VCA y 10 V deja pasar el tope
+  entero. Multiplica lo que fija `LEVEL` en vez de sustituirlo, así que el fader sigue
+  siendo el techo y el CV recorta desde ahí, y sin cable no atenúa nada —un patch
+  anterior suena igual—. Es lo que convierte a CAP en una VCA controlada por tensión de
+  las de siempre: con una envolvente conectada ahí es una VCA normal, y el ducking por
+  trigger queda encima para cuando haga falta. No toca `ENV` ni `EOC`; el medidor sí la
+  refleja, porque enseña la ganancia realmente aplicada.
+
+### Changed
+- **CAP: nueva disposición del panel** ([#7](https://github.com/animatek/UZZ-VCV-RACK/issues/7)).
+  `DEPTH` pasa a ser el tercer mando para quedar justo encima de `D-CV`, que se muda a la
+  columna izquierda: el jack que modula un mando va debajo del mando. `TRIG` y la nueva
+  `VCA` forman la fila siguiente, e `IN L` / `IN R` cierran el bloque, así que **todas las
+  entradas quedan por encima de la línea del panel y todas las salidas por debajo**:
+  `ENV` / `EOC` y luego `OUT L` / `OUT R`. La línea del panel no se mueve de y = 88.
+- **CAP: se quita el botón de disparo manual.** Era el último índice de `ParamId`, así que
+  los demás no se mueven y Rack descarta por rango los params sobrantes de un patch
+  antiguo. Para disparar a mano, un botón de trigger externo hace el mismo trabajo.
+
 ### Fixed
 - **Los blanks se comían la gráfica y dejaban módulos transparentes**
   ([#6](https://github.com/animatek/UZZ-VCV-RACK/issues/6)). El lienzo animado de los

@@ -6,7 +6,7 @@ Eleven modules for VCV Rack 2.x by **Javier Melgar (Animatek)**.
 
 - **UZZ** — Ultimate Ztep Zequencer: a 16-step sequencer with per-row shift, probability, accumulator, and flexible clock.
 - **UZZ-X** — 6HP CV expander for UZZ: bipolar offsets for steps, start, direction, ratio, swing, probability and accumulator, plus absolute step addressing, rotation triggers and a reverse gate.
-- **CAP** — 6HP ducking VCA with sidechain envelope: stereo audio in/out, humanised per hit so the ducking breathes, and self-patchable into a jittered LFO.
+- **CAP** — 6HP ducking VCA with sidechain envelope: stereo audio in/out, a VCA CV input for ordinary voltage control over gain, humanised per hit so the ducking breathes, and self-patchable into a jittered LFO.
 - **ONE** — 6HP MIDI-to-CV interface designed for the Oxi One controller.
 - **MULTI** — 10HP expander for ONE with 8 configurable multi-track outputs.
 - **APC40 CTRL** — 13HP MIDI-to-CV bridge for the Akai APC40, with all knobs, faders and the master fader on a single panel.
@@ -116,8 +116,9 @@ What separates it from any inverted envelope patched by hand is that **each hit 
 - Fixed 2 ms fall and 12 ms hold at the floor, so retriggering mid-recovery never clicks or steps the level upward.
 - **ENV** rests at 10 V and dips, following TRIG's channel count. Handy for ducking a reverb return or driving a filter in step with the audio path.
 - **EOC** fires a 1 ms trigger when the recovery completes and the envelope is back at rest. A retrigger that cuts the recovery short fires nothing, so EOC always means "the duck has fully released" rather than turning into a copy of TRIG at fast tempos.
-- Layout: knobs down the left with the **TRIG** jack closing the column, the meter-slider alongside them, then **D-CV**. **ENV · EOC** close the control section above the divider; below it, the audio rows are **IN L · IN R** and **OUT L · OUT R**. Two hairlines tie the trigger group together: one from the TRIG jack across to the slider, one down to the **manual trigger button**, which carries no label because the line already says what it is.
-- **Self-patch EOC into TRIG** and one press of the button sets it free-running: the cycle is 2 ms fall + 12 ms hold + recovery, so it oscillates from about 1 Hz to 18.5 Hz — a function generator whose every cycle differs, which a plain LFO cannot do.
+- **VCA CV** input for plain voltage control over gain: unipolar and linear, 0 V closes and 10 V passes the full ceiling, multiplying what the LEVEL slider sets rather than replacing it. Unpatched it attenuates nothing, so older patches are untouched. Patch an envelope into it and CAP is an ordinary VCA, with the trigger-fired ducking sitting on top when you want it. It does not touch ENV or EOC, but the meter follows it, since the meter shows the gain actually applied.
+- Layout: **RECOVERY · JITTER · DEPTH** down the left with the meter-slider alongside them, then **D-CV** directly under the DEPTH knob it modulates. **TRIG · VCA** make the row below, and **IN L · IN R** close the block: everything that goes in sits above the divider. Below it, everything that comes out — **ENV · EOC**, then **OUT L · OUT R**.
+- **Self-patch EOC into TRIG** and one trigger sets it free-running: the cycle is 2 ms fall + 12 ms hold + recovery, so it oscillates from about 1 Hz to 18.5 Hz — a function generator whose every cycle differs, which a plain LFO cannot do.
 - **DEPTH CV** input, summed with the knob (10 V = 100 %) and clamped.
 - Context menu: **recovery curve** (exponential / linear / logarithmic), **freeze jitter** for A/B comparison, **per-channel envelopes**, **level attenuates ENV** (off by default, so ENV stays a full 0–10 V envelope unless you want the slider to double as a CV attenuator), and **reset jitter seed**.
 

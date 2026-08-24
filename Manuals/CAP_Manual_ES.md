@@ -28,8 +28,7 @@ CAP admite audio estéreo y polifónico. Por defecto, todo el audio comparte una
 4. Empieza con `RECOVERY` en **250 ms**, `DEPTH` al **80%**, `JITTER` al **25%** y `LEVEL` al **100%**.
 5. Acorta `RECOVERY` para abrir huecos rítmicos ajustados o alárgalo para obtener bombeo audible.
 6. Reduce `DEPTH` para un movimiento sutil. Aumenta `JITTER` cuando quieras que los golpes repetidos respiren en vez de ser idénticos.
-
-Pulsa el botón de trigger del panel para escuchar el duck sin conectar una fuente de triggers.
+7. Conecta `VCA` si quieres controlar la ganancia por tensión: el CV multiplica lo que fija `LEVEL`, así que CAP funciona como una VCA normal aunque no le llegue ningún trigger.
 
 ---
 
@@ -72,10 +71,6 @@ Al 0%, todos los golpes usan los valores nominales. Los valores altos generan un
 
 Fija la ganancia máxima del VCA entre **0% y 100%**. Valor por defecto: **100%**. Escala el audio tanto en reposo como durante el duck. Por defecto no escala `ENV`; la opción contextual **Level attenuates ENV** cambia este comportamiento.
 
-### Botón de trigger manual
-
-Inicia un duck sin trigger externo. El botón dispara a la vez todos los canales de envolvente actuales y detecta flancos, por lo que mantenerlo pulsado no redispara CAP continuamente.
-
 ---
 
 ## 5. Entradas
@@ -88,7 +83,13 @@ El número de canales de `TRIG` determina la polifonía de la envolvente y de la
 
 ### D-CV
 
-CV polifónico de profundidad. **10 V suman un 100% de profundidad** y un voltaje negativo la reduce. El resultado de `DEPTH + D-CV / 10 V` se limita a 0-100% y después se aplica la variación con jitter del golpe. El CV se muestrea cuando se dispara cada canal.
+CV polifónico de profundidad, debajo del mando `DEPTH` al que modula. **10 V suman un 100% de profundidad** y un voltaje negativo la reduce. El resultado de `DEPTH + D-CV / 10 V` se limita a 0-100% y después se aplica la variación con jitter del golpe. El CV se muestrea cuando se dispara cada canal.
+
+### VCA
+
+CV polifónico de ganancia, unipolar y lineal: **0 V cierra la VCA y 10 V deja pasar el tope entero**, y los voltajes negativos se tratan como 0 V. Multiplica lo que fija `LEVEL` en vez de sustituirlo, así que `LEVEL` sigue siendo el techo y el CV recorta desde ahí. Sin cable no atenúa nada, de modo que un patch anterior suena exactamente igual.
+
+Esta entrada es lo que convierte a CAP en una VCA controlada por tensión de las de siempre: conéctale una envolvente y tienes una VCA normal, con el ducking por trigger disponible encima si lo necesitas. No afecta a `ENV` ni a `EOC`: la envolvente es lo que el módulo genera, no lo que amplifica. El medidor sí la tiene en cuenta, porque muestra la ganancia realmente aplicada.
 
 ### IN L
 
@@ -196,7 +197,7 @@ No conectes audio, envía triggers a `TRIG` y conecta `ENV` a un filtro, wavefol
 
 ### Generador de funciones autocíclico
 
-Conecta `EOC` de vuelta a `TRIG`. Tras pulsar una vez el botón de trigger manual, cada recuperación completada inicia el siguiente ciclo. El periodo es aproximadamente la suma de la caída de 2 ms, el hold de 12 ms y la recuperación elegida; el jitter hace respirar los ciclos sucesivos. Desconecta el cable de realimentación o interrumpe la ruta de trigger para detenerlo.
+Conecta `EOC` de vuelta a `TRIG`. Tras un primer trigger externo, cada recuperación completada inicia el siguiente ciclo. El periodo es aproximadamente la suma de la caída de 2 ms, el hold de 12 ms y la recuperación elegida; el jitter hace respirar los ciclos sucesivos. Desconecta el cable de realimentación o interrumpe la ruta de trigger para detenerlo.
 
 ---
 

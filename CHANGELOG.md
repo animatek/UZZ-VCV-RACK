@@ -9,6 +9,12 @@ Registro de cambios de los módulos Animatek. Formato basado en
 ## [No publicado]
 
 ### Added
+- **Cada módulo enlaza a su propio manual.** Los once módulos declaran su `manualUrl` en
+  `plugin.json`, apuntando al manual en inglés que tienen en `Manuals/`, así que la opción
+  *Manual* del menú contextual y el enlace de la web de la librería abren la documentación
+  de ese módulo y no una página general. `Model::getManualUrl()` usa el del módulo si
+  existe y solo cae al del plugin si no lo hay, de modo que el `manualUrl` general a
+  animatek.net se queda como estaba para lo que venga en el futuro.
 - **CAP: entrada `VCA`** ([#7](https://github.com/animatek/UZZ-VCV-RACK/issues/7)). CV de
   ganancia polifónico, unipolar y lineal: 0 V cierra la VCA y 10 V deja pasar el tope
   entero. Multiplica lo que fija `LEVEL` en vez de sustituirlo, así que el fader sigue

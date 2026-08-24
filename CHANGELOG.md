@@ -6,6 +6,36 @@ Registro de cambios de los módulos Animatek. Formato basado en
 
 **Regla del repo: no se commitea nada sin apuntar el cambio aquí.**
 
+## [No publicado]
+
+### Fixed
+- **Los blanks se comían la gráfica y dejaban módulos transparentes**
+  ([#6](https://github.com/animatek/UZZ-VCV-RACK/issues/6)). El lienzo animado de los
+  blanks se dibujaba entero en cada cuadro, sin caché: unas nueve figuras translúcidas
+  teseladas y enviadas a la GPU por panel y por cuadro, frente al único blit de textura
+  que cuesta cualquier otro módulo. Con la pantalla llena de blanks eso agota el
+  presupuesto de cuadro de Rack, y al agotarse Rack deja de renderizar los framebuffers
+  sucios: por eso un módulo recién añadido o una ficha del navegador, que todavía no
+  tienen textura, se dibujaban como nada. Ahora el lienzo vive en su propio framebuffer y
+  se repinta doce veces por segundo en vez de sesenta —las marcas derivan 0.0075 mm por
+  cuadro, así que se ve idéntico—, y el resto de los cuadros es un blit como el de
+  cualquier módulo. De propina, el reparto de presupuesto de Rack pasa a jugar a favor:
+  si un cuadro va justo aplaza el repintado del lienzo, que ya tiene textura válida, en
+  vez de dejar sin la suya a un módulo que no tiene ninguna. Gracias a Santi por dar con
+  el fallo.
+- El reparto de colores de un grupo de blanks se ejecutaba en cada comprobación de la
+  cadena y no solo al asentarse, así que el primer blank del grupo la recorría entera
+  veinte veces por segundo desde el hilo de audio sin nada que repartir.
+
+### Changed
+- La caché de SVG teñidos de los blanks pasa de un `std::map` con clave de cadena a una
+  tabla indexada por (variante, color), y se devuelve por referencia. Se consulta una vez
+  por panel y por vecino en cada cuadro, y con la clave de cadena cada consulta reservaba
+  y liberaba memoria.
+- El descarte de marcas fuera del panel usa el semieje real de la marca girada
+  (`lado x 0.7072`) en vez del lado entero, así que cada panel deja de dibujar marcas que
+  quedaban a más de un panel de distancia.
+
 ## [2.5.7]
 
 ### Fixed

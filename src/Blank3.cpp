@@ -1,7 +1,6 @@
 #include "plugin.hpp"
 
 #include <array>
-#include <map>
 
 static bool blank3AnimationPaused = false;
 
@@ -22,37 +21,52 @@ static const BlankMarkColor BLANK_PALETTE[] = {
     {"Cyan",   0x22, 0xD3, 0xEE},
     {"Rose",   0xFB, 0x71, 0x85},
 };
-static const int BLANK_PALETTE_LEN = (int)(sizeof(BLANK_PALETTE) / sizeof(BLANK_PALETTE[0]));
+static constexpr int BLANK_PALETTE_LEN = (int)(sizeof(BLANK_PALETTE) / sizeof(BLANK_PALETTE[0]));
 
 // Una copia privada del SVG con el color cambiado. Svg::load() cachea y comparte la
 // instancia, así que teñir esa rompería el resto del plugin: aquí se carga aparte y se
-// reescribe el fill de cada trazo. Se guarda en una caché propia por (fichero, color)
-// para no reparsear en cada blank.
-static std::shared_ptr<window::Svg> blankTintedSvg(const char* path, int colorIdx) {
-    static std::map<std::pair<std::string, int>, std::shared_ptr<window::Svg>> cache;
-    auto key = std::make_pair(std::string(path), colorIdx);
-    auto it = cache.find(key);
-    if (it != cache.end())
-        return it->second;
+// reescribe el fill de cada trazo.
+//
+// La caché es una tabla indexada por (variante, color), no un mapa con clave de cadena.
+// Esto se llama una vez por panel y por vecino en cada cuadro: con un grupo grande son
+// decenas de miles de llamadas por cuadro, y con la clave de cadena cada una reservaba y
+// liberaba memoria. Ese coste se comía el presupuesto del cuadro, y cuando a Rack no le
+// queda presupuesto deja de renderizar framebuffers sucios: por eso los módulos recién
+// añadidos y las fichas del navegador salían transparentes. Devuelve una referencia para
+// no pagar tampoco el contador atómico del shared_ptr en cada llamada.
+static const std::shared_ptr<window::Svg>& blankTintedSvg(bool acid, int colorIdx) {
+    static std::shared_ptr<window::Svg> cache[2][BLANK_PALETTE_LEN];
 
-    auto svg = std::make_shared<window::Svg>();
-    svg->loadFile(asset::plugin(pluginInstance, path));
-    if (svg->handle) {
-        const BlankMarkColor& c = BLANK_PALETTE[clamp(colorIdx, 0, BLANK_PALETTE_LEN - 1)];
+    // Comparaciones explícitas y no clamp(): el análisis estático de la librería no
+    // sigue el valor de retorno de clamp() y da el índice por no acotado.
+    int ci = colorIdx;
+    if (ci < 0)
+        ci = 0;
+    if (ci >= BLANK_PALETTE_LEN)
+        ci = BLANK_PALETTE_LEN - 1;
+
+    std::shared_ptr<window::Svg>& slot = cache[acid ? 1 : 0][ci];
+    if (slot)
+        return slot;
+
+    slot = std::make_shared<window::Svg>();
+    slot->loadFile(asset::plugin(pluginInstance,
+                                 acid ? "res/AcidLogo.svg" : "res/AnimatekLogo.svg"));
+    if (slot->handle) {
+        const BlankMarkColor& c = BLANK_PALETTE[ci];
         // nanosvg guarda el color como 0xAABBGGRR, no como 0xAARRGGBB.
         const unsigned int abgr = 0xff000000u
                                 | ((unsigned int) c.b << 16)
                                 | ((unsigned int) c.g << 8)
                                 | (unsigned int) c.r;
-        for (NSVGshape* shape = svg->handle->shapes; shape; shape = shape->next) {
+        for (NSVGshape* shape = slot->handle->shapes; shape; shape = shape->next) {
             if (shape->fill.type == NSVG_PAINT_COLOR)
                 shape->fill.color = abgr;
             if (shape->stroke.type == NSVG_PAINT_COLOR)
                 shape->stroke.color = abgr;
         }
     }
-    cache[key] = svg;
-    return svg;
+    return slot;
 }
 
 // Ancho de un blank, en mm. Todo el lienzo compartido se mide en múltiplos de esto.
@@ -184,7 +198,10 @@ struct Blank3 : Module {
         // repartirían a la vez leyendo un estado a medias —y acababan todos del mismo
         // color—; y al soltar un blank en el rack hay unos milisegundos en los que
         // todavía está solo, antes de que Rack le enganche los vecinos.
-        if (chainStable >= 3 && groupIndex == 0) {
+        // Una sola vez, no en cada comprobación: con >= el primer blank de un grupo
+        // largo recorría la cadena entera veinte veces por segundo desde el hilo de
+        // audio sin nada que repartir.
+        if (chainStable == 3 && groupIndex == 0) {
             // Al unir grupos puede haber velocidades distintas. El primer blank manda,
             // igual que cuando el menú aplica un ajuste a todo el lienzo compartido.
             Module* m = rightExpander.module;
@@ -298,8 +315,8 @@ struct BlankLogoPattern : TransparentWidget {
     // el doble de área. Sin corregirlo el blank acid sale mucho más denso que el otro.
     static constexpr float ACID_ALPHA = 0.55f;
 
-    static std::shared_ptr<window::Svg> markSvg(bool acid, int colorIdx) {
-        return blankTintedSvg(acid ? "res/AcidLogo.svg" : "res/AnimatekLogo.svg", colorIdx);
+    static const std::shared_ptr<window::Svg>& markSvg(bool acid, int colorIdx) {
+        return blankTintedSvg(acid, colorIdx);
     }
 
     explicit BlankLogoPattern(bool acid) : acidSelf(acid) {
@@ -314,18 +331,27 @@ struct BlankLogoPattern : TransparentWidget {
         }
     }
 
+    // Semieje horizontal de la marca, en fracción de su lado mayor. Al girar un cuadrado
+    // de lado s su caja crece hasta s·(|cos|+|sin|)/2, que como mucho es s·0.7072. Antes
+    // se descartaba usando el lado entero como radio, así que cada panel se creía rozado
+    // por marcas que quedaban a más de un panel de distancia y las dibujaba igual.
+    static constexpr float MARK_HALF_EXTENT = 0.7072f;
+
     void drawMark(const DrawArgs& args, const Blank3::LogoMark& logo,
                   const std::shared_ptr<window::Svg>& svg, float offsetPx, bool acid) {
+        const float targetSize = mm2px(logo.size);
+        const float cx = mm2px(logo.x) - offsetPx;
+        // La marca puede venir de un panel de al lado: si no roza el mío, ni se dibuja.
+        // Esto va lo primero porque es el caso mayoritario en un grupo largo: la mayor
+        // parte del lienzo queda fuera de cualquier panel dado.
+        const float halfExtent = targetSize * MARK_HALF_EXTENT;
+        if (cx + halfExtent < 0.f || cx - halfExtent > box.size.x)
+            return;
+
         if (!svg)
             return;
         Vec svgSize = svg->getSize();
         if (svgSize.x <= 0.f || svgSize.y <= 0.f)
-            return;
-
-        const float targetSize = mm2px(logo.size);
-        const float cx = mm2px(logo.x) - offsetPx;
-        // La marca puede venir de un panel de al lado: si no roza el mío, ni se dibuja.
-        if (cx + targetSize < 0.f || cx - targetSize > box.size.x)
             return;
 
         const float scale = targetSize / std::max(svgSize.x, svgSize.y);
@@ -364,7 +390,7 @@ struct BlankLogoPattern : TransparentWidget {
                 const bool acid = (m->model == modelBlankAcid);
                 // Cada panel aporta sus marcas con SU color y SU forma, así que un grupo
                 // mezcla logos y caritas en colores distintos sobre el mismo lienzo.
-                auto svg = markSvg(acid, b->markColor());
+                const std::shared_ptr<window::Svg>& svg = markSvg(acid, b->markColor());
                 for (const Blank3::LogoMark& logo : b->logos)
                     drawMark(args, logo, svg, offsetPx, acid);
                 m = m->rightExpander.module;
@@ -388,8 +414,8 @@ struct BlankBottomLogo : TransparentWidget {
     static constexpr float SIZE = 6.14f;    // ancho en mm, el del trazado original
 
     void draw(const DrawArgs& args) override {
-        auto svg = blankTintedSvg(acid ? "res/AcidLogo.svg" : "res/AnimatekLogo.svg",
-                                  module ? module->markColor() : 0);
+        const std::shared_ptr<window::Svg>& svg =
+            blankTintedSvg(acid, module ? module->markColor() : 0);
         if (!svg || !svg->handle)
             return;
         Vec svgSize = svg->getSize();
@@ -461,6 +487,69 @@ struct BlankGroupBorder : TransparentWidget {
     }
 };
 
+// El lienzo animado, cacheado en su propio framebuffer.
+//
+// Un módulo normal de Rack cuesta un blit de textura por cuadro: su panel vive en un
+// framebuffer y solo se rehace cuando cambia algo. El lienzo de un blank no se puede
+// cachear tal cual porque se mueve, así que sin esto cada blank visible enviaba a la
+// GPU unas nueve figuras translúcidas teseladas en CADA cuadro. Con la pantalla llena
+// de blanks eso multiplica por nueve el coste de dibujo del rack y agota el presupuesto
+// del cuadro; cuando eso pasa, Rack deja de renderizar los framebuffers que están
+// sucios, y un módulo recién añadido o una ficha del navegador que aún no tiene textura
+// se dibuja como nada: transparente.
+//
+// La salida es que el lienzo no necesita 60 cuadros por segundo. Las marcas derivan a
+// 0.45 mm/s como mucho, o sea 0.0075 mm por cuadro a 60 fps: invisible. Redibujando uno
+// de cada cinco cuadros se ve exactamente igual y los otros cuatro son un blit, como
+// cualquier otro módulo. Además el reparto de presupuesto de Rack pasa a jugar a favor:
+// si un cuadro va justo, aplaza el redibujado del lienzo —que ya tiene textura válida
+// que enseñar— en vez de dejar sin la suya a un módulo que no tiene ninguna.
+struct BlankCanvas : widget::FramebufferWidget {
+    Blank3* module = nullptr;
+    int frameCounter = 0;
+    // Estado del que depende el dibujo y que no es la deriva: si cambia hay que
+    // repintar ya, sin esperar al turno, o cambiar el color desde el menú tardaría un
+    // tercio de segundo en verse.
+    int lastColor = -2;
+    int lastGroupIndex = -1;
+    int lastGroupCount = -1;
+
+    BlankCanvas() {
+        // El lienzo no tiene detalle fino que justifique rehacerlo entero porque el
+        // rack se haya desplazado medio píxel.
+        dirtyOnSubpixelChange = false;
+    }
+
+    void step() override {
+        if (module) {
+            const int color = module->markColor();
+            if (color != lastColor || module->groupIndex != lastGroupIndex
+                    || module->groupCount != lastGroupCount) {
+                lastColor = color;
+                lastGroupIndex = module->groupIndex;
+                lastGroupCount = module->groupCount;
+                setDirty();
+            }
+        }
+
+        // Con la animación parada las marcas no se mueven, así que no hay nada que
+        // repintar hasta que se reanude.
+        if (!blank3AnimationPaused) {
+            // A más velocidad, más a menudo, para que la deriva no se vea a saltos.
+            const float speed = module ? std::max(module->speed, 0.25f) : 1.f;
+            int divisor = (int) std::round(5.f / speed);
+            if (divisor < 1)
+                divisor = 1;
+            if (++frameCounter >= divisor) {
+                frameCounter = 0;
+                setDirty();
+            }
+        }
+
+        FramebufferWidget::step();
+    }
+};
+
 struct BlankWidgetBase : ModuleWidget {
     BlankWidgetBase(Blank3* module, bool acid) {
         setModule(module);
@@ -471,15 +560,22 @@ struct BlankWidgetBase : ModuleWidget {
         seam->box.size = mm2px(Vec(BLANK_PANEL_W, 128.5f));
         addChild(seam);
 
+        // Las marcas y la marca fija de abajo comparten framebuffer: las dos se
+        // dibujan con el color del módulo, así que se invalidan a la vez.
+        auto* canvas = new BlankCanvas();
+        canvas->module = module;
+        canvas->box.size = mm2px(Vec(BLANK_PANEL_W, 128.5f));
+        addChild(canvas);
+
         auto* pattern = new BlankLogoPattern(acid);
         pattern->module = module;
-        addChild(pattern);
+        canvas->addChild(pattern);
 
         auto* logo = new BlankBottomLogo();
         logo->module = module;
         logo->acid = acid;
         logo->box.size = mm2px(Vec(BLANK_PANEL_W, 128.5f));
-        addChild(logo);
+        canvas->addChild(logo);
 
         // El borde de serie vive dentro del framebuffer del panel, así que no puede
         // reaccionar a los vecinos: se apaga y se pone uno propio como hijo directo,
@@ -536,7 +632,14 @@ struct BlankWidgetBase : ModuleWidget {
             colorNames,
             [m]() { return m->colorMode + 1; },
             [m](int i) {
-                blankForEachInGroup(m, [i](Blank3* b) { b->colorMode = i - 1; });
+                blankForEachInGroup(m, [i](Blank3* b) {
+                    b->colorMode = i - 1;
+                    // "Auto" deja el grupo sin colores y quien los reparte es process().
+                    // Ese reparto solo corre al asentarse la cadena, así que hay que
+                    // volver a marcarla como recién cambiada o nadie cogería color.
+                    if (i == 0)
+                        b->chainStable = 0;
+                });
             }));
     }
 };

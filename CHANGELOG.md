@@ -6,7 +6,7 @@ Registro de cambios de los módulos Animatek. Formato basado en
 
 **Regla del repo: no se commitea nada sin apuntar el cambio aquí.**
 
-## [No publicado]
+## [2.5.8] - 2026-08-25
 
 ### Added
 - **ATEK303 SEQ: editor de patrón con piano roll.** El botón `EDIT` de la cabecera cambia

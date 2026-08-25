@@ -99,6 +99,11 @@ Requests three deterministic articulation operations on accents and slides. One 
 
 Each successful mutation stores one level of undo. A subsequent mutation replaces that undo snapshot.
 
+### EDIT
+
+Latch switch in the top-left corner. Swaps the generation controls for the pattern editor
+in the same panel space. See section 14.
+
 ## 5. Inputs
 
 ### CLOCK
@@ -146,7 +151,7 @@ The 16 RGB LEDs display the rendered pattern and highlight the current step:
 - Blue: Tie, continuing the preceding note without a new attack.
 - Amber/yellow: Note with outgoing slide.
 - Red: accented Note.
-- Current step: brighter, with an additional blue highlight.
+- Current step: bright red, whatever the step holds. That is the drum-machine code, and it is the one thing you have to find without looking for it.
 
 When attributes overlap, the display uses a clear priority: tie, then accent, then slide, then ordinary note. The audio pattern still retains its valid underlying articulation.
 
@@ -168,8 +173,12 @@ Right-click the module to access:
 - **Mutate pitches / octaves (2 operations):** same family as `MUT NOTE/OCT`; currently produces octave mutation.
 - **Mutate accents / slides (3 operations):** same action as `MUT SLD/ACC`.
 - **Undo last mutation:** restores the snapshot before the latest successful mutation. Disabled when no undo is available. It does not undo a new-seed generation.
+- **Clear pattern:** empties the pattern so you can draw one from scratch in the editor. The seed is kept and `STEPS` is left alone; step 1 keeps a note, which is the invariant the sequencer relies on. It is destructive, so it takes the undo slot: **Undo last mutation** brings the pattern back.
 - **Gate held through slides (legato):** keeps gate high across valid slide transitions. Off uses a short gate gap while `SLIDE` tells a compatible voice to remain alive. With ATEK303, leave this off or also enable **Auto-legato** in the voice; otherwise the sustained gate does not create the new edge ATEK303 expects by default.
 - **Own glide on the V/Oct output:** applies tempo-relative glide for other voices. It automatically bypasses when ATEK303 is attached.
+- **Load MIDI file...:** reads a Standard MIDI File and replaces the current pattern with it. See section 13.
+- **Bar:** appears when the loaded file is longer than 16 steps. Switches between the file's bars without reopening it.
+- **Forget file:** drops the reference to the file. The pattern already loaded keeps playing.
 - **Base octave:** C1 (-3 V), C2 (-2 V), C3 (-1 V), C4 (0 V), or C5 (+1 V); default C2.
 - **Accent as velocity CV:** switches `ACCENT` from a binary accent gate to held velocity-style levels.
 - **Accent level:** 10 V, 8 V, or 5 V; default 8 V. Used for accented notes in velocity mode.
@@ -221,3 +230,161 @@ The current transport position, whether the first clock has arrived, measured cl
 - The first clock edge emits EOC because it enters step 1. Use a gate delay or downstream counter logic if only completed wraps should count.
 - Undo has one level and is not persistent. Generate with a new seed clears it.
 - ATEK303 attachment disables own glide for both the expander route and physical pitch output. This is intentional so the voice performs exactly one slide.
+
+## 13. MIDI file import
+
+**Load MIDI file...** in the context menu reads any Standard MIDI File (format 0, 1, or 2)
+and turns it into a pattern. It is meant for the acid pattern packs distributed as MIDI,
+but it accepts any file whose notes sit on a sixteenth-note grid.
+
+### What each MIDI feature becomes
+
+| In the file | In the sequencer |
+|---|---|
+| Note-on at a step | Note attack |
+| Note crossing the step boundary with nothing attacking after it | Tie: the note is held, not struck again |
+| Note crossing the boundary into another attack at a different pitch | Slide |
+| Velocity above the file's midpoint | Accent |
+| Nothing sounding | Rest |
+
+Timing is quantised to sixteenths, the sequencer's own grid. A four-bar file therefore
+yields four 16-step patterns, and the **Bar** submenu moves between them.
+
+### What the module reports
+
+The menu shows a status line under the file name. It tells you whether the file needed the
+Chromatic scale, whether it was transposed, and what had to be discarded.
+
+- **Scale set to Chromatic:** the file contained pitches the panel's scale cannot represent,
+  so the module switched to Chromatic, which represents any pitch. This keeps the import
+  lossless: the melody is not rewritten. `ROOT` is left alone and still transposes the result.
+  If the file does fit the current scale, the scale is not touched.
+- **No velocity accents:** every note has the same velocity, so there is no accent
+  information to read and the pattern arrives unaccented.
+- **Transposed +/-N oct:** the file sat outside the representable range and was moved by whole
+  octaves. Every interval is preserved; only the register moves.
+- **Extra voices dropped:** the sequencer is monophonic. In a chord the lowest note is kept,
+  which is what turns an arrangement into a bassline.
+- **Skipped N leading empty steps:** the file did not start at tick 0. A piece that comes in
+  on the second bar would otherwise import with its first page blank, which says where the
+  music starts rather than what it contains, so the silence is dropped. It is dropped in
+  whole bars of sixteen steps: trimming right up to the first note would move a pickup onto
+  the downbeat and leave the whole bar off the beat, so a file that starts a few steps into
+  its first bar keeps that pickup.
+
+### Limits
+
+- SMPTE time division (files authored against video) is rejected; there is no musical grid
+  to quantise to.
+- Tempo, controllers, program changes, and every other message are ignored. Only notes matter.
+- An imported pattern's seed no longer identifies a generated pattern. It is a hash of the
+  imported content, stable across reloads, shown so you can tell two imports apart.
+- `GENERATE` overwrites an imported pattern, as it does any other. Use `BLOCK` and the
+  mutation buttons to develop an import without losing it.
+
+The patch stores the imported pattern in full, so it plays back even if the MIDI file is
+later moved or deleted. The file path is saved as well, purely so the **Bar** submenu still
+works when the patch is reopened.
+
+## 14. Pattern editor
+
+The `EDIT` button in the top-left corner swaps the generation controls for a pattern
+editor in the same panel space. Both views share that area, so nothing else moves and the
+step LEDs, inputs, and outputs stay where they are. The button is a latch: it lights while
+the editor is showing.
+
+### One octave, on purpose
+
+The piano roll shows **one full octave** - all twelve semitones, seven white keys and five
+black ones. The rows the active scale does not contain are drawn recessed and ignore clicks:
+they are there so the octave reads as an octave and you can see where each note falls, not
+so you can play them. Clicking one does nothing rather than silently switching the module to
+Chromatic, which would reinterpret the whole pattern. Octave displacement lives in the `UP`
+and `DOWN` rows underneath.
+
+This is how a real 303 works - a one-octave keyboard with two buttons that raise or lower
+individual notes - and it is also how the module stores a pattern internally, as a degree
+within the octave plus an octave offset per step. So the roll is a direct view of the data,
+with no conversion in between. It is also what makes the editor fit: a full chromatic roll
+spanning two octaves would give rows a millimetre tall, too small to hit.
+
+### The rows
+
+A keyboard runs down the left edge, a real octave of it. Keys outside the scale are dimmed,
+matching their recessed lane. The tonic carries a blue marker and its real octave, so a `C`
+on the roll tells you whether it is C2 or C3 rather than leaving you to guess.
+
+| Row | What a click does |
+|---|---|
+| Piano roll | Sets that step to a note at that degree. Clicking a note where it already sits removes it. Drag to paint across steps. |
+| `UP` | Raises the note an octave: 0 to +1 to +2 and back to 0. |
+| `DOWN` | Lowers it the same way. Clicking the opposite row jumps straight to that side. |
+| `GATE` | Cycles rest, note, tie. |
+| `ACC` | Toggles the accent. |
+| `SLIDE` | Toggles the outgoing slide. |
+
+Hold and sweep to paint: the gesture keeps applying across steps as you move left or right,
+so a run of notes takes one drag rather than one click each. On the roll the drag follows
+the mouse vertically too, so moving up or down without leaving the step moves the note to
+that pitch. The **right button erases** -
+the roll and `GATE` turn the step off, `UP` and `DOWN` return the octave to zero, `ACC` and
+`SLIDE` switch the attribute off - and it also works dragged, which is how you clear a
+passage in one sweep. Right-clicking the keyboard on the left edge, or the gaps between
+rows, still opens the module's context menu.
+
+Colours match the step LEDs, so the panel and the editor always say the same thing: green
+for a plain attack, red for an accent, amber for a slide, blue for a tie. A slide is also
+drawn as a line joining the two notes, which is where the melodic gesture becomes visible.
+The playhead crosses every row.
+
+Steps beyond `STEPS` are dimmed. They are still there and still hold their content, but
+they are outside the loop and cannot be edited until `STEPS` reaches them.
+
+### What the editor will not let you do
+
+- **Cells that cannot take a value are drawn dark and ignore clicks.** `UP`, `DOWN`, `ACC`
+  and `SLIDE` only mean something on an attack, and a slide additionally needs the *next*
+  step to attack - a slide joins two adjacent notes, so a rest or a tie after it leaves
+  nothing to slide into. The two notes may share a pitch: there is no glide to make, but a
+  303 also plays a slide *legato*, and that half of it is still audible as one sustained
+  note instead of two attacks. That is real 303 behaviour, and drawing it means
+  you can see which cells are live instead of clicking and wondering why nothing happened.
+  Note that the slide belongs to the note it leaves *from*, not the one it arrives at.
+- **A slide that stops being possible is dropped.** If you later put a rest after a sliding
+  note, the slide turns itself off, because the sequencer would have discarded it at
+  playback anyway. The row shows the truth, not the request.
+- **The pattern always keeps at least one note.** Erasing the last one puts a note back on
+  step 1.
+- **Editing does not create a new identity.** The seed is kept: it is still that pattern,
+  retouched. `GENERATE` with `BLOCK` off replaces it like any other, so lock the seed first
+  if you want to keep hand edits.
+- Notes whose pitch sits outside the octave - only possible in a pattern imported from MIDI
+  - are folded back into the octave, with the displacement moved to `UP` / `DOWN`, the
+  first time you touch that step. The note that sounds does not change as long as it fits
+  within two octaves.
+
+### The four pages
+
+Sixty-four steps do not fit in sixteen columns, so the pattern is edited a bar at a time.
+The strip under the editor is that: a round button, and four LEDs under the last four
+columns of the grid.
+
+- **Click an LED** to show that page in the editor. Nothing about the sound changes.
+- **Double-click an LED** to start the sequence there. With `STEPS` at 16 and page `2:4`
+  active, the sequence runs steps 17 to 32. The window wraps around the end of the pattern
+  if `STEPS` reaches past step 64.
+- **Tap the button** to advance one page. **Hold it** for two seconds to follow the
+  playhead, so the editor changes page on its own; the bar filling the button is those two
+  seconds, and it lights blue while following. Holding again lets go.
+
+The LEDs read like a drum machine: bright red where the sequencer is, brighter still on the
+downbeat; the logo blue on the page you are editing; a dim white on the page the sequence
+starts from, so you can see where it begins with the clock stopped. A page that falls
+outside `STEPS` shows a dimmer blue - still where you are, and it does not sound.
+
+### The acid sticker generates
+
+The acid smiley in the top-right corner is a button. Clicking it does exactly what
+`GENERATE` does - a new seed, or a full mutation when `BLOCK` is on - so you can keep
+sorting through patterns without leaving the editor to reach the generation panel. It has a
+tooltip, because a sticker does not look like a control.

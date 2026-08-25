@@ -20,7 +20,10 @@ struct AcidPitchEvent {
 
 struct AcidPatternV4 {
 	static const uint8_t SCHEMA_VERSION = 4;
-	static const uint8_t ALGORITHM_VERSION = 4;
+	// v5 recalibra el generador con las tablas medidas de `AcidCorpus.hpp`. El esquema no
+	// cambia: un patch v4 se carga tal cual, porque el patrón va entero en el JSON y no se
+	// regenera desde la semilla. Lo que cambia es qué patrón produce una semilla nueva.
+	static const uint8_t ALGORITHM_VERSION = 5;
 
 	uint32_t seed = 1u;
 	uint8_t algorithmVersion = ALGORITHM_VERSION;
@@ -87,20 +90,20 @@ struct AcidPatternV4 {
 		for (int i = pitchLength; i < ACID_MAX_STEPS; i++)
 			pitch[i] = AcidPitchEvent();
 
-		const int si = std::max(0, std::min(scaleIdx, ACID_SCALES_LEN - 1));
 		int eventStep[ACID_MAX_STEPS];
 		for (int i = 0; i < ACID_MAX_STEPS; i++) eventStep[i] = -1;
 		int e = 0;
 		for (int s = 0; s < timeLength && e < pitchLength; s++)
 			if (time[s] == AcidTimeState::Note) eventStep[e++] = s;
+		// Un slide necesita que el paso siguiente ataque: es lo que une dos notas. No se
+		// pide que sean de distinta altura —en un 303 el slide, además de glissar, toca
+		// las dos notas legato, y entre dos alturas iguales eso se sigue oyendo: una nota
+		// sostenida en vez de dos ataques.
 		for (int i = 0; i < pitchLength; i++) {
 			if (!pitch[i].slideOut) continue;
 			const int s = eventStep[i];
-			const int nextStep = (s + 1) % timeLength;
-			const int nextEvent = (i + 1) % pitchLength;
-			const int here = AcidGen::semiOf(pitch[i].degree, pitch[i].octave, si);
-			const int there = AcidGen::semiOf(pitch[nextEvent].degree, pitch[nextEvent].octave, si);
-			if (s < 0 || time[nextStep] != AcidTimeState::Note || here == there)
+			if (s < 0) { pitch[i].slideOut = false; continue; }
+			if (time[(s + 1) % timeLength] != AcidTimeState::Note)
 				pitch[i].slideOut = false;
 		}
 	}
@@ -209,8 +212,7 @@ struct AcidDualGenerator {
 	}
 
 	static int chooseVocabSize(float u, int scaleSize) {
-		const int n = u < 0.10f ? 1 : u < 0.55f ? 2 : u < 0.90f ? 3 : 4;
-		return std::min(n, scaleSize);
+		return AcidCorpus::vocabSize(u, scaleSize);
 	}
 
 	static int buildVocab(int (&voc)[12], int scaleIdx, int want, AcidLayerRng& rng) {
@@ -223,6 +225,8 @@ struct AcidDualGenerator {
 			float total = 0.f;
 			for (int d = 1; d < sc.n; d++)
 				if (!taken[d]) total += AcidGen::semiWeight(sc.s[d]);
+			// Sin grados libres no hay nada que sortear y el bucle no avanzaría solo.
+			if (total <= 0.f) break;
 			float r = rng.unit() * total;
 			for (int d = 1; d < sc.n; d++) {
 				if (taken[d]) continue;
@@ -282,6 +286,7 @@ struct AcidDualGenerator {
 		const float accentAmount = std::max(0.f, std::min(1.f, params.accent));
 		const float slideAmount = std::max(0.f, std::min(1.f, params.slide));
 		const float tieAmount = std::max(0.f, std::min(1.f, params.tie));
+		const float accentCurve = 0.90f * std::pow(accentAmount, 1.27f);
 
 		AcidLayerRng style(AcidLayerRng::mix(seed, STYLE));
 		AcidLayerRng timeRng(AcidLayerRng::mix(seed, TIME));
@@ -310,9 +315,12 @@ struct AcidDualGenerator {
 			if (activation[s] < activation[forcedStep]) forcedStep = s;
 		}
 		// Solo aproximadamente la mitad de las parejas cumple el orden de activación que
-		// hace el tie estable al mover DENSIDAD; se compensa aquí para conservar el carácter
-		// de v3 (alrededor de un 10 % de los pasos ocupados con tie=0.40).
-		const float tieChance = std::min(0.90f, 0.16f + 0.64f * tieAmount);
+		// hace el tie estable al mover DENSIDAD, así que la probabilidad aplicada va al
+		// doble de la que se busca, y el factor 0.35 de las cadenas la baja otro poco. El
+		// 2.77 sale de medir la tasa que resulta en el banco offline hasta que cae sobre el
+		// 7,2 % de pasos prolongados del corpus, no sobre el 10 % que se estimó sin él.
+		const float tieChance = std::min(0.90f, 2.77f * AcidCorpus::TIE_RATE
+		                                        * (tieAmount / 0.4f));
 		for (int s = 1; s < length; s++) {
 			const float chain = tiePlan[s - 1] ? 0.35f : 1.f;
 			tiePlan[s] = activation[s - 1] <= activation[s]
@@ -403,8 +411,12 @@ struct AcidDualGenerator {
 				const int amount = octaveRng.unit() < twoChance ? 2 : 1;
 				p.octave = (int8_t) (octaveRng.unit() < 0.55f ? amount : -amount);
 			}
-			const float accentChance = cellPos == 0 ? std::min(0.95f, 1.25f * accentAmount)
-			                                              : std::min(0.85f, 0.85f * accentAmount);
+			// Curva calibrada con el corpus: su 36 % global de acentos cae en la mitad del
+			// recorrido del mando, y el sesgo hacia el primer paso de la célula baja al que
+			// se mide de verdad, que es mucho más flojo del que había.
+			const float accentChance = cellPos == 0
+			                         ? std::min(0.95f, AcidCorpus::ACCENT_CELL_START * accentCurve)
+			                         : std::min(0.90f, AcidCorpus::ACCENT_CELL_REST * accentCurve);
 			p.accent = accentRng.unit() < accentChance;
 			p.slideOut = false;
 		}
@@ -439,14 +451,30 @@ struct AcidDualGenerator {
 			const int leap = std::abs(AcidGen::semiOf(next.degree, next.octave, scaleIdx)
 			                        - AcidGen::semiOf(here.degree, here.octave, scaleIdx));
 			if (leap == 0) continue;
-			const float base = leap <= 5 ? 0.40f : leap == 12 ? 0.30f : 0.16f;
-			here.slideOut = slideRng.unit() < std::min(0.95f, base * 4.5f * slideAmount);
+			// El corpus mide la tendencia contraria a la que estaba escrita: la octava y los
+			// saltos grandes se ligan más que los pequeños. En 193 transiciones de la misma
+			// altura no liga ninguna, que es justo lo que descarta la línea de arriba.
+			here.slideOut = slideRng.unit()
+			              < std::min(0.95f, AcidCorpus::slideBase(leap) * 2.f * slideAmount);
 		}
 
 		pattern.sanitize(scaleIdx);
 		return lastContour;
 	}
 };
+
+// ---------------------------------------------------------------------------
+// Operaciones de edición manual. Son las que usa el editor del panel, y su trabajo real
+// es mantener alineadas las dos capas: `time` va por paso, pero `pitch` va empaquetado
+// por orden de nota, así que crear o borrar un ataque desplaza todos los eventos
+// posteriores. Hacerlo con sanitize() no vale: cuando sanitize encuentra más notas que
+// eventos rellena con valores por defecto, o sea que reescribiría el acento, la octava y
+// el slide de todo lo que venga detrás.
+//
+// La altura se canoniza en cada paso que se toca: el grado se queda dentro de la octava
+// (0..n-1) y el desplazamiento entero se va a `octave`, que es como lo genera el
+// algoritmo y como lo enseña el editor. Un patrón importado de MIDI puede traer el grado
+// fuera de la octava; al editar ese paso se recoloca, que es un cambio pedido a mano.
 
 struct AcidPatternMutator {
 	enum Layer { Time = 1, Pitch = 2, Articulation = 3 };
@@ -477,6 +505,20 @@ struct AcidPatternMutator {
 		return -1;
 	}
 
+	// Índices de PitchEvent cuyos ataques caen dentro de [lo, hi). Mutar una página
+	// significa tocar sólo estos: `pitch` va empaquetado por orden de nota, así que el
+	// tramo de pasos no se corresponde con ningún tramo de eventos.
+	static int eventsInRange(const AcidPatternV4& pattern, int lo, int hi,
+	                         int* out, int max) {
+		int found = 0, event = 0;
+		for (int s = 0; s < pattern.timeLength; s++) {
+			if (pattern.time[s] != AcidTimeState::Note) continue;
+			if (s >= lo && s < hi && found < max) out[found++] = event;
+			event++;
+		}
+		return found;
+	}
+
 	static void removePitch(AcidPatternV4& pattern, int event) {
 		if (event < 0 || event >= pattern.pitchLength) return;
 		for (int i = event; i + 1 < pattern.pitchLength; i++)
@@ -494,13 +536,15 @@ struct AcidPatternMutator {
 		pattern.pitchLength++;
 	}
 
-	static bool mutateTime(AcidPatternV4& pattern, AcidLayerRng& rng) {
+	static bool mutateTime(AcidPatternV4& pattern, AcidLayerRng& rng, int lo, int hi) {
 		const int length = pattern.timeLength;
+		const int span = hi - lo;
+		if (span <= 0) return false;
 		// Operación preferida: mover un ataque aislado a un silencio. Conserva el número y
 		// el orden de PitchEvents, pero desplaza la síncopa.
 		for (int attempt = 0; attempt < 48; attempt++) {
-			const int from = (int) (rng.next() % length);
-			const int to = (int) (rng.next() % length);
+			const int from = lo + (int) (rng.next() % (uint32_t) span);
+			const int to = lo + (int) (rng.next() % (uint32_t) span);
 			const int after = (from + 1) % length;
 			if (from == to || pattern.time[from] != AcidTimeState::Note
 			    || pattern.time[to] != AcidTimeState::Rest
@@ -512,7 +556,7 @@ struct AcidPatternMutator {
 		}
 
 		// Patrón sin huecos útiles: abrir un nuevo ataque dentro de una cadena de ties.
-		for (int s = 1; s < length; s++) {
+		for (int s = std::max(1, lo); s < hi; s++) {
 			if (pattern.time[s] != AcidTimeState::Tie) continue;
 			int event = 0;
 			for (int i = 0; i < s; i++)
@@ -524,7 +568,7 @@ struct AcidPatternMutator {
 		}
 
 		// Último fallback: unir dos ataques consecutivos y retirar el evento consumido.
-		for (int s = 1; s < length; s++) {
+		for (int s = std::max(1, lo); s < hi; s++) {
 			if (pattern.time[s] != AcidTimeState::Note
 			    || pattern.time[s - 1] == AcidTimeState::Rest)
 				continue;
@@ -536,9 +580,12 @@ struct AcidPatternMutator {
 		return false;
 	}
 
-	static bool mutatePitch(AcidPatternV4& pattern, AcidLayerRng& rng) {
+	static bool mutatePitch(AcidPatternV4& pattern, AcidLayerRng& rng, int lo, int hi) {
 		if (!pattern.pitchLength) return false;
-		const int event = (int) (rng.next() % pattern.pitchLength);
+		int candidates[ACID_MAX_STEPS];
+		const int n = eventsInRange(pattern, lo, hi, candidates, ACID_MAX_STEPS);
+		if (n <= 0) return false;
+		const int event = candidates[rng.next() % (uint32_t) n];
 		AcidPitchEvent& p = pattern.pitch[event];
 		// Una octava conserva el vocabulario y produce una variación inequívoca incluso en
 		// patrones de una sola clase. Alterna dirección en los extremos.
@@ -548,8 +595,14 @@ struct AcidPatternMutator {
 		return true;
 	}
 
-	static bool mutateArticulation(AcidPatternV4& pattern, AcidLayerRng& rng, int scaleIdx) {
+	static bool mutateArticulation(AcidPatternV4& pattern, AcidLayerRng& rng, int scaleIdx,
+	                               int lo, int hi) {
 		if (!pattern.pitchLength) return false;
+		int candidates[ACID_MAX_STEPS];
+		const int n = eventsInRange(pattern, lo, hi, candidates, ACID_MAX_STEPS);
+		if (n <= 0) return false;
+		const int span = hi - lo;
+		if (span <= 0) return false;
 		// La mitad de las veces se intenta slide, siempre sobre una transición válida.
 		if (rng.next() & 1u) {
 			int eventAtStep[ACID_MAX_STEPS];
@@ -557,8 +610,8 @@ struct AcidPatternMutator {
 			int event = 0;
 			for (int s = 0; s < pattern.timeLength; s++)
 				if (pattern.time[s] == AcidTimeState::Note) eventAtStep[s] = event++;
-			for (int attempt = 0; attempt < pattern.timeLength; attempt++) {
-				const int s = (int) (rng.next() % pattern.timeLength);
+			for (int attempt = 0; attempt < span; attempt++) {
+				const int s = lo + (int) (rng.next() % (uint32_t) span);
 				const int next = (s + 1) % pattern.timeLength;
 				const int a = eventAtStep[s], b = eventAtStep[next];
 				if (a < 0 || b < 0) continue;
@@ -569,20 +622,27 @@ struct AcidPatternMutator {
 				return true;
 			}
 		}
-		const int event = (int) (rng.next() % pattern.pitchLength);
+		const int event = candidates[rng.next() % (uint32_t) n];
 		pattern.pitch[event].accent = !pattern.pitch[event].accent;
 		return true;
 	}
 
-	static bool mutate(AcidPatternV4& pattern, Layer layer, uint32_t mutationIndex, int scaleIdx) {
+	// `lo`/`hi` acotan la mutación a un tramo de pasos —una página, normalmente—. Por
+	// defecto, el patrón entero. Se recortan contra la longitud real para que una página
+	// que PASOS no alcanza no consuma intentos a cambio de nada.
+	static bool mutate(AcidPatternV4& pattern, Layer layer, uint32_t mutationIndex, int scaleIdx,
+	                   int lo = 0, int hi = ACID_MAX_STEPS) {
+		lo = std::max(0, std::min(lo, (int) pattern.timeLength));
+		hi = std::max(lo, std::min(hi, (int) pattern.timeLength));
+		if (hi <= lo) return false;
 		const AcidPatternV4 before = pattern;
 		const uint32_t tag = layer == Time ? 0x4d54494du
 		                   : layer == Pitch ? 0x4d504954u : 0x4d415254u;
 		AcidLayerRng rng(AcidLayerRng::mix(pattern.seed ^ (0x9e3779b9u * mutationIndex), tag));
 		bool changed = false;
-		if (layer == Time) changed = mutateTime(pattern, rng);
-		else if (layer == Pitch) changed = mutatePitch(pattern, rng);
-		else changed = mutateArticulation(pattern, rng, scaleIdx);
+		if (layer == Time) changed = mutateTime(pattern, rng, lo, hi);
+		else if (layer == Pitch) changed = mutatePitch(pattern, rng, lo, hi);
+		else changed = mutateArticulation(pattern, rng, scaleIdx, lo, hi);
 		pattern.sanitize(scaleIdx);
 		return changed && !same(before, pattern);
 	}
@@ -591,7 +651,8 @@ struct AcidPatternMutator {
 	// consumidos se devuelven para que la siguiente pulsación continúe la secuencia y para
 	// que todo el grupo pueda deshacerse como una única mutación.
 	static bool mutateBurst(AcidPatternV4& pattern, Layer layer, uint32_t firstMutationIndex,
-	                        int operationCount, int scaleIdx, uint32_t& lastMutationIndex) {
+	                        int operationCount, int scaleIdx, uint32_t& lastMutationIndex,
+	                        int lo = 0, int hi = ACID_MAX_STEPS) {
 		const AcidPatternV4 before = pattern;
 		const int wanted = std::max(1, operationCount);
 		int applied = 0;
@@ -599,7 +660,7 @@ struct AcidPatternMutator {
 		for (int attempt = 0; attempt < 32; attempt++) {
 			const uint32_t candidate = firstMutationIndex + (uint32_t) attempt;
 			lastMutationIndex = candidate;
-			if (mutate(pattern, layer, candidate, scaleIdx))
+			if (mutate(pattern, layer, candidate, scaleIdx, lo, hi))
 				applied++;
 			// Dos operaciones pueden cancelarse entre sí. En ese caso consumimos una más
 			// para que una pulsación nunca termine visualmente en el patrón de partida.
@@ -608,5 +669,148 @@ struct AcidPatternMutator {
 		}
 		pattern = before;
 		return false;
+	}
+};
+
+// ---------------------------------------------------------------------------
+struct AcidPatternEdit {
+	// Fila del piano roll: el grado dentro de la octava de la escala.
+	static int rowOfDegree(int degree, int scaleIdx) {
+		const int n = ACID_SCALES[scaleIdx].n;
+		return ((degree % n) + n) % n;
+	}
+
+	// Octava total que suena en ese evento, sumando la que el grado lleva escondida.
+	static int totalOctave(const AcidPitchEvent& p, int scaleIdx) {
+		const int n = ACID_SCALES[scaleIdx].n;
+		const int row = ((p.degree % n) + n) % n;
+		return p.octave + (p.degree - row) / n;
+	}
+
+	static int eventAt(const AcidPatternV4& pattern, int step) {
+		if (step < 0 || step >= pattern.timeLength) return -1;
+		if (pattern.time[step] != AcidTimeState::Note) return -1;
+		int event = 0;
+		for (int s = 0; s < step; s++)
+			if (pattern.time[s] == AcidTimeState::Note) event++;
+		return event;
+	}
+
+	// Cuántos ataques hay antes de este paso: el hueco donde entra un evento nuevo.
+	static int insertIndexFor(const AcidPatternV4& pattern, int step) {
+		int event = 0;
+		for (int s = 0; s < step && s < pattern.timeLength; s++)
+			if (pattern.time[s] == AcidTimeState::Note) event++;
+		return event;
+	}
+
+	// Altura de partida para un ataque nuevo: la del ataque anterior, para que al abrir un
+	// paso la línea continúe en vez de saltar a la tónica.
+	static AcidPitchEvent seedPitch(const AcidPatternV4& pattern, int insertAt) {
+		AcidPitchEvent p;
+		if (pattern.pitchLength > 0) {
+			int source = insertAt - 1;
+			if (source < 0) source = 0;
+			if (source >= pattern.pitchLength) source = pattern.pitchLength - 1;
+			p.degree = pattern.pitch[source].degree;
+			p.octave = pattern.pitch[source].octave;
+		}
+		return p;
+	}
+
+	static void setTime(AcidPatternV4& pattern, int step, AcidTimeState wanted, int scaleIdx) {
+		if (step < 0 || step >= pattern.timeLength) return;
+		const AcidTimeState current = pattern.time[step];
+		if (current == wanted) return;
+		if (current == AcidTimeState::Note) {
+			AcidPatternMutator::removePitch(pattern, eventAt(pattern, step));
+		}
+		if (wanted == AcidTimeState::Note) {
+			const int at = insertIndexFor(pattern, step);
+			AcidPatternMutator::insertPitch(pattern, at, seedPitch(pattern, at));
+		}
+		pattern.time[step] = wanted;
+		pattern.sanitize(scaleIdx);
+	}
+
+	// Silencio -> ataque -> tie -> silencio, que es el ciclo de la fila GATE.
+	static void cycleTime(AcidPatternV4& pattern, int step, int scaleIdx) {
+		if (step < 0 || step >= pattern.timeLength) return;
+		const AcidTimeState next =
+			  pattern.time[step] == AcidTimeState::Rest ? AcidTimeState::Note
+			: pattern.time[step] == AcidTimeState::Note ? AcidTimeState::Tie
+			                                            : AcidTimeState::Rest;
+		setTime(pattern, step, next, scaleIdx);
+	}
+
+	// Clic en el piano roll. Abre el paso si estaba en silencio o en tie, y coloca el grado
+	// conservando la octava que ya tuviera ese ataque.
+	static void setRow(AcidPatternV4& pattern, int step, int row, int scaleIdx) {
+		if (step < 0 || step >= pattern.timeLength) return;
+		const int n = ACID_SCALES[scaleIdx].n;
+		if (row < 0 || row >= n) return;
+		if (pattern.time[step] != AcidTimeState::Note)
+			setTime(pattern, step, AcidTimeState::Note, scaleIdx);
+		const int event = eventAt(pattern, step);
+		if (event < 0 || event >= pattern.pitchLength) return;
+		AcidPitchEvent& p = pattern.pitch[event];
+		const int octave = totalOctave(p, scaleIdx);
+		p.degree = (int8_t) row;
+		p.octave = (int8_t) (octave < -2 ? -2 : (octave > 2 ? 2 : octave));
+		pattern.sanitize(scaleIdx);
+	}
+
+	// Fila UP / DOWN. El desplazamiento se guarda entero en `octave`, y el grado se recoloca
+	// dentro de la octava para que las dos filas digan la verdad.
+	static void setOctave(AcidPatternV4& pattern, int step, int octave, int scaleIdx) {
+		const int event = eventAt(pattern, step);
+		if (event < 0 || event >= pattern.pitchLength) return;
+		AcidPitchEvent& p = pattern.pitch[event];
+		p.degree = (int8_t) rowOfDegree(p.degree, scaleIdx);
+		p.octave = (int8_t) (octave < -2 ? -2 : (octave > 2 ? 2 : octave));
+		pattern.sanitize(scaleIdx);
+	}
+
+	// Un clic en UP recorre 0 -> +1 -> +2 -> 0; en DOWN, 0 -> -1 -> -2 -> 0. Pulsar en el
+	// lado contrario al que está puesto lo lleva directo a ese lado, que es lo que espera
+	// cualquiera que vea dos filas de botones.
+	static void bumpOctave(AcidPatternV4& pattern, int step, int direction, int scaleIdx) {
+		const int event = eventAt(pattern, step);
+		if (event < 0 || event >= pattern.pitchLength) return;
+		const int current = totalOctave(pattern.pitch[event], scaleIdx);
+		int wanted;
+		if (direction > 0)
+			wanted = (current < 0) ? 1 : (current >= 2 ? 0 : current + 1);
+		else
+			wanted = (current > 0) ? -1 : (current <= -2 ? 0 : current - 1);
+		setOctave(pattern, step, wanted, scaleIdx);
+	}
+
+	static void setAccent(AcidPatternV4& pattern, int step, bool on, int scaleIdx) {
+		const int event = eventAt(pattern, step);
+		if (event < 0 || event >= pattern.pitchLength) return;
+		pattern.pitch[event].accent = on;
+		pattern.sanitize(scaleIdx);
+	}
+
+	static void toggleAccent(AcidPatternV4& pattern, int step, int scaleIdx) {
+		const int event = eventAt(pattern, step);
+		if (event < 0 || event >= pattern.pitchLength) return;
+		setAccent(pattern, step, !pattern.pitch[event].accent, scaleIdx);
+	}
+
+	// sanitize() retira el slide si la transición no lo admite —silencio detrás o un tie—,
+	// así que un clic imposible se apaga solo y el panel lo enseña apagado.
+	static void setSlide(AcidPatternV4& pattern, int step, bool on, int scaleIdx) {
+		const int event = eventAt(pattern, step);
+		if (event < 0 || event >= pattern.pitchLength) return;
+		pattern.pitch[event].slideOut = on;
+		pattern.sanitize(scaleIdx);
+	}
+
+	static void toggleSlide(AcidPatternV4& pattern, int step, int scaleIdx) {
+		const int event = eventAt(pattern, step);
+		if (event < 0 || event >= pattern.pitchLength) return;
+		setSlide(pattern, step, !pattern.pitch[event].slideOut, scaleIdx);
 	}
 };

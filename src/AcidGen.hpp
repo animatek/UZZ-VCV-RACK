@@ -1,4 +1,6 @@
 #pragma once
+#include "AcidCorpus.hpp"
+
 #include <cmath>
 #include <cstdint>
 #include <algorithm>
@@ -38,7 +40,11 @@
 // a la salida y se pueden cambiar sin perder el patrón.
 // ---------------------------------------------------------------------------
 
-static const int ACID_MAX_STEPS = 16;
+static const int ACID_MAX_STEPS = 64;
+// El patrón se recorre entero, pero se edita y se enseña de dieciséis en dieciséis: son
+// cuatro páginas de un compás, que es como se cuenta una secuencia acid.
+static const int ACID_PAGE_STEPS = 16;
+static const int ACID_PAGES = ACID_MAX_STEPS / ACID_PAGE_STEPS;
 
 // Escalas sin la octava: el grado que la cierra es el 0 de la octava siguiente, y así
 // el mismo índice de grado sirve para subir y bajar sin casos especiales.
@@ -106,17 +112,13 @@ struct AcidGen {
 		return sc.s[i] + 12 * (o + (d - i) / sc.n);
 	}
 
-	// El peso va por semitono, no por índice, para que valga en cualquier escala:
-	// la tónica y la quinta anclan, la tercera menor y la séptima menor son el color.
+	// El peso va por semitono, no por índice, para que valga en cualquier escala. Los
+	// valores están medidos sobre el corpus (`AcidCorpus.hpp`): cada cuánto aparece esa
+	// clase de nota en un compás acid. Corrige el reparto anterior, hecho a ojo, que
+	// ponía la quinta justo detrás de la tónica; en el corpus la séptima menor y la
+	// sexta menor pesan más que ella.
 	static float semiWeight(int semi) {
-		switch (((semi % 12) + 12) % 12) {
-			case 0:  return 2.4f;
-			case 7:  return 2.2f;
-			case 3:  return 1.7f;
-			case 10: return 1.6f;
-			case 5:  return 1.3f;
-			default: return 1.0f;
-		}
+		return AcidCorpus::PITCH_CLASS_WEIGHT[((semi % 12) + 12) % 12];
 	}
 
 	// Contorno de la célula: el gesto que sigue, elegido antes que las notas.
@@ -141,10 +143,7 @@ struct AcidGen {
 	// con movimiento sin introducir otra clase de nota.
 	int buildVocab(int (&voc)[12], int scaleIdx) {
 		const AcidScale& sc = ACID_SCALES[scaleIdx];
-		const float amount = uniform();
-		const int chosen = amount < 0.10f ? 1 : amount < 0.55f ? 2
-		                 : amount < 0.90f ? 3 : 4;
-		const int want = std::min(sc.n, chosen);
+		const int want = AcidCorpus::vocabSize(uniform(), sc.n);
 		bool taken[12] = {};
 		voc[0] = 0;
 		taken[0] = true;
@@ -251,10 +250,12 @@ struct AcidGen {
 		}
 		// El primer paso de la célula pesa más: es donde cae el golpe.
 		const float pGate0 = 0.30f + 0.70f * p.density, pGateN = 0.05f + 0.80f * p.density;
-		// El corpus pequeño disponible da un 57 % global de acentos (con una dispersión
-		// enorme: 27..90 %). La curva llega alto sin inventar acentos cuando el mando está a 0.
-		const float pAcc0 = std::min(0.95f, 1.25f * p.accent);
-		const float pAccN = std::min(0.85f, 0.85f * p.accent);
+		// El corpus da un 36 % global de acentos, no el 57 % de la estimación anterior, y
+		// un sesgo métrico mucho más flojo del que había. El exponente sitúa ese 36 % en la
+		// mitad del recorrido del mando sin renunciar a saturar cuando se sube del todo.
+		const float accentCurve = 0.90f * std::pow(std::max(0.f, p.accent), 1.27f);
+		const float pAcc0 = std::min(0.95f, AcidCorpus::ACCENT_CELL_START * accentCurve);
+		const float pAccN = std::min(0.90f, AcidCorpus::ACCENT_CELL_REST * accentCurve);
 		bool cGate[4], cAcc[4];
 		for (int i = 0; i < CELL; i++) {
 			cGate[i] = uniform() < (i == 0 ? pGate0 : pGateN);
@@ -307,7 +308,10 @@ struct AcidGen {
 
 		// Los ties sustituyen ataques consecutivos por la prolongación de la nota anterior.
 		// No se genera tie en el paso 0: tras un reset no existe una nota previa que sostener.
-		const float tieChance = 0.08f + 0.32f * std::max(0.f, std::min(1.f, p.tie));
+		// En el corpus solo un 7 % de los pasos ocupados prolonga en vez de reatacar.
+		// Aquí la probabilidad se aplica directa a cada pareja adyacente, así que la
+		// pendiente sale de dividir esa tasa por el valor interno de TIE.
+		const float tieChance = 0.18f * std::max(0.f, std::min(1.f, p.tie));
 		for (int s = 1; s < len; s++) {
 			if (!gate[s - 1] || !gate[s]) continue;
 			const float chainScale = tie[s - 1] ? 0.35f : 1.f;
@@ -329,8 +333,10 @@ struct AcidGen {
 			// La misma altura repetida es un nuevo ataque o un tie, nunca un slide sin
 			// movimiento de pitch.
 			if (leap == 0) continue;
-			const float base = (leap <= 5) ? 0.40f : (leap == 12) ? 0.30f : 0.16f;
-			slide[s] = uniform() < std::min(0.95f, base * 4.5f * p.slide);
+			// El corpus invierte la regla que había: los saltos grandes se ligan MÁS que
+			// los pequeños, y la octava es el que más. El factor 2 pone la tasa global del
+			// corpus en la mitad del recorrido del mando.
+			slide[s] = uniform() < std::min(0.95f, AcidCorpus::slideBase(leap) * 2.f * p.slide);
 		}
 
 		for (int s = len; s < ACID_MAX_STEPS; s++) {

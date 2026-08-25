@@ -9,6 +9,83 @@ Registro de cambios de los módulos Animatek. Formato basado en
 ## [No publicado]
 
 ### Added
+- **ATEK303 SEQ: editor de patrón con piano roll.** El botón `EDIT` de la cabecera cambia
+  los controles de generación por un editor, en el mismo hueco del panel: todo lo que hay
+  entre los LEDs de paso y la raya azul está hecho de widgets y no horneado en el SVG, así
+  que conmutar es enseñar una capa y esconder la otra y **el SVG no se toca**.
+  El roll enseña **una octava entera**: los doce semitonos, siete blancas y cinco negras. Las
+  filas que la escala no contiene salen hundidas y no aceptan clic —están para que la octava
+  se lea como una octava, no para tocarlas—, y clicarlas no hace nada en vez de cambiar la
+  escala a Cromática por su cuenta, que reinterpretaría el patrón entero. Una octava y no
+  más: el desplazamiento va en las filas `UP` y `DOWN`, que es cómo funciona un 303 de
+  verdad y cómo `AcidPatternV4` ya guarda el patrón por dentro. También es lo que hace que
+  quepa, porque dos octavas cromáticas dejarían las filas en un milímetro.
+  Debajo van `UP`, `DOWN`, `GATE` (silencio/nota/tie), `ACC` y `SLIDE`, con los colores de
+  los LEDs de paso para que panel y editor digan lo mismo, y los slides dibujados como una
+  línea que une las dos notas. Se pinta arrastrando; los pasos fuera de `STEPS` salen
+  apagados y no se editan.
+  Por el borde izquierdo baja un **teclado vertical**, una tecla por fila, blanca o negra
+  según lo sea esa nota en un piano. La tónica lleva marca y **su octava real**, que es lo que
+  quita la ambigüedad de un roll de una sola octava.
+  Las celdas que **no admiten valor salen oscuras**: `UP`, `DOWN`, `ACC` y `SLIDE` solo
+  significan algo sobre un ataque, y el slide necesita además que el paso siguiente ataque a
+  otra altura. Es la misma regla que aplica `sanitize()` al reproducir, dibujada por
+  adelantado: antes se pulsaba y no pasaba nada sin saber por qué.
+- **ATEK303 SEQ: *Clear pattern* en el menú contextual.** Vacía el patrón para dibujar uno
+  desde cero en el editor, sin pasar por GENERATE. Conserva la semilla y no toca `STEPS`, y
+  el paso 1 se queda con una nota, que es la invariante que sostiene `sanitize()`. Como es
+  destructivo ocupa el hueco del deshacer de las mutaciones, así que *Undo last mutation*
+  lo recupera.
+- **ATEK303 SEQ: el botón derecho borra en el editor.** El trato de cualquier piano roll:
+  el izquierdo pone y el derecho quita, y arrastrando con él se barre una tirada entera.
+  En el roll y en `GATE` apaga el paso —da igual la fila en la que caiga el ratón, para
+  poder barrer en diagonal—; en `UP` y `DOWN` devuelve la octava a cero, y en `ACC` y
+  `SLIDE` apaga el atributo. Sólo se consume el clic si cae sobre una celda de verdad: en
+  el tecladito de la izquierda y en los huecos entre filas el menú contextual del módulo
+  sigue saliendo como siempre.
+- **ATEK303 SEQ: tira de páginas bajo el editor.** Sesenta y cuatro pasos no caben en
+  dieciséis columnas, así que el patrón se edita de compás en compás: un botón redondo y
+  cuatro LEDs, colgados de las columnas de la rejilla del editor para que caigan a plomo
+  con ella. Un clic en un LED enseña esa página —sólo mira, no toca el sonido— y un toque
+  en el botón avanza una; mantenerlo dos segundos engancha el seguimiento de la cabeza y
+  el editor cambia de página solo, con la barra que llena el botón contando esos dos
+  segundos.
+  **Doble clic en un LED mueve el arranque de la secuencia a esa página**: con `STEPS` en
+  16 y la página `2:4` activa, la secuencia recorre los pasos 17 a 32, y la ventana da la
+  vuelta al patrón si `STEPS` se pasa del paso 64. Es estado de sonido, se guarda en el
+  patch, y el editor lo respeta: el sombreado de lo que queda fuera del bucle, las líneas
+  de slide y las celdas que aceptan clic se cuentan desde la página activa y no desde el
+  paso 1.
+- **ATEK303 SEQ: el sticker acid es un botón de generar.** La cara de la esquina superior
+  derecha hace lo mismo que `GENERATE` —semilla nueva, o mutación completa con `BLOCK`
+  encendido—, así que se pueden sortear patrones sin salir del editor a buscar el panel de
+  generación. Lleva tooltip, porque un sticker no parece un control, y la zona sensible es
+  el círculo y no el cuadro que lo envuelve. El comportamiento de `GENERATE` se extrajo a un
+  único método que comparten el botón, la entrada de trigger y el sticker.
+  Por dentro, `AcidPatternEdit` mantiene alineadas las dos capas del patrón: `time` va por
+  paso pero `pitch` va empaquetado por orden de nota, así que crear o borrar un ataque
+  desplaza los eventos posteriores **conservando su acento, su octava y su slide**. Dejarlo
+  en manos de `sanitize()` los habría reescrito con valores por defecto. La edición entra al
+  motor por el mismo camino diferido que la importación de MIDI, con un contador de versión
+  que resincroniza la copia del editor cuando GENERATE o una mutación cambian el patrón por
+  debajo. Verificado en banco con 160 000 ediciones aleatorias sobre las ocho escalas sin
+  romper ni una vez la invariante `pitchLength == número de NOTE`.
+- **ATEK303 SEQ: lector de ficheros MIDI.** *Load MIDI file...* en el menú contextual lee
+  un Standard MIDI File y lo convierte en patrón. El mapeo no es una convención inventada:
+  es el que usan de hecho los clones de 303 al exportar, y por eso un fichero suelto suena
+  igual dentro del módulo que fuera. Un note-on es un ataque; una nota que cruza el límite
+  del paso sin que empiece otra es un **tie**, y si la siguiente sí ataca y a otra altura
+  es un **slide**; la velocidad por encima del punto medio del fichero es el **acento**.
+  El tiempo se cuantiza a semicorcheas, así que un fichero de cuatro compases da cuatro
+  patrones de 16 pasos y un submenú **Bar** salta entre ellos sin volver a abrir el
+  fichero. La escala del panel se respeta si el fichero cabe en ella y pasa a Cromática si
+  no, que es la única forma de importar sin reescribir la melodía; `ROOT` no se toca. El
+  módulo informa en el menú de todo lo que tuvo que hacer —escala forzada, transporte por
+  octavas, voces descartadas de un acorde, ausencia de acentos—, en vez de hacerlo en
+  silencio. El patch guarda el patrón entero, así que suena aunque el fichero MIDI
+  desaparezca después. El lector (`src/MidiFile.hpp`) no depende de Rack ni de nada más, y
+  cubre los formatos 0, 1 y 2 con running status; rechaza la división SMPTE, que no tiene
+  rejilla musical que cuantizar.
 - **Cada módulo enlaza a su propio manual.** Los once módulos declaran su `manualUrl` en
   `plugin.json`, apuntando al manual en inglés que tienen en `Manuals/`, así que la opción
   *Manual* del menú contextual y el enlace de la web de la librería abren la documentación
@@ -25,6 +102,55 @@ Registro de cambios de los módulos Animatek. Formato basado en
   refleja, porque enseña la ganancia realmente aplicada.
 
 ### Changed
+- **ATEK303 SEQ: el slide entre dos notas de la misma altura ya vale.** Antes se
+  descartaba —en `sanitize()`, en el editor y al reproducir— con el argumento de que no
+  hay nada que deslizar. Pero un 303 no solo glissa al hacer slide: toca las dos notas
+  *legato*, y entre dos alturas iguales eso se sigue oyendo como una nota sostenida en vez
+  de dos ataques. Ahora la única condición es que el paso siguiente ataque. El generador
+  no cambia: ya se saltaba las transiciones de altura igual por el corpus (193 medidas, y
+  ninguna liga), así que una semilla suena exactamente igual que antes; lo que cambia es
+  lo que te deja marcar a mano y lo que conserva una importación de MIDI. Para oír el
+  legato hace falta el ATEK303 al lado o la opción *Gate held through slides (legato)* del
+  menú; sin eso, un slide de altura igual solo levanta la salida `SLIDE`.
+- **ATEK303 SEQ: la importación de MIDI descarta el silencio inicial.** Un fichero que no
+  arranca en el tick 0 —una sonata que entra al segundo compás, una pista con cuenta
+  atrás— se importaba con la primera página en blanco: eso dice dónde empieza la música,
+  no qué contiene. Ahora ese silencio se salta, pero en bloques de dieciséis pasos, porque
+  recortar hasta la primera nota movería una anacrusa al tiempo fuerte y dejaría el compás
+  entero a contratiempo. Un fichero que empieza unos pasos después del principio de su
+  primer compás conserva su anacrusa. El menú lo informa como una decisión más del
+  importador (`skipped N leading empty steps`). Medido sobre cinco ficheros clásicos: la
+  sonata para cello de Debussy se saltaba 16 pasos y *La Mer* 48; el *Étude 12* y la
+  *Arabesque*, que entran dentro del primer compás, no se tocan.
+- **ATEK303 SEQ: la cabeza de reproducción se pinta en rojo.** El paso en curso llevaba un
+  realce azul sobre el color de la nota; ahora se enciende en rojo a plena luz, tape lo que
+  tape, en la fila de pasos y en la tira de páginas. Es el código de las cajas de ritmo
+  desde siempre y es lo único de la fila que hay que encontrar sin buscarlo. El blanco
+  tenue de la tira marca la página por la que arranca la secuencia, para verlo con el
+  reloj parado.
+- **ATEK303 SEQ: el generador se calibra con un corpus medido** (algoritmo v4 -> v5). Las
+  probabilidades del generador estaban puestas a ojo o estimadas sobre una muestra
+  pequeña. Ahora salen de medir 61 ficheros MIDI de patrones acid: 140 compases distintos
+  de 16 pasos, 1928 notas. Las tablas viven en `src/AcidCorpus.hpp` y son frecuencias
+  agregadas, no material: ningún patrón del corpus se puede reconstruir desde ese fichero.
+  Lo que el corpus corrige:
+  - **Los saltos grandes se ligan más que los pequeños, no al revés.** El código daba 0.40
+    a los saltos de hasta cuarta y 0.16 al resto. Medido: la octava y lo que la supera se
+    ligan con 0.39 y son lo que más se liga; una tercera menor, con 0.22. La regla estaba
+    invertida.
+  - **La quinta estaba sobrevalorada al elegir vocabulario**, justo detrás de la tónica. En
+    el corpus pesan más que ella la séptima menor, la sexta menor y la cuarta justa.
+  - **El vocabulario real llega a seis o siete clases de nota**, no a cuatro como fijaba el
+    tope anterior.
+  - **El acento global es del 36%, no del 57%** que estimaba el comentario del código, y su
+    sesgo hacia la parte fuerte es mucho más flojo del que había escrito.
+  - **Un 7,2% de los pasos ocupados prolonga** en vez de reatacar, no el 10% estimado.
+  Los mandos `ACCENT` y `SLIDE` quedan calibrados para que su punto medio caiga sobre la
+  tasa del corpus, conservando el recorrido entero: medido en banco sobre 20 000 patrones,
+  acento 0.366 y slide 0.307 a mitad de recorrido, y 0.000 y 0.883 en los extremos.
+  El esquema del JSON no cambia y **ningún patch existente suena distinto**: el patrón va
+  entero en el fichero y no se regenera desde la semilla. Lo que cambia es qué patrón
+  produce una semilla nueva, y por eso sube `ALGORITHM_VERSION`.
 - **CAP: nueva disposición del panel** ([#7](https://github.com/animatek/UZZ-VCV-RACK/issues/7)).
   `DEPTH` pasa a ser el tercer mando para quedar justo encima de `D-CV`, que se muda a la
   columna izquierda: el jack que modula un mando va debajo del mando. `VCA` se le alinea
@@ -40,6 +166,27 @@ Registro de cambios de los módulos Animatek. Formato basado en
   y = 88, así que el SVG no se toca.
 
 ### Fixed
+- **ATEK303 SEQ: el editor volvía atrás un par de cuadros después de cada edición.** La
+  copia de trabajo se resincronizaba con `version != seenVersion`, y `submit()` deja
+  `seenVersion` un paso por delante a propósito, porque el patrón no se instala hasta que
+  el hilo de audio pasa por ahí. En esos cuadros la desigualdad daba cierto y el editor se
+  recargaba con el patrón **viejo**: la nota recién puesta parpadeaba, y si el arrastre
+  seguía, la edición siguiente salía de la copia atrasada y se perdía la anterior. Ahora
+  la comparación es con signo sobre la resta —sólo se resincroniza si el módulo va por
+  delante—, así que arrastrar deprisa ya no pierde pasos ni parpadea.
+- **ATEK303 SEQ: el arrastre en el roll no seguía al ratón en vertical.** La fila se fijaba
+  en la primera pulsación, así que subir o bajar sin cambiar de paso no movía la nota. Ahora
+  la fila se recalcula en cada movimiento: cambiar de paso pinta, cambiar de fila mueve la
+  nota a esa altura, y si el puntero se sale del roll por arriba o por abajo se conserva la
+  última fila buena para no romper la tirada.
+- **ATEK303 SEQ: arrastrar por el editor no pintaba salvo con el patch sin desplazar.** El
+  arrastre reconstruía la posición del ratón contra `RackWidget::getMousePos()`, que está
+  en coordenadas de la rack, y la restaba de `getAbsoluteOffset()`, que está en las de la
+  escena: en cuanto el patch estaba desplazado o con zoom —o sea, casi siempre— la
+  posición caía fuera del widget y no se pintaba ni un paso. Ahora el pintado va por
+  `onDragHover`, que trae la posición ya en coordenadas del widget, así que se dibuja
+  arrastrando de verdad: una pulsación y un barrido a derecha o izquierda dejan la tirada
+  de notas puesta.
 - **Los blanks se comían la gráfica y dejaban módulos transparentes**
   ([#6](https://github.com/animatek/UZZ-VCV-RACK/issues/6)). El lienzo animado de los
   blanks se dibujaba entero en cada cuadro, sin caché: unas nueve figuras translúcidas

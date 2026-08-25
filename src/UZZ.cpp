@@ -115,10 +115,13 @@ struct UZZ : Module {
   dsp::PulseGenerator gatePulse, eocPulse, stepGateTrig[16];
   dsp::ClockDivider lightDivider;
 
-  dsp::BooleanTrigger rndBtnTrig[NUM_RND_BANKS];
-  dsp::SchmittTrigger rndCvTrig[NUM_RND_BANKS];
-  dsp::BooleanTrigger shiftUpTrig[NUM_SHIFT_ROWS],
-      shiftDownTrig[NUM_SHIFT_ROWS];
+  // Los disparadores ya se inicializan solos, pero guardan su estado en una unión y el
+  // análisis estático que la librería pasa al enviar no lo ve: avisa de miembro sin
+  // inicializar por cada array. El `= {}` no cambia nada en ejecución y calla el aviso.
+  dsp::BooleanTrigger rndBtnTrig[NUM_RND_BANKS] = {};
+  dsp::SchmittTrigger rndCvTrig[NUM_RND_BANKS] = {};
+  dsp::BooleanTrigger shiftUpTrig[NUM_SHIFT_ROWS] = {},
+      shiftDownTrig[NUM_SHIFT_ROWS] = {};
   bool skipNextRandom[NUM_RND_BANKS] = {};
 
   bool playCurrentOnNextTick = false;

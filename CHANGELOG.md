@@ -166,6 +166,13 @@ Registro de cambios de los módulos Animatek. Formato basado en
   y = 88, así que el SVG no se toca.
 
 ### Fixed
+- **UZZ: cppcheck avisaba de tres arrays de disparadores sin inicializar.**
+  `dsp::BooleanTrigger` se inicializa solo, pero guarda su estado en una unión y el
+  análisis estático no ve que el inicializador por defecto de un miembro de la unión cubre
+  el objeto entero: avisaba de `rndBtnTrig`, `shiftUpTrig` y `shiftDownTrig`. Un `= {}` en
+  la declaración lo calla sin cambiar nada en ejecución. La librería de VCV pasa análisis
+  estático al enviar y abre una issue en el repo si sale sucio, así que `src/` vuelve a
+  salir limpio.
 - **ATEK303 SEQ: el editor volvía atrás un par de cuadros después de cada edición.** La
   copia de trabajo se resincronizaba con `version != seenVersion`, y `submit()` deja
   `seenVersion` un paso por delante a propósito, porque el patrón no se instala hasta que

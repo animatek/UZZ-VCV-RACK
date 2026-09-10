@@ -37,3 +37,22 @@ Both steps are needed, and a git tag alone is not a release:
 3. `gh release create vX.Y.Z --verify-tag --title "vX.Y.Z"` with notes in English: an `Animatek X.Y.Z` line, then `Highlights:` bullets. No binaries are attached — the library builds from source.
 
 Before tagging, run `cppcheck --enable=warning --std=c++11 -I src -I ../Rack-SDK/include src/`; the VCV library runs static analysis on submission and files an issue on this repo when it fails. Note that `clamp()` does not satisfy cppcheck's bounds analysis — it does not follow the return value, so guard indices with an explicit comparison.
+
+## The shared CODE changelog
+
+On top of this repo's `CHANGELOG.md`, **every meaningful change also gets an entry in
+`/mnt/SPEED/CODE/CHANGELOG.md`**: the shared log across the seven projects, and what the panel's
+`Cambios` page shows. Without that line the change does not exist outside this repo — which is
+exactly what happened until 2026-09-10, when the panel only read the `Animatek.net` changelog.
+
+That entry is the summary: what changed, the real verification, the agent, and the commit or the
+path to this repo's changelog. Technical detail stays here and is not duplicated.
+
+- The path is a **symlink** to the canonical Obsidian note `00 - Sistema/CHANGELOG - CODE.md`.
+  Resolve it and edit the target; never replace it with a separate file or start a second copy.
+  If it is unavailable, report the blocker instead of inventing another location.
+- Write under the local date (Europe/Madrid), newest first, one section per project. Re-read the
+  current dated block first and patch only your own entry: several agents write there.
+- Uncommitted work is marked explicitly as `cambio local, sin commit`.
+- The panel picks it up in the next morning's ingest. To see it now:
+  `Animatek.net/panel/ingesta/actualizar.sh`.

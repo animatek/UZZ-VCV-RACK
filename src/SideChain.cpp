@@ -228,9 +228,6 @@ struct SideChain : Module {
     // Double buffer for the chain bus arriving from the left (see plugin.hpp).
     CapBusMessage busMessages[2];
     CapChainLed chainInLed, chainOutLed;
-    // This CAP's channel number in its row, counted from the left; 0 when it
-    // stands alone. Written by the audio thread, drawn by the panel.
-    int displayChannel = 0;
 
     /** Hands the chain on to the right and lights the two chain LEDs: what came
     in from the left, and what goes out to the right. */
@@ -240,9 +237,9 @@ struct SideChain : Module {
         lights[CHAIN_OUT_LIGHT].setBrightness(
             chainOutLed.update(capChainModule(rightExpander.module), out, sampleTime));
         // Channels count from the left: the first CAP of a row is 1, and a BUS
-        // that closes its row starts the count again for the next one.
+        // that closes its row starts the count again. Not shown anywhere yet:
+        // how to show it on the panel is still to be decided.
         const int channel = in.linked ? in.channel + 1 : 1;
-        displayChannel = (in.linked || capChainModule(rightExpander.module)) ? channel : 0;
         CapBusMessage msg = out;
         msg.linked = true;
         msg.channel = channel;
@@ -752,26 +749,6 @@ struct LevelSlider : app::SliderKnob {
 };
 
 
-/** The channel number beside the module name, when the CAP is part of a row. */
-struct CapChannelNumber : TransparentWidget {
-    SideChain* cap = NULL;
-
-    void drawLayer(const DrawArgs& args, int layer) override {
-        if (layer == 1 && cap && cap->displayChannel > 0) {
-            std::shared_ptr<window::Font> font = APP->window->loadFont(asset::system("res/fonts/Nunito-Bold.ttf"));
-            if (font && font->handle >= 0) {
-                nvgFontSize(args.vg, 11.f);
-                nvgFontFaceId(args.vg, font->handle);
-                nvgTextAlign(args.vg, NVG_ALIGN_LEFT | NVG_ALIGN_TOP);
-                nvgFillColor(args.vg, nvgRGB(0xe8, 0xe8, 0xe8));
-                nvgText(args.vg, 0.f, 0.f, string::f("%d", cap->displayChannel).c_str(), NULL);
-            }
-        }
-        TransparentWidget::drawLayer(args, layer);
-    }
-};
-
-
 struct SideChainWidget : ModuleWidget {
     SideChainWidget(SideChain* module) {
         setModule(module);
@@ -790,12 +767,6 @@ struct SideChainWidget : ModuleWidget {
                                                            SideChain::CHAIN_IN_LIGHT));
         addChild(createLightCentered<TinyLight<BlueLight>>(mm2px(Vec(W - 1.8f, 2.2f)), module,
                                                            SideChain::CHAIN_OUT_LIGHT));
-
-        // The channel number, up and to the right of the name.
-        auto* number = createWidget<CapChannelNumber>(mm2px(Vec(14.6f, 118.6f)));
-        number->box.size = mm2px(Vec(8.f, 5.f));
-        number->cap = module;
-        addChild(number);
 
         auto* moduleName = new TextLabel("CAP", mm2px(Vec(1.8f, 119.9f)),
                                          mm2px(Vec(14.f, 5.8f)));

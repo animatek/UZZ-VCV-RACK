@@ -186,11 +186,7 @@ Makes `LEVEL` scale `ENV` as well as audio. Disabled by default, so `ENV` remain
 
 ### Chain LEDs
 
-Two tiny LEDs in the top corners show the chain. The left one lights when a CAP or a BUS sits against the left edge and the chain reaches this CAP; the right one when this CAP hands the chain on to a CAP or BUS on its right. Dim means linked; brighter means audio passing, following its level. ### Channel number
-
-In a row, each CAP shows its channel number up and to the right of its name, counted from the left: the first CAP of a row is 1. A BUS that closes its row starts the count again for the next one; a BUS that passes its mix on lets it carry on. A CAP on its own shows no number.
-
-### Last in a row: OUT is the chain mix
+Two tiny LEDs in the top corners show the chain. The left one lights when a CAP or a BUS sits against the left edge and the chain reaches this CAP; the right one when this CAP hands the chain on to a CAP or BUS on its right. Dim means linked; brighter means audio passing, following its level. ### Last in a row: OUT is the chain mix
 
 CAPs placed side by side form a mixer. If the row ends in a **BUS**, the mix comes out of the BUS. If it ends in a CAP, that last CAP's `OUT L` / `OUT R` carry the mix instead: its own signal plus everything arriving from the left, each CAP panned and after its fader, as one stereo pair. CAPs in the middle of a row keep `OUT` as a direct out.
 

@@ -9,10 +9,6 @@ Registro de cambios de los módulos Animatek. Formato basado en
 ## [Unreleased]
 
 ### Added
-- **CAP: número de canal.** Petición de Javier. En una fila, cada CAP muestra su número arriba a
-  la derecha de su nombre, contado desde la izquierda; un BUS que cierra la fila reinicia la
-  cuenta y uno que pasa la mezcla la continúa; una CAP suelta no muestra nada. La cuenta viaja
-  en el mensaje de la cadena. Comprobado contra libRack: 1 2 3; 1 2 | 1 2; 1 2 | 3 4.
 - **BUS cierra su fila; conmutadores planos.** Petición de Javier: una CAP a la derecha de un
   BUS empieza ahora una fila nueva en paralelo, con su propia mezcla, en vez de seguir la misma
   cadena. Para encadenar grupos hacia un master está la opción `Pass the mix on to the right`

@@ -9,6 +9,18 @@ Registro de cambios de los módulos Animatek. Formato basado en
 ## [Unreleased]
 
 ### Added
+- **CAP: modos lowpass filter y low-pass gate, y envolvente invertida.** En el menú, `Mode`
+  elige sobre qué actúa el control (envolvente × CV de `VCA`): la ganancia (**VCA**, como
+  siempre), el corte de un paso bajo SVF de dos polos entre 20 Hz y 20 kHz sin tocar el
+  nivel (**Lowpass filter**), o corte y nivel a la vez a través de un modelo de vactrol que
+  abre en 2 ms y cierra en 30 ms o más (**Low-pass gate**). `LEVEL` sigue siendo el fader en
+  todos los modos. `Ping envelope` invierte la envolvente: en reposo cerrado y el trigger
+  abre, que es lo que hace de CAP un LPG tocado con triggers. El medidor se pone ámbar en los
+  modos con filtro. El vactrol va solo en LPG: en LPF ablandaba la caída de 2 ms de un duck a
+  unos 50 ms. Comprobado contra libRack con una sierra de 220 Hz: el modo VCA da las mismas
+  muestras, bit a bit, que `main`; en LPF el nivel se mantiene y el brillo cae de 0,22 a 0,03
+  durante el duck; en LPG con ping hay silencio en reposo y la cola se oscurece al decaer.
+  Etiquetas `Low-pass gate` y `Filter` en `plugin.json`.
 - **UNIT-D: escala y raíz en el menú contextual.** Once escalas (menor, mayor, dórica,
   frigia, lidia, mixolidia, menor armónica, las dos pentatónicas, blues y cromática) y las
   doce raíces. Por defecto C menor, que era la única que había: los patches anteriores no

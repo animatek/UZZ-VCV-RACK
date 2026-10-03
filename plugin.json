@@ -71,10 +71,12 @@
     {
       "slug": "SideChain",
       "name": "CAP",
-      "description": "Stereo ducking VCA that lowers audio on each trigger and recovers with adjustable depth, timing and natural variation. A VCA CV input gives ordinary voltage control over gain, and envelope and end-of-cycle outputs are provided.",
+      "description": "Stereo ducking VCA that lowers audio on each trigger and recovers with adjustable depth, timing and natural variation. It can also work as a lowpass filter or a vactrol-style low-pass gate, and pinged by triggers. A VCA CV input gives ordinary voltage control over gain, and envelope and end-of-cycle outputs are provided.",
       "manualUrl": "https://github.com/animatek/UZZ-VCV-RACK/blob/main/Manuals/CAP_Manual_EN.md",
       "tags": [
         "Voltage-controlled amplifier",
+        "Low-pass gate",
+        "Filter",
         "Dynamics",
         "Envelope generator",
         "Polyphonic",

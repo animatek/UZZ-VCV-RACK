@@ -1,8 +1,8 @@
 # CAP User Manual
 
-**Manual version:** 1.0
+**Manual version:** 1.1
 
-**Plugin version:** Animatek 2.5.5
+**Plugin version:** Animatek 2.5.9
 
 **Module:** CAP for VCV Rack
 
@@ -132,12 +132,29 @@ The illuminated bar behind the `LEVEL` slider displays applied gain, not audio a
 - Bar brightness follows the envelope.
 - A stereo or polyphonic patch may show multiple narrow bars.
 - In shared-envelope mode, repeated bars represent the same coherent gain; in per-channel mode, they show the individual channel envelopes.
+- The bar is blue in **VCA** mode and amber in the two filter modes, where its height reads as how open the filter is.
 
 ---
 
 ## 8. Context menu
 
 Right-click CAP to access these settings.
+
+### Mode
+
+What the control signal (the envelope multiplied by `VCA` CV) acts on. `LEVEL` stays the output fader in every mode and never moves the filter.
+
+- **VCA** (default): the control sets the gain. This is CAP as it always was; older patches load in this mode and sound exactly as before.
+- **Lowpass filter:** the control sets the cutoff of a two-pole lowpass, from 20 Hz with the control closed to 20 kHz with it fully open; the level is left alone. A duck becomes a filtered pump: the hit darkens the sound instead of lowering it. The filter follows the envelope without lag, so the 2 ms fall keeps its punch. Bear in mind that a deep duck pulls the cutoff below the fundamental of most sources, so `DEPTH` decides how dark the hit gets.
+- **Low-pass gate:** cutoff and level close together, through a vactrol model that opens in about 2 ms and closes in 30 ms or more, slower the further it closes. That lag is the low-pass gate sound: the tail of a note keeps losing highs after its level has fallen. It also softens the fall of a duck to some 50 ms.
+
+The meter turns amber in both filter modes, so the mode shows on the panel.
+
+### Ping envelope (trigger opens)
+
+Flips the envelope. At rest the control is closed; a trigger opens it to `DEPTH` in 2 ms, holds it for 12 ms and `RECOVERY` closes it again. In **Low-pass gate** mode this is what turns CAP into a classic LPG played by triggers: patch a voice into `IN L`, a sequencer gate into `TRIG`, and every step plucks.
+
+`ENV` and the meter follow the flipped envelope, so `ENV` rests at 0 V and rises on each hit. For a percussive pluck choose the **Logarithmic** recovery curve, which drops fast and then tails off; **Exponential** holds open and closes late.
 
 ### Recovery curve
 
@@ -171,6 +188,8 @@ Creates a new random seed and resets all channel random walks. Use it to obtain 
 
 VCV Rack saves the knob values and the following CAP menu state in the patch:
 
+- mode,
+- Ping envelope,
 - recovery curve,
 - Freeze jitter,
 - Per-channel envelopes,
@@ -179,7 +198,7 @@ VCV Rack saves the knob values and the following CAP menu state in the patch:
 
 Saving and reopening a patch restores the chosen seed and settings. Runtime envelope phases are not saved; a reopened module starts with its envelopes at rest rather than resuming an interrupted cycle.
 
-Resetting the module restores the exponential curve, disables all three menu toggles, restores the factory seed, and returns the envelopes to rest. Rack's normal parameter reset behavior restores the panel defaults.
+Resetting the module restores **VCA** mode and the exponential curve, disables all four menu toggles, restores the factory seed, and returns the envelopes to rest. Rack's normal parameter reset behavior restores the panel defaults.
 
 ---
 
@@ -200,6 +219,14 @@ Patch matching polyphonic triggers and audio, then enable **Per-channel envelope
 ### External modulation envelope
 
 Leave audio unpatched and send triggers to `TRIG`. Patch `ENV` to a filter, wavefolder, reverb send, or another VCA. The signal rests at 10 V and dips on each trigger, making it naturally suited to inverted or ducking modulation.
+
+### Low-pass gate voice
+
+Set **Mode** to **Low-pass gate** and turn on **Ping envelope**. Patch an oscillator to `IN L` and a sequencer gate or trigger to `TRIG`. `DEPTH` sets how far each hit opens, `RECOVERY` how long the note rings, and the **Logarithmic** curve gives the classic pluck. Raise `JITTER` and no two notes ring quite alike.
+
+### Filtered pump
+
+Set **Mode** to **Lowpass filter** and leave the envelope ducking. Run a pad or a bass through CAP with the kick trigger in `TRIG`: each kick darkens the sound and it opens back up over `RECOVERY`, keeping its level. Lower `DEPTH` if the hit gets too dark.
 
 ### Self-cycling function generator
 

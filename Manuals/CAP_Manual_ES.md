@@ -1,8 +1,8 @@
 # Manual de usuario de CAP
 
-**Versión del manual:** 1.0
+**Versión del manual:** 1.1
 
-**Versión del plugin:** Animatek 2.5.5
+**Versión del plugin:** Animatek 2.5.9
 
 **Módulo:** CAP para VCV Rack
 
@@ -132,12 +132,29 @@ La barra iluminada tras el deslizador `LEVEL` muestra la ganancia aplicada, no l
 - El brillo de la barra sigue a la envolvente.
 - Un patch estéreo o polifónico puede mostrar varias barras estrechas.
 - En modo compartido, las barras repetidas representan la misma ganancia coherente; en modo por canal muestran las envolventes individuales.
+- La barra es azul en modo **VCA** y ámbar en los dos modos con filtro, donde su altura se lee como lo abierto que está el filtro.
 
 ---
 
 ## 8. Menú contextual
 
 Haz clic derecho sobre CAP para acceder a estos ajustes.
+
+### Mode
+
+Sobre qué actúa la señal de control (la envolvente multiplicada por el CV de `VCA`). `LEVEL` sigue siendo el fader de salida en todos los modos y nunca mueve el filtro.
+
+- **VCA** (por defecto): el control fija la ganancia. Es CAP como siempre ha sido; los patches anteriores cargan en este modo y suenan exactamente igual.
+- **Lowpass filter:** el control fija el corte de un paso bajo de dos polos, de 20 Hz con el control cerrado a 20 kHz del todo abierto; el nivel no se toca. El duck se convierte en un bombeo filtrado: el golpe oscurece el sonido en vez de bajarlo. El filtro sigue a la envolvente sin retraso, así que la caída de 2 ms conserva su pegada. Ten en cuenta que un duck profundo lleva el corte por debajo de la fundamental de casi cualquier fuente, así que `DEPTH` decide lo oscuro que queda el golpe.
+- **Low-pass gate:** corte y nivel cierran juntos, a través de un modelo de vactrol que abre en unos 2 ms y cierra en 30 ms o más, más despacio cuanto más cerrado está. Ese retraso es el sonido de un low-pass gate: la cola de la nota sigue perdiendo agudos después de que el nivel haya caído. También suaviza la caída de un duck a unos 50 ms.
+
+El medidor se vuelve ámbar en los dos modos con filtro, así que el modo se ve en el panel.
+
+### Ping envelope (trigger opens)
+
+Invierte la envolvente. En reposo el control está cerrado; un trigger lo abre hasta `DEPTH` en 2 ms, lo mantiene 12 ms y `RECOVERY` lo vuelve a cerrar. En modo **Low-pass gate** es lo que convierte CAP en un LPG clásico tocado con triggers: conecta una voz a `IN L`, un gate de secuenciador a `TRIG`, y cada paso suena pulsado.
+
+`ENV` y el medidor siguen a la envolvente invertida, así que `ENV` reposa a 0 V y sube con cada golpe. Para un pulsado percusivo elige la curva **Logarithmic**, que cae deprisa y luego se alarga; **Exponential** se queda abierta y cierra tarde.
 
 ### Recovery curve
 
@@ -171,6 +188,8 @@ Crea una semilla aleatoria nueva y reinicia los paseos aleatorios de todos los c
 
 VCV Rack guarda en el patch los valores de los controles y el siguiente estado del menú de CAP:
 
+- modo,
+- Ping envelope,
 - curva de recuperación,
 - Freeze jitter,
 - Per-channel envelopes,
@@ -179,7 +198,7 @@ VCV Rack guarda en el patch los valores de los controles y el siguiente estado d
 
 Al guardar y volver a abrir un patch se restauran la semilla y los ajustes elegidos. Las fases de ejecución de las envolventes no se guardan; al reabrir, el módulo empieza con las envolventes en reposo en vez de continuar un ciclo interrumpido.
 
-Al resetear el módulo se restaura la curva exponencial, se desactivan las tres opciones, vuelve la semilla de fábrica y las envolventes regresan al reposo. El reset normal de parámetros de Rack restaura los valores predeterminados del panel.
+Al resetear el módulo se restauran el modo **VCA** y la curva exponencial, se desactivan las cuatro opciones, vuelve la semilla de fábrica y las envolventes regresan al reposo. El reset normal de parámetros de Rack restaura los valores predeterminados del panel.
 
 ---
 
@@ -200,6 +219,14 @@ Conecta triggers y audio polifónicos correspondientes y activa **Per-channel en
 ### Envolvente de modulación externa
 
 No conectes audio, envía triggers a `TRIG` y conecta `ENV` a un filtro, wavefolder, envío de reverb u otro VCA. La señal reposa a 10 V y baja con cada trigger, por lo que resulta apropiada para modulaciones invertidas o de ducking.
+
+### Voz con low-pass gate
+
+Pon **Mode** en **Low-pass gate** y activa **Ping envelope**. Conecta un oscilador a `IN L` y un gate o trigger de secuenciador a `TRIG`. `DEPTH` fija cuánto abre cada golpe, `RECOVERY` cuánto suena la nota, y la curva **Logarithmic** da el pulsado clásico. Sube `JITTER` y no habrá dos notas que suenen igual.
+
+### Bombeo filtrado
+
+Pon **Mode** en **Lowpass filter** y deja la envolvente en ducking. Pasa un pad o un bajo por CAP con el trigger del bombo en `TRIG`: cada bombo oscurece el sonido y se vuelve a abrir durante `RECOVERY`, sin perder nivel. Baja `DEPTH` si el golpe queda demasiado oscuro.
 
 ### Generador de funciones autocíclico
 

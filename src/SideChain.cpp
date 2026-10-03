@@ -71,6 +71,79 @@ static const float CURVE_EXPONENTS[NUM_CURVE_SHAPES] = {2.5f, 1.0f, 0.4f};
 static const char* CURVE_NAMES[NUM_CURVE_SHAPES] = {
     "Exponential", "Linear", "Logarithmic"};
 
+// What the control signal (envelope x VCA CV) acts on. VCA is the module as it
+// always was; the other two run the audio through a lowpass whose cutoff
+// follows the control, LPF leaving the level alone and LPG closing both at
+// once, the way a Buchla-style low-pass gate does.
+enum GateMode {
+    MODE_VCA,
+    MODE_LPF,
+    MODE_LPG,
+    NUM_GATE_MODES
+};
+
+static const char* GATE_MODE_NAMES[NUM_GATE_MODES] = {
+    "VCA", "Lowpass filter", "Low-pass gate"};
+
+// Cutoff spans 20 Hz to 20 kHz exponentially, so equal steps of control are
+// equal musical intervals. At full control the filter sits above hearing and
+// LPF mode at rest is as transparent as VCA mode.
+static constexpr float CUTOFF_MIN = 20.f;
+static constexpr float CUTOFF_OCTAVES = 10.f;
+// Damping of the SVF: 1/Q. A touch under the Butterworth 1.414 gives the
+// faint bump at the cutoff that makes a closing gate audible as a sweep
+// instead of a plain fade, without turning it into a resonant filter.
+static constexpr float FILTER_DAMPING = 1.1f;
+
+// A vactrol, the light-dependent resistor in a real LPG, opens fast and
+// closes slowly, and closes slower still the darker it gets. That lag is the
+// "plonk": the tail of a note keeps losing highs after the level has fallen.
+//
+// LPG mode only. Closing is the slow direction, so a vactrol turns the 2 ms
+// fall of a duck into some 50 ms; LPF mode follows the envelope unsmoothed so
+// a filtered pump keeps its punch.
+static constexpr float VACTROL_RISE = 0.002f;
+static constexpr float VACTROL_FALL = 0.030f;
+static constexpr float VACTROL_FALL_DARK = 3.f;  // extra fall time, x, at zero
+
+struct Vactrol {
+    float y = 1.f;
+    // Unprimed, the first sample jumps straight to the control: a vactrol
+    // starting fully lit would leak a tail of sound into a closed ping gate
+    // every time the mode is selected or the patch loads.
+    bool primed = false;
+
+    float process(float x, float dt) {
+        if (!primed) {
+            y = x;
+            primed = true;
+        }
+        float tau = (x > y) ? VACTROL_RISE
+                            : VACTROL_FALL * (1.f + VACTROL_FALL_DARK * (1.f - y));
+        y += (x - y) * (1.f - std::exp(-dt / tau));
+        return y;
+    }
+};
+
+/** Two-pole lowpass, the trapezoidal state-variable form: stable under fast
+cutoff modulation, which is all this filter ever gets. */
+struct LowpassSvf {
+    float ic1 = 0.f;
+    float ic2 = 0.f;
+
+    float process(float x, float g, float k) {
+        float a1 = 1.f / (1.f + g * (g + k));
+        float a2 = g * a1;
+        float a3 = g * a2;
+        float v3 = x - ic2;
+        float v1 = a1 * ic1 + a2 * v3;
+        float v2 = ic2 + a2 * ic1 + a3 * v3;
+        ic1 = 2.f * v1 - ic1;
+        ic2 = 2.f * v2 - ic2;
+        return v2;
+    }
+};
+
 
 struct SideChain : Module {
     // New entries go at the end of each enum: the indices are what patches
@@ -132,6 +205,18 @@ struct SideChain : Module {
     int meterBars = 1;
 
     bool levelAffectsEnv = false;
+    int gateMode = MODE_VCA;
+    // Off is the ducker: rest is open and a hit closes. On, the envelope is
+    // flipped so rest is closed and a hit opens to DEPTH, then RECOVERY closes
+    // it again: a trigger pings the gate, which is what an LPG is played with.
+    bool pingEnvelope = false;
+
+    // Per audio channel: the vactrol smoothing the control, and one filter for
+    // each side. Only used outside VCA mode.
+    Vactrol vactrols[16];
+    LowpassSvf filtersL[16];
+    LowpassSvf filtersR[16];
+    int lastGateMode = MODE_VCA;
 
     SideChain() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
@@ -187,6 +272,8 @@ struct SideChain : Module {
         freezeJitter = false;
         perChannelEnvelopes = false;
         levelAffectsEnv = false;
+        gateMode = MODE_VCA;
+        pingEnvelope = false;
         baseSeed = 0x5C1DECA1ULL;
         for (int c = 0; c < 16; c++) {
             voices[c].trigger.reset();
@@ -195,6 +282,12 @@ struct SideChain : Module {
             voices[c].phase = 0.f;
         }
         reseedVoices(baseSeed);
+    }
+
+    /** The envelope as it leaves the module: the ducking level, or its mirror
+    image when the envelope is set to ping. */
+    float shapedEnv(const Voice& v) const {
+        return pingEnvelope ? 1.f - v.level : v.level;
     }
 
     static float walkStep(random::Xoroshiro128Plus& rng, float x) {
@@ -306,7 +399,7 @@ struct SideChain : Module {
                     break;
             }
 
-            outputs[ENV_OUTPUT].setVoltage(10.f * v.level * envScale, c);
+            outputs[ENV_OUTPUT].setVoltage(10.f * shapedEnv(v) * envScale, c);
             // EOC is a trigger, never attenuated: a half-height trigger is
             // just a trigger some modules miss.
             outputs[EOC_OUTPUT].setVoltage(v.eocPulse.process(args.sampleTime) ? 10.f : 0.f, c);
@@ -315,7 +408,7 @@ struct SideChain : Module {
         outputs[ENV_OUTPUT].setChannels(channels);
         outputs[EOC_OUTPUT].setChannels(channels);
 
-        meterEnv = voices[0].level;
+        meterEnv = shapedEnv(voices[0]);
         meterGain = meterEnv * baseLevel * vcaCv(0);
 
         // -- Meter --------------------------------------------------------
@@ -346,7 +439,7 @@ struct SideChain : Module {
         }
         for (int i = 0; i < meterBars; i++) {
             int e = perChannelEnvelopes ? std::min(i, channels - 1) : 0;
-            meterBar[i] = voices[e].level * baseLevel * vcaCv(i);
+            meterBar[i] = shapedEnv(voices[e]) * baseLevel * vcaCv(i);
         }
 
         // -- VCA ------------------------------------------------------------
@@ -360,16 +453,39 @@ struct SideChain : Module {
             return;
         }
 
+        // Highest cutoff the filter is allowed: tan() blows up at Nyquist.
+        const float maxCutoff = 0.45f * args.sampleRate;
+        if (gateMode != lastGateMode) {
+            for (int c = 0; c < 16; c++)
+                vactrols[c].primed = false;
+            lastGateMode = gateMode;
+        }
+
         for (int c = 0; c < audioChannels; c++) {
             // One envelope for everything unless the user asked otherwise, so
             // a stereo pair ducks symmetrically.
             int e = perChannelEnvelopes ? std::min(c, channels - 1) : 0;
-            float gain = voices[e].level * baseLevel * vcaCv(c);
+            // LEVEL stays outside the control on purpose: it is the channel
+            // fader in every mode, and must not move the filter.
+            float control = shapedEnv(voices[e]) * vcaCv(c);
 
             float left = inputs[IN_L_INPUT].getPolyVoltage(c);
             // Right is normalled to left: one cable feeds both outputs, which
             // turns the module into a mono-to-stereo ducker for free.
             float right = rightPatched ? inputs[IN_R_INPUT].getPolyVoltage(c) : left;
+
+            float gain = control * baseLevel;
+            if (gateMode != MODE_VCA) {
+                float lit = (gateMode == MODE_LPG)
+                                ? vactrols[c].process(control, args.sampleTime)
+                                : control;
+                float cutoff = std::min(maxCutoff,
+                                        CUTOFF_MIN * std::pow(2.f, CUTOFF_OCTAVES * lit));
+                float g = std::tan(M_PI * cutoff * args.sampleTime);
+                left = filtersL[c].process(left, g, FILTER_DAMPING);
+                right = filtersR[c].process(right, g, FILTER_DAMPING);
+                gain = (gateMode == MODE_LPG ? lit : 1.f) * baseLevel;
+            }
 
             outputs[OUT_L_OUTPUT].setVoltage(left * gain, c);
             outputs[OUT_R_OUTPUT].setVoltage(right * gain, c);
@@ -385,6 +501,8 @@ struct SideChain : Module {
         json_object_set_new(root, "freezeJitter", json_boolean(freezeJitter));
         json_object_set_new(root, "perChannelEnvelopes", json_boolean(perChannelEnvelopes));
         json_object_set_new(root, "levelAffectsEnv", json_boolean(levelAffectsEnv));
+        json_object_set_new(root, "gateMode", json_integer(gateMode));
+        json_object_set_new(root, "pingEnvelope", json_boolean(pingEnvelope));
         // Stored as a string: a 64-bit seed does not survive JSON's double.
         json_object_set_new(root, "baseSeed",
                             json_string(string::f("%" PRIu64, baseSeed).c_str()));
@@ -402,6 +520,12 @@ struct SideChain : Module {
             perChannelEnvelopes = json_boolean_value(j);
         if (json_t* j = json_object_get(root, "levelAffectsEnv"))
             levelAffectsEnv = json_boolean_value(j);
+        // Absent from patches saved before the modes existed: they stay VCA
+        // with a ducking envelope, exactly as they were.
+        if (json_t* j = json_object_get(root, "gateMode"))
+            gateMode = clamp((int) json_integer_value(j), 0, NUM_GATE_MODES - 1);
+        if (json_t* j = json_object_get(root, "pingEnvelope"))
+            pingEnvelope = json_boolean_value(j);
         if (json_t* j = json_object_get(root, "baseSeed")) {
             if (json_is_string(j))
                 baseSeed = strtoull(json_string_value(j), NULL, 10);
@@ -473,6 +597,13 @@ struct LevelSlider : app::SliderKnob {
             float lit = 0.30f + 0.70f * env;
 
             int bars = sideChain ? clamp(sideChain->meterBars, 1, 16) : 1;
+            // Blue is the VCA; amber means a filter is in the path. The mode
+            // lives in the context menu, so the meter is what shows it.
+            const bool filtering = sideChain && sideChain->gateMode != MODE_VCA;
+            auto barColor = [&](uint8_t alpha) {
+                return filtering ? nvgRGBA(0xFF, 0xA0, 0x28, alpha)
+                                 : AnimatekUI::logoBlue(alpha);
+            };
             // The gap has to shrink as bars multiply or there is nothing left
             // to draw: at sixteen, a fixed 0.8 px would eat more than half the
             // 20.6 px of usable width.
@@ -492,13 +623,13 @@ struct LevelSlider : app::SliderKnob {
                 nvgRect(args.vg, x - 7.f, y - 7.f, bw + 14.f, barH + 14.f);
                 nvgFillPaint(args.vg, nvgBoxGradient(args.vg, x, y, bw, barH,
                                                      2.f, 8.f,
-                                                     AnimatekUI::logoBlue((uint8_t)(95.f * lit)),
+                                                     barColor((uint8_t)(95.f * lit)),
                                                      nvgRGBA(0, 0, 0, 0)));
                 nvgFill(args.vg);
 
                 nvgBeginPath(args.vg);
                 nvgRoundedRect(args.vg, x, y, bw, barH, rounding);
-                nvgFillColor(args.vg, AnimatekUI::logoBlue((uint8_t)(255.f * lit)));
+                nvgFillColor(args.vg, barColor((uint8_t)(255.f * lit)));
                 nvgFill(args.vg);
             }
         }
@@ -630,6 +761,21 @@ struct SideChainWidget : ModuleWidget {
             return;
 
         menu->addChild(new ui::MenuSeparator);
+        menu->addChild(createSubmenuItem("Mode", GATE_MODE_NAMES[module->gateMode],
+                                         [=](ui::Menu* sub) {
+            for (int i = 0; i < NUM_GATE_MODES; i++) {
+                sub->addChild(createCheckMenuItem(
+                    GATE_MODE_NAMES[i], "",
+                    [=]() { return module->gateMode == i; },
+                    [=]() { module->gateMode = i; }));
+            }
+        }));
+
+        menu->addChild(createCheckMenuItem(
+            "Ping envelope (trigger opens)", "",
+            [=]() { return module->pingEnvelope; },
+            [=]() { module->pingEnvelope ^= true; }));
+
         menu->addChild(createSubmenuItem("Recovery curve", CURVE_NAMES[module->curveShape],
                                          [=](ui::Menu* sub) {
             for (int i = 0; i < NUM_CURVE_SHAPES; i++) {

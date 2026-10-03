@@ -295,10 +295,10 @@ struct TekButton : app::ParamWidget {
     }
 
     void drawLabel(const DrawArgs& args, NVGcolor color) {
-        std::shared_ptr<window::Font> font = APP->window->uiFont;
+        std::shared_ptr<window::Font> font = APP->window->loadFont(asset::system("res/fonts/Nunito-Bold.ttf"));
         if (!font || font->handle < 0)
             return;
-        nvgFontSize(args.vg, 8.5f);
+        nvgFontSize(args.vg, 9.5f);
         nvgFontFaceId(args.vg, font->handle);
         nvgTextAlign(args.vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
         nvgFillColor(args.vg, color);
@@ -421,11 +421,18 @@ struct FilterTekWidget : ModuleWidget {
         moduleName->color = nvgRGB(0x2C, 0x7F, 0xFF);
         addChild(moduleName);
 
-        auto addLabel = [&](const char* text, float cx, float y, float w) {
-            auto label = createWidget<TextLabel>(mm2px(Vec(cx - w * 0.5f, y)));
-            label->box.size = mm2px(Vec(w, 3.f));
+        // Lettered in Nunito Bold, the face of Rack's own panels: clearer than
+        // the UI font at these sizes. `y` is the top of a 3 mm box; bigger
+        // labels grow upwards from the same baseline.
+        const std::string nunito = asset::system("res/fonts/Nunito-Bold.ttf");
+        auto addLabel = [&](const char* text, float cx, float y, float w, float size = 8.f) {
+            float h = 3.f * size / 8.f;
+            auto label = createWidget<TextLabel>(mm2px(Vec(cx - w * 0.5f, y + 3.f - h)));
+            label->box.size = mm2px(Vec(w, h));
             label->text = text;
-            label->fontSize = 7.f;
+            label->fontSize = size;
+            label->fontPath = nunito;
+            label->fakeBold = false;
             addChild(label);
         };
         auto line = [&](float ax, float ay, float bx, float by) {
@@ -441,25 +448,25 @@ struct FilterTekWidget : ModuleWidget {
             addParam(b);
         };
 
-        addLabel("CUTOFF", CX, 2.2f, 16.f);
-        addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(CX, 14.5f)), module,
+        addLabel("CUTOFF", CX, 4.7f, 24.f, 13.f);
+        addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(CX, 17.5f)), module,
                                                          FilterTek::FREQ_PARAM));
 
         // The four types as buttons, the lit one is the one playing.
         const char* types[NUM_TYPES] = {"LP", "BP", "HP", "BR"};
         for (int i = 0; i < NUM_TYPES; i++)
-            addButton(FilterTek::TYPE_PARAM, i, false, types[i], 5.6f + 9.8f * (float)i, 27.5f, 7.2f, 4.6f);
+            addButton(FilterTek::TYPE_PARAM, i, false, types[i], 5.6f + 9.8f * (float)i, 30.5f, 7.2f, 4.6f);
 
-        addLabel("RES", 11.0f, 31.0f, 12.f);
-        addParam(createParamCentered<RoundLargeBlackKnob>(mm2px(Vec(11.0f, 40.5f)), module,
+        addLabel("RES", 11.0f, 34.0f, 12.f);
+        addParam(createParamCentered<RoundLargeBlackKnob>(mm2px(Vec(11.0f, 43.5f)), module,
                                                           FilterTek::RES_PARAM));
         // Gain control, and the slope under it as two buttons, beside RES.
-        addButton(FilterTek::GAIN_CONTROL_PARAM, 1, true, "GC", 30.0f, 34.6f, 13.6f, 4.6f);
-        addLabel("dB/OCT", 30.0f, 37.6f, 14.f);
-        addButton(FilterTek::SLOPE_PARAM, 0, false, "12", 26.6f, 43.2f, 6.8f, 4.6f);
-        addButton(FilterTek::SLOPE_PARAM, 1, false, "24", 33.4f, 43.2f, 6.8f, 4.6f);
+        addButton(FilterTek::GAIN_CONTROL_PARAM, 1, true, "GC", 30.0f, 37.6f, 13.6f, 4.6f);
+        addLabel("dB/OCT", 30.0f, 40.6f, 14.f);
+        addButton(FilterTek::SLOPE_PARAM, 0, false, "12", 26.6f, 46.2f, 6.8f, 4.6f);
+        addButton(FilterTek::SLOPE_PARAM, 1, false, "24", 33.4f, 46.2f, 6.8f, 4.6f);
 
-        auto* display = createWidget<ResponseDisplay>(mm2px(Vec(3.0f, 49.0f)));
+        auto* display = createWidget<ResponseDisplay>(mm2px(Vec(3.0f, 52.0f)));
         display->box.size = mm2px(Vec(W - 6.f, 14.5f));
         display->module = module;
         addChild(display);
@@ -470,23 +477,23 @@ struct FilterTekWidget : ModuleWidget {
         const int cvParams[2] = {FilterTek::CUT_CV_PARAM, FilterTek::RES_CV_PARAM};
         const int cvInputs[2] = {FilterTek::CUT_CV_INPUT, FilterTek::RES_CV_INPUT};
         for (int i = 0; i < 2; i++) {
-            addParam(createParamCentered<Trimpot>(mm2px(Vec(COL3[i], 69.0f)), module, cvParams[i]));
-            line(COL3[i], 72.3f, COL3[i], 74.1f);
-            addLabel(cvNames[i], COL3[i], 74.5f, 12.f);
-            addInput(createInputCentered<TekInputPort>(mm2px(Vec(COL3[i], 82.0f)), module, cvInputs[i]));
+            addParam(createParamCentered<Trimpot>(mm2px(Vec(COL3[i], 72.0f)), module, cvParams[i]));
+            line(COL3[i], 75.3f, COL3[i], 77.1f);
+            addLabel(cvNames[i], COL3[i], 77.5f, 12.f);
+            addInput(createInputCentered<TekInputPort>(mm2px(Vec(COL3[i], 85.0f)), module, cvInputs[i]));
         }
-        addLabel("V/OCT", COL3[2], 74.5f, 12.f);
-        addInput(createInputCentered<TekInputPort>(mm2px(Vec(COL3[2], 82.0f)), module, FilterTek::VOCT_INPUT));
+        addLabel("V/OCT", COL3[2], 77.5f, 12.f);
+        addInput(createInputCentered<TekInputPort>(mm2px(Vec(COL3[2], 85.0f)), module, FilterTek::VOCT_INPUT));
 
-        addLabel("IN L", COL2[0], 88.2f, 12.f);
-        addInput(createInputCentered<TekInputPort>(mm2px(Vec(COL2[0], 95.5f)), module, FilterTek::IN_L_INPUT));
-        addLabel("IN R", COL2[1], 88.2f, 12.f);
-        addInput(createInputCentered<TekInputPort>(mm2px(Vec(COL2[1], 95.5f)), module, FilterTek::IN_R_INPUT));
+        addLabel("IN L", COL2[0], 91.2f, 12.f);
+        addInput(createInputCentered<TekInputPort>(mm2px(Vec(COL2[0], 98.5f)), module, FilterTek::IN_L_INPUT));
+        addLabel("IN R", COL2[1], 91.2f, 12.f);
+        addInput(createInputCentered<TekInputPort>(mm2px(Vec(COL2[1], 98.5f)), module, FilterTek::IN_R_INPUT));
         // The outputs sit on dark plates drawn in the SVG.
-        addLabel("OUT L", COL2[0], 101.2f, 12.f);
-        addOutput(createOutputCentered<TekOutputPort>(mm2px(Vec(COL2[0], 108.5f)), module, FilterTek::OUT_L_OUTPUT));
-        addLabel("OUT R", COL2[1], 101.2f, 12.f);
-        addOutput(createOutputCentered<TekOutputPort>(mm2px(Vec(COL2[1], 108.5f)), module, FilterTek::OUT_R_OUTPUT));
+        addLabel("OUT L", COL2[0], 104.2f, 12.f);
+        addOutput(createOutputCentered<TekOutputPort>(mm2px(Vec(COL2[0], 111.5f)), module, FilterTek::OUT_L_OUTPUT));
+        addLabel("OUT R", COL2[1], 104.2f, 12.f);
+        addOutput(createOutputCentered<TekOutputPort>(mm2px(Vec(COL2[1], 111.5f)), module, FilterTek::OUT_R_OUTPUT));
     }
 };
 

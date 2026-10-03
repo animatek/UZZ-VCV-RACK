@@ -81,6 +81,9 @@ struct TextLabel : TransparentWidget {
   NVGcolor color = nvgRGBA(0, 0, 0, 0); // alpha==0 uses panelTextColor()
   bool uppercase = true;
   bool fakeBold = true;
+  // Empty: Rack's UI font. Otherwise a font file, e.g. the Nunito Bold that
+  // Rack's own panels are lettered in (asset::system("res/fonts/Nunito-Bold.ttf")).
+  std::string fontPath;
 
   TextLabel() = default;
 
@@ -92,7 +95,8 @@ struct TextLabel : TransparentWidget {
   void drawLayer(const DrawArgs &args, int layer) override {
     if (layer != 1)
       return;
-    std::shared_ptr<Font> font = APP->window->uiFont;
+    std::shared_ptr<Font> font =
+        fontPath.empty() ? APP->window->uiFont : APP->window->loadFont(fontPath);
     if (!font)
       return;
 

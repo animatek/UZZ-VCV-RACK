@@ -186,7 +186,11 @@ Hace que `LEVEL` escale `ENV` además del audio. Está desactivado por defecto, 
 
 ### LEDs de la cadena
 
-Dos LEDs diminutos en las esquinas de arriba muestran la cadena. El izquierdo se enciende cuando hay una CAP o un BUS pegado al borde izquierdo y la cadena llega a esta CAP; el derecho, cuando esta CAP pasa la cadena a una CAP o un BUS a su derecha. Tenue quiere decir enlazado; más brillante, que pasa audio, según su nivel. Recuerda que la cadena solo suena a través de un **BUS** en su extremo derecho: varias CAP juntas sin BUS mantienen sus salidas como siempre y no se suma nada.
+Dos LEDs diminutos en las esquinas de arriba muestran la cadena. El izquierdo se enciende cuando hay una CAP o un BUS pegado al borde izquierdo y la cadena llega a esta CAP; el derecho, cuando esta CAP pasa la cadena a una CAP o un BUS a su derecha. Tenue quiere decir enlazado; más brillante, que pasa audio, según su nivel. ### Last in a row: OUT is the chain mix
+
+Varias CAP juntas forman un mezclador. Si la fila termina en un **BUS**, la mezcla sale por el BUS. Si termina en una CAP, son `OUT L` / `OUT R` de esa última CAP los que llevan la mezcla: su propia señal más todo lo que llega por la izquierda, cada CAP con su panorama y después de su fader, como un par estéreo. Las CAP de en medio mantienen `OUT` como salida directa.
+
+Activado por defecto en las CAP nuevas. En patches guardados antes de que existiera esta opción se carga desactivado, así que las CAP que ya estaban juntas suenan exactamente como antes; actívalo en este menú para mezclarlas.
 
 ### Fire a trigger
 

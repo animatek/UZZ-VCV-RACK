@@ -9,6 +9,13 @@ Registro de cambios de los módulos Animatek. Formato basado en
 ## [Unreleased]
 
 ### Added
+- **CAP: la última de una fila saca la mezcla aunque no haya BUS.** Petición de Javier. Si una
+  fila de CAP termina en una CAP, su `OUT L/R` lleva la suma (la suya más lo que llega, con pan
+  y post-fader); las de en medio siguen directas, y un BUS al final sigue mandando. Opción de
+  menú `Last in a row: OUT is the chain mix`, activada en CAP nuevas y desactivada al cargar
+  patches anteriores (sin la clave en el JSON), para que las CAP que ya estaban juntas suenen
+  igual. Comprobado contra libRack: suma 3/2 sin BUS, 2/2 con la opción como en un patch viejo,
+  BUS al final sin cambios, CAP sola igual bit a bit que `main` en modo VCA.
 - **CAP y BUS: LEDs de la cadena.** CAP lleva dos LEDs diminutos arriba (izquierda: llega la
   cadena; derecha: la pasa a la derecha) y el LED `LINK` del BUS hace lo mismo: tenues con el
   enlace hecho, y más brillantes con el audio que pasa. Sale de una prueba de Javier: dos CAP

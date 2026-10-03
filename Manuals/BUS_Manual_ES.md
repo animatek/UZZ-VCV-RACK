@@ -21,7 +21,7 @@ El BUS lleva además un **envío y retorno** estéreo, para insertar un efecto s
 ## 2. Cómo funciona la cadena
 
 - La cadena se hace juntando módulos: una CAP pasa a su derecha lo que le llega por la izquierda más su propia señal, siempre que a su derecha haya una CAP o un BUS. Un hueco, aunque sea de un HP, la corta.
-- **Las salidas `OUT L` / `OUT R` de cada CAP no cambian nunca.** Siguen siendo salidas directas, y conectarlas no quita nada de la mezcla. Dos CAP juntas sin un BUS se comportan exactamente como siempre.
+- **Una fila no necesita un BUS para sonar.** Sin él, la última CAP de la fila saca la mezcla por su propio `OUT` (ver el manual de CAP, *Last in a row*). Los `OUT L` / `OUT R` de las demás CAP siguen siendo salidas directas, y conectarlos no quita nada de la mezcla. Un BUS al final añade el envío y retorno, el master y el medidor.
 - Lo que aporta cada CAP es **post-fader** (después de `LEVEL`, del CV de `VCA`, de la envolvente y del modo) y **sumado entre canales polifónicos**.
 - Cada CAP tiene su propio trimmer **PAN** y su CV. Es un control de balance: en el centro los dos lados pasan a ganancia unidad, y girarlo hacia un lado atenúa el otro. Solo afecta a la mezcla, no a las salidas propias de la CAP.
 - Una **CAP en bypass** mantiene viva la cadena y aporta su entrada sin procesar, como hacen sus salidas en bypass. Un BUS en bypass deja pasar la cadena tal cual.

@@ -206,6 +206,10 @@ struct SideChain : Module {
     int meterBars = 1;
 
     bool levelAffectsEnv = false;
+    // The last CAP of a row with no BUS at its end sums the chain into its own
+    // OUT. On for new modules; patches saved before it existed load with it
+    // off, so CAPs that already sat side by side keep sounding as they did.
+    bool chainMix = true;
     // Set from the context menu (UI thread), consumed by the audio thread.
     std::atomic<bool> manualTriggerPending{false};
     int gateMode = MODE_VCA;
@@ -331,6 +335,7 @@ struct SideChain : Module {
         freezeJitter = false;
         perChannelEnvelopes = false;
         levelAffectsEnv = false;
+        chainMix = true;
         gateMode = MODE_VCA;
         pingEnvelope = false;
         baseSeed = 0x5C1DECA1ULL;
@@ -504,18 +509,29 @@ struct SideChain : Module {
 
         // -- VCA ------------------------------------------------------------
         //
-        // Whatever arrives from a CAP to the left. This CAP's own outputs never
-        // carry it: the sum only comes out of a BUS, so two CAPs that merely
-        // sit side by side in an older patch go on sounding as they did.
+        // Whatever arrives from a CAP to the left. A CAP in the middle of a row
+        // keeps OUT as a direct out; the last one of a row that ends without a
+        // BUS sums the chain there instead (see chainMix), and a BUS at the end
+        // takes the sum itself.
         CapBusMessage bus = capBusReceive(*this);
         const CapBusMessage busIn = bus;
+        const bool endOfRow = chainMix && capChainModule(leftExpander.module)
+                              && !capChainModule(rightExpander.module);
 
         // Nothing patched in means nothing to attenuate: leave both audio
         // outputs at zero channels so downstream sees an unconnected jack
         // rather than silence.
         if (audioChannels == 0) {
-            outputs[OUT_L_OUTPUT].setChannels(0);
-            outputs[OUT_R_OUTPUT].setChannels(0);
+            if (endOfRow) {
+                outputs[OUT_L_OUTPUT].setChannels(1);
+                outputs[OUT_R_OUTPUT].setChannels(1);
+                outputs[OUT_L_OUTPUT].setVoltage(bus.left);
+                outputs[OUT_R_OUTPUT].setVoltage(bus.right);
+            }
+            else {
+                outputs[OUT_L_OUTPUT].setChannels(0);
+                outputs[OUT_R_OUTPUT].setChannels(0);
+            }
             sendChain(busIn, bus, args.sampleTime);
             return;
         }
@@ -565,8 +581,17 @@ struct SideChain : Module {
             bus.right += right * gain * panR;
         }
 
-        outputs[OUT_L_OUTPUT].setChannels(audioChannels);
-        outputs[OUT_R_OUTPUT].setChannels(audioChannels);
+        if (endOfRow) {
+            // The row's mix, this CAP included and panned: a stereo pair.
+            outputs[OUT_L_OUTPUT].setChannels(1);
+            outputs[OUT_R_OUTPUT].setChannels(1);
+            outputs[OUT_L_OUTPUT].setVoltage(bus.left);
+            outputs[OUT_R_OUTPUT].setVoltage(bus.right);
+        }
+        else {
+            outputs[OUT_L_OUTPUT].setChannels(audioChannels);
+            outputs[OUT_R_OUTPUT].setChannels(audioChannels);
+        }
         sendChain(busIn, bus, args.sampleTime);
     }
 
@@ -576,6 +601,7 @@ struct SideChain : Module {
         json_object_set_new(root, "freezeJitter", json_boolean(freezeJitter));
         json_object_set_new(root, "perChannelEnvelopes", json_boolean(perChannelEnvelopes));
         json_object_set_new(root, "levelAffectsEnv", json_boolean(levelAffectsEnv));
+        json_object_set_new(root, "chainMix", json_boolean(chainMix));
         json_object_set_new(root, "gateMode", json_integer(gateMode));
         json_object_set_new(root, "pingEnvelope", json_boolean(pingEnvelope));
         // Stored as a string: a 64-bit seed does not survive JSON's double.
@@ -595,6 +621,9 @@ struct SideChain : Module {
             perChannelEnvelopes = json_boolean_value(j);
         if (json_t* j = json_object_get(root, "levelAffectsEnv"))
             levelAffectsEnv = json_boolean_value(j);
+        // Missing in patches from before the option: off, as those CAPs were.
+        json_t* cm = json_object_get(root, "chainMix");
+        chainMix = cm ? json_boolean_value(cm) : false;
         // Absent from patches saved before the modes existed: they stay VCA
         // with a ducking envelope, exactly as they were.
         if (json_t* j = json_object_get(root, "gateMode"))
@@ -892,6 +921,11 @@ struct SideChainWidget : ModuleWidget {
             "Level attenuates ENV", "",
             [=]() { return module->levelAffectsEnv; },
             [=]() { module->levelAffectsEnv ^= true; }));
+
+        menu->addChild(createCheckMenuItem(
+            "Last in a row: OUT is the chain mix", "",
+            [=]() { return module->chainMix; },
+            [=]() { module->chainMix ^= true; }));
 
         menu->addChild(createMenuItem("Reset jitter seed", "", [=]() {
             module->baseSeed = random::u64();

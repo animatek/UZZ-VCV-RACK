@@ -21,7 +21,7 @@ The BUS also carries a stereo **send and return**, so an effect can be inserted 
 ## 2. How the chain works
 
 - The chain is made by touching modules: a CAP passes what arrives from its left plus its own signal to its right, as long as the module on its right is a CAP or a BUS. A gap of even one HP breaks it.
-- **Each CAP's own `OUT L` / `OUT R` never change.** They stay direct outputs, and patching them takes nothing away from the mix. Two CAPs side by side with no BUS behave exactly as they always did.
+- **A row needs no BUS to be heard.** Without one, the last CAP of the row puts the mix on its own `OUT` (see the CAP manual, *Last in a row*). The other CAPs' `OUT L` / `OUT R` stay direct outputs, and patching them takes nothing away from the mix. A BUS at the end adds the send and return, the master and the meter.
 - What each CAP adds is **post-fader** (after `LEVEL`, the `VCA` CV, the envelope and the mode) and **summed across polyphony**.
 - Each CAP has its own **PAN** trimmer and CV. It is a balance control: in the centre both sides pass at unity, and turning it to one side fades the other. It only affects the mix, not the CAP's own outputs.
 - A **bypassed CAP** keeps the chain alive and adds its input untouched, as its own outputs do when bypassed. A bypassed BUS passes the chain straight through.

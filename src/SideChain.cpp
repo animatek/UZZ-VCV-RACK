@@ -149,7 +149,7 @@ struct SideChain : Module {
     // New entries go at the end of each enum: the indices are what patches
     // store, so appending keeps older patches loading onto the right jacks.
     enum ParamId { RECOVERY_PARAM, DEPTH_PARAM, JITTER_PARAM, LEVEL_PARAM,
-                   TRIG_PARAM, PARAMS_LEN };
+                   TRIG_PARAM, PAN_PARAM, PARAMS_LEN };
     enum InputId { TRIG_INPUT, DEPTH_CV_INPUT, IN_L_INPUT, IN_R_INPUT,
                    VCA_CV_INPUT, INPUTS_LEN };
     enum OutputId { ENV_OUTPUT, OUT_L_OUTPUT, OUT_R_OUTPUT, EOC_OUTPUT, OUTPUTS_LEN };
@@ -218,6 +218,9 @@ struct SideChain : Module {
     LowpassSvf filtersR[16];
     int lastGateMode = MODE_VCA;
 
+    // Double buffer for the chain bus arriving from the left (see plugin.hpp).
+    CapBusMessage busMessages[2];
+
     SideChain() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
@@ -236,6 +239,11 @@ struct SideChain : Module {
         // had a slider, so old patches sound unchanged.
         configParam(LEVEL_PARAM, 0.f, 1.f, 1.f, "Level", "%", 0.f, 100.f);
         configButton(TRIG_PARAM, "Manual trigger");
+        // Where this CAP sits in the chain's stereo mix. It has no knob on the
+        // panel, only a slider in the context menu, so randomising the module
+        // must not throw a channel sideways where nobody can see it.
+        configParam(PAN_PARAM, -1.f, 1.f, 0.f, "Pan in the chain mix", "%", 0.f, 100.f);
+        paramQuantities[PAN_PARAM]->randomizeEnabled = false;
 
         configInput(TRIG_INPUT, "Trigger");
         configInput(DEPTH_CV_INPUT, "Depth CV");
@@ -250,6 +258,37 @@ struct SideChain : Module {
         configBypass(IN_R_INPUT, OUT_R_OUTPUT);
 
         reseedVoices(baseSeed);
+
+        leftExpander.producerMessage = &busMessages[0];
+        leftExpander.consumerMessage = &busMessages[1];
+    }
+
+    /** Balance, not equal-power pan: the centre stays at unity, so a chain of
+    CAPs left in the middle mixes at exactly the level each one outputs, and a
+    stereo source keeps its own image until it is pushed to one side. */
+    void panGains(float& gainL, float& gainR) {
+        float pan = params[PAN_PARAM].getValue();
+        gainL = (pan > 0.f) ? 1.f - pan : 1.f;
+        gainR = (pan < 0.f) ? 1.f + pan : 1.f;
+    }
+
+    /** A bypassed CAP still has to keep the chain alive, or everything to its
+    left would freeze on the last sample it sent. Its audio joins the mix
+    untouched, as it does at its own outputs. */
+    void processBypass(const ProcessArgs& args) override {
+        Module::processBypass(args);
+        CapBusMessage bus = capBusReceive(*this);
+        bool rightPatched = inputs[IN_R_INPUT].isConnected();
+        float panL, panR;
+        panGains(panL, panR);
+        int n = std::max(inputs[IN_L_INPUT].getChannels(), inputs[IN_R_INPUT].getChannels());
+        for (int c = 0; c < n; c++) {
+            float left = inputs[IN_L_INPUT].getPolyVoltage(c);
+            float right = rightPatched ? inputs[IN_R_INPUT].getPolyVoltage(c) : left;
+            bus.left += left * panL;
+            bus.right += right * panR;
+        }
+        capBusSend(*this, bus);
     }
 
     /** Each channel gets a distinct stream. Sharing one would make every
@@ -444,14 +483,23 @@ struct SideChain : Module {
 
         // -- VCA ------------------------------------------------------------
         //
+        // Whatever arrives from a CAP to the left. This CAP's own outputs never
+        // carry it: the sum only comes out of a BUS, so two CAPs that merely
+        // sit side by side in an older patch go on sounding as they did.
+        CapBusMessage bus = capBusReceive(*this);
+
         // Nothing patched in means nothing to attenuate: leave both audio
         // outputs at zero channels so downstream sees an unconnected jack
         // rather than silence.
         if (audioChannels == 0) {
             outputs[OUT_L_OUTPUT].setChannels(0);
             outputs[OUT_R_OUTPUT].setChannels(0);
+            capBusSend(*this, bus);
             return;
         }
+
+        float panL, panR;
+        panGains(panL, panR);
 
         // Highest cutoff the filter is allowed: tan() blows up at Nyquist.
         const float maxCutoff = 0.45f * args.sampleRate;
@@ -489,10 +537,16 @@ struct SideChain : Module {
 
             outputs[OUT_L_OUTPUT].setVoltage(left * gain, c);
             outputs[OUT_R_OUTPUT].setVoltage(right * gain, c);
+            // Into the chain post-fader and summed across polyphony, the way
+            // a mixer channel feeds its bus. OUT stays a direct out: patching
+            // it takes nothing away from the mix.
+            bus.left += left * gain * panL;
+            bus.right += right * gain * panR;
         }
 
         outputs[OUT_L_OUTPUT].setChannels(audioChannels);
         outputs[OUT_R_OUTPUT].setChannels(audioChannels);
+        capBusSend(*this, bus);
     }
 
     json_t* dataToJson() override {
@@ -806,6 +860,15 @@ struct SideChainWidget : ModuleWidget {
             module->reseedVoices(module->baseSeed);
         }));
 
+        // The pan only matters inside a chain, and the panel has no room left
+        // for a knob, so it lives here as a slider on the real parameter,
+        // which the patch saves. Unlike a panel knob it leaves no undo step.
+        menu->addChild(new ui::MenuSeparator);
+        menu->addChild(createMenuLabel("Chain mix"));
+        auto* panSlider = new ui::Slider;
+        panSlider->quantity = module->paramQuantities[SideChain::PAN_PARAM];
+        panSlider->box.size.x = 200.f;
+        menu->addChild(panSlider);
     }
 };
 

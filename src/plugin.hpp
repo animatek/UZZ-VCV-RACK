@@ -57,6 +57,15 @@ struct Atek303SeqMessage {
     bool slide = false;
 };
 
+// Bus de la cadena de CAP. Cada CAP suma su estéreo a lo que le llega por la
+// izquierda y lo pasa a la derecha; un BUS lo recoge, lo saca por MIX y tiene el
+// envío/retorno. Viaja empujado: cada módulo escribe en el producerMessage de su
+// vecino derecho, así que cada salto añade una muestra de latencia.
+struct CapBusMessage {
+    float left = 0.f;
+    float right = 0.f;
+};
+
 // Declare each Model, defined in each module source file
 // extern Model* modelMyModule;
 extern Model* modelUZZ;    // UZZ step sequencer
@@ -65,6 +74,7 @@ extern Model* modelOxiCv;  // OXI-CV (6HP MIDI-to-CV, Oxi One)
 extern Model* modelOxiCvExp; // OXI-CV EXPANSOR
 extern Model* modelApc40Ctrl; // APC40 controller CV bridge
 extern Model* modelSideChain; // SIDECHAIN trigger-fired ducking envelope
+extern Model* modelCapBus; // BUS: mix, insert send/return and master for a CAP chain
 extern Model* modelUnitDistanceSeq; // UNIT-D unit-distance graph sequencer
 extern Model* modelBlank3; // 3HP blank panel
 extern Model* modelBlankAcid; // 3HP blank panel, acid smiley marks
@@ -73,3 +83,20 @@ extern Model* modelAtek303Seq; // ATEK303 SEQ acid pattern generator
 
 
 
+
+// Lo que llega por la izquierda de la cadena: cero si ahí no hay una CAP o un BUS.
+inline CapBusMessage capBusReceive(Module& self) {
+    Module* left = self.leftExpander.module;
+    if (!left || (left->model != modelSideChain && left->model != modelCapBus))
+        return CapBusMessage();
+    return *static_cast<const CapBusMessage*>(self.leftExpander.consumerMessage);
+}
+
+// Pasa el bus al vecino derecho, si es parte de la cadena.
+inline void capBusSend(Module& self, const CapBusMessage& msg) {
+    Module* right = self.rightExpander.module;
+    if (!right || (right->model != modelSideChain && right->model != modelCapBus))
+        return;
+    *static_cast<CapBusMessage*>(right->leftExpander.producerMessage) = msg;
+    right->leftExpander.requestMessageFlip();
+}

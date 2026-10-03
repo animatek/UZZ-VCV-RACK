@@ -9,6 +9,19 @@ Registro de cambios de los módulos Animatek. Formato basado en
 ## [Unreleased]
 
 ### Added
+- **BUS: varias CAP juntas forman un mezclador.** Módulo nuevo de 4 HP. Las CAP pegadas una
+  a otra se pasan su estéreo hacia la derecha por el sistema de expansores, post-fader, con
+  panorama y sumando la polifonía, y el BUS lo saca por `MIX`. Lleva envío/retorno estéreo
+  de inserción (`SEND`, `RETURN` normalizado de L a R, `WET` al 100 % por defecto), `LEVEL`
+  de master, medidor de picos en dB y un LED `LINK` que dice si la cadena llega. Un BUS en
+  medio de la fila es una inserción sobre las CAP de su izquierda y la cadena sigue
+  hacia la derecha. **Las salidas de cada CAP no cambian**: la suma solo sale por un BUS, así
+  que dos CAP que ya estaban juntas en un patch suenan igual. CAP gana un parámetro de
+  panorama (`Chain mix` en el menú, sin mando en el panel) y en bypass sigue pasando la
+  cadena. Comprobado contra libRack con `CAP CAP BUS`: suma y panorama, salidas directas
+  intactas, retorno con `WET`, master, fader, bypass, una CAP que se aparta y dos CAP sin BUS,
+  todo con el valor esperado; el modo VCA de CAP sigue igual bit a bit que `main`. Manual
+  nuevo en inglés y español.
 - **UNIT-D: sample & hold de `V/O` con los gates.** Opción del menú, apagada por defecto:
   `V/O` solo cambia en los pasos que disparan gate y retiene la última nota entre medias, en
   vez de soltar el chorro de nodos que recorre el walker aunque no suenen. Se retiene el

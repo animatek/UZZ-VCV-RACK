@@ -178,6 +178,10 @@ Si el audio tiene más canales que `TRIG`, los canales de audio adicionales usan
 
 Hace que `LEVEL` escale `ENV` además del audio. Está desactivado por defecto, por lo que `ENV` permanece a 10 V en reposo independientemente del techo del VCA.
 
+### Chain mix (panorama)
+
+Un deslizador que coloca esta CAP en la mezcla estéreo de una cadena, de todo a la izquierda a todo a la derecha. Es un control de balance, a ganancia unidad en el centro, y solo cuenta cuando hay varias CAP juntas con un **BUS** a su derecha; las salidas propias de esta CAP no cambian nunca. Cómo funciona la cadena está en el manual de BUS.
+
 ### Reset jitter seed
 
 Crea una semilla aleatoria nueva y reinicia los paseos aleatorios de todos los canales. Úsalo para obtener otra familia de variaciones correlacionadas. No dispara una envolvente ni cambia las posiciones de los controles del panel.

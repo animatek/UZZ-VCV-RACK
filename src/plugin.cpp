@@ -14,6 +14,7 @@ void init(Plugin* p) {
 		p->addModel(modelOxiCvExp); // OXI-CV EXPANSOR
 		p->addModel(modelApc40Ctrl); // APC40 controller CV bridge
 		p->addModel(modelSideChain); // SIDECHAIN trigger-fired ducking envelope
+		p->addModel(modelCapBus); // BUS: mix, insert send/return and master for CAP
 		p->addModel(modelUnitDistanceSeq); // UNIT-D unit-distance graph sequencer
 		p->addModel(modelBlank3); // 3HP blank panel
 		p->addModel(modelBlankAcid); // 3HP blank panel, acid smiley marks

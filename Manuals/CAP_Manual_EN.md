@@ -178,6 +178,10 @@ If audio has more channels than `TRIG`, extra audio channels use the last availa
 
 Makes `LEVEL` scale `ENV` as well as audio. Disabled by default, so `ENV` remains a full 10 V at rest regardless of the VCA ceiling.
 
+### Chain mix (pan)
+
+A slider that places this CAP in the stereo mix of a chain, from hard left to hard right. It is a balance control, unity in the centre, and only matters when CAPs sit side by side with a **BUS** to their right; this CAP's own outputs never change. See the BUS manual for how the chain works.
+
 ### Reset jitter seed
 
 Creates a new random seed and resets all channel random walks. Use it to obtain a different family of correlated variations. This does not trigger an envelope or change panel knob positions.

@@ -84,6 +84,17 @@
       ]
     },
     {
+      "slug": "CapBus",
+      "name": "BUS",
+      "description": "Mix output for a row of CAP modules placed side by side, chained without cables. Adds a stereo send and return for an insert effect, a wet control, a master level and a peak meter.",
+      "manualUrl": "https://github.com/animatek/UZZ-VCV-RACK/blob/main/Manuals/BUS_Manual_EN.md",
+      "tags": [
+        "Mixer",
+        "Expander",
+        "Utility"
+      ]
+    },
+    {
       "slug": "UnitDistanceSeq",
       "name": "UNIT-D",
       "description": "Generative sequencer that turns a seeded network of points into repeatable melodies, rhythms, accents and modulation. Shape the network, let it evolve or lock a phrase you like.",

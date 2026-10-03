@@ -9,6 +9,16 @@ Registro de cambios de los módulos Animatek. Formato basado en
 ## [Unreleased]
 
 ### Added
+- **ADSRtek: pantalla de la envolvente en directo.** Petición de Javier. Los cuatro mandos
+  suben a dos filas juntas y en el hueco entra una pantalla como la de FILTERtek: la envolvente
+  dibujada con el mismo modelo que suena (forma de ataque, curvas de decay y release, CV
+  incluido), el tramo activo iluminado, un punto blanco sobre la curva donde está el primer
+  canal y A D S R debajo con la etapa actual en azul. Tiempos en escala logarítmica.
+- **UNIT-D: gráfica en estilo plano.** El mismo fondo, borde fino y retícula tenue que las
+  pantallas de FILTERtek y ADSRtek; red en gris, aristas del nodo actual y voces polifónicas en
+  azul, y el nodo actual como punto blanco con halo. En la capa de luz.
+- **ATEK303 SEQ: botón de páginas plano.** Aro y cara grises como los demás botones; el azul
+  de seguir al cabezal llena la cara y sigue entrando por la izquierda al mantenerlo.
 - **BUS cierra su fila; conmutadores planos.** Petición de Javier: una CAP a la derecha de un
   BUS empieza ahora una fila nueva en paralelo, con su propia mezcla, en vez de seguir la misma
   cadena. Para encadenar grupos hacia un master está la opción `Pass the mix on to the right`

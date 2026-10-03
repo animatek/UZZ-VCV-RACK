@@ -237,8 +237,8 @@ struct ScaledSvgSwitch : app::SvgSwitch {
 // ---------------------------------------------------------------------------
 //
 // Drawn rather than loaded from SVG: a dark disc with a thin rim, a slightly
-// lighter face and a white pointer, plus a value arc around it (blue on a
-// faint track; bipolar ranges fill from the centre). Being drawn, they stay
+// lighter face and a white pointer. The value is painted in blue on the rim
+// itself (bipolar ranges fill from the centre). Being drawn, they stay
 // sharp at any zoom and one change here restyles every module. The sizes
 // match Rack's knobs they replace, so nothing on a panel moves.
 struct FlatKnob : app::Knob {
@@ -281,38 +281,35 @@ struct FlatKnob : app::Knob {
     const float sweep = 1.5f * (float)M_PI;
     const float t = clamp(position(), 0.f, 1.f);
 
-    if (arc) {
-      const float ra = r + 2.f;
-      nvgBeginPath(vg);
-      nvgArc(vg, cx, cy, ra, a0, a0 + sweep, NVG_CW);
-      nvgStrokeColor(vg, nvgRGBA(0xFF, 0xFF, 0xFF, 40));
-      nvgStrokeWidth(vg, 1.4f);
-      nvgLineCap(vg, NVG_ROUND);
-      nvgStroke(vg);
-      float o = clamp(arcOrigin(), 0.f, 1.f);
-      float t0 = std::min(o, t), t1 = std::max(o, t);
-      if (t1 > t0 + 1e-4f) {
-        nvgBeginPath(vg);
-        nvgArc(vg, cx, cy, ra, a0 + t0 * sweep, a0 + t1 * sweep, NVG_CW);
-        nvgStrokeColor(vg, logoBlue(230));
-        nvgStrokeWidth(vg, 1.8f);
-        nvgLineCap(vg, NVG_ROUND);
-        nvgStroke(vg);
-      }
-    }
-
-    // Body: rim, then face.
+    // Body: rim, then face. The rim is also the arc's track: the value is
+    // painted in blue right over it, a touch wider so it covers it, rather
+    // than as a ring floating outside the knob.
+    const float rimW = std::max(1.2f, d * 0.045f);
+    const float rimR = r - rimW * 0.5f;
     nvgBeginPath(vg);
-    nvgCircle(vg, cx, cy, r - 0.5f);
+    nvgCircle(vg, cx, cy, rimR);
     nvgFillColor(vg, nvgRGB(0x1b, 0x1b, 0x1b));
     nvgFill(vg);
-    nvgStrokeWidth(vg, std::max(0.8f, d * 0.025f));
+    nvgStrokeWidth(vg, rimW);
     nvgStrokeColor(vg, nvgRGB(0x5a, 0x5a, 0x5a));
     nvgStroke(vg);
     nvgBeginPath(vg);
     nvgCircle(vg, cx, cy, r * 0.8f);
     nvgFillColor(vg, nvgRGB(0x2c, 0x2c, 0x2c));
     nvgFill(vg);
+
+    if (arc) {
+      float o = clamp(arcOrigin(), 0.f, 1.f);
+      float t0 = std::min(o, t), t1 = std::max(o, t);
+      if (t1 > t0 + 1e-4f) {
+        nvgBeginPath(vg);
+        nvgArc(vg, cx, cy, rimR, a0 + t0 * sweep, a0 + t1 * sweep, NVG_CW);
+        nvgStrokeColor(vg, logoBlue());
+        nvgStrokeWidth(vg, rimW + 0.6f);
+        nvgLineCap(vg, NVG_BUTT);
+        nvgStroke(vg);
+      }
+    }
 
     // Pointer.
     const float a = a0 + t * sweep;

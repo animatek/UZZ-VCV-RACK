@@ -368,6 +368,10 @@ struct FlatLightButton : app::Switch {
     addChild(light);
   }
 
+  // The light is a child widget, owned by the widget tree: never copied.
+  FlatLightButton(const FlatLightButton &) = delete;
+  FlatLightButton &operator=(const FlatLightButton &) = delete;
+
   app::ModuleLightWidget *getLight() { return light; }
 
   void draw(const DrawArgs &args) override {

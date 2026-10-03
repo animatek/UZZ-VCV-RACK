@@ -540,12 +540,8 @@ struct AdsrTekWidget : ModuleWidget {
         constexpr float XL = 11.0f;
         constexpr float XR = W - 11.0f;
 
-        auto* moduleName = new TextLabel("ADSRtek", mm2px(Vec(1.8f, 119.9f)),
-                                         mm2px(Vec(26.f, 5.8f)));
-        moduleName->fontSize = 14.f;
-        moduleName->uppercase = false;
-        moduleName->color = nvgRGB(0x2C, 0x7F, 0xFF);
-        addChild(moduleName);
+        // The name beside the logo: the same on every panel (see ModuleName).
+        AnimatekUI::addModuleName(this, "ADSRtek");
 
         auto addLabel = [&](const char* text, float cx, float y, float w) {
             auto label = createWidget<TextLabel>(mm2px(Vec(cx - w * 0.5f, y)));

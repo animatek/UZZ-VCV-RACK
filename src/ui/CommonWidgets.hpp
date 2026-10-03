@@ -486,4 +486,41 @@ struct FlatSwitchH : FlatSwitch {                                   // two-way, 
   }
 };
 
+// ---------------------------------------------------------------------------
+// The module's name, bottom left
+// ---------------------------------------------------------------------------
+//
+// One widget for every panel that carries its name beside the logo, so they
+// all match: Nunito Bold, capitals, one size, starting 1.8 mm from the left
+// edge and centred on the logo's axis at y = 123 mm. 14 px is the largest size
+// at which the longest name, FILTERTEK, still clears the logo in 8 HP.
+struct ModuleName : TransparentWidget {
+  static constexpr float FONT_SIZE = 14.f;
+  static constexpr float AXIS_MM = 123.f;   // the logo's centre on every panel
+  std::string text;
+
+  void draw(const DrawArgs &args) override {
+    std::shared_ptr<window::Font> font =
+        APP->window->loadFont(asset::system("res/fonts/Nunito-Bold.ttf"));
+    if (!font || font->handle < 0)
+      return;
+    nvgFontSize(args.vg, FONT_SIZE);
+    nvgFontFaceId(args.vg, font->handle);
+    nvgTextAlign(args.vg, NVG_ALIGN_LEFT | NVG_ALIGN_BASELINE);
+    nvgFillColor(args.vg, logoBlue());
+    // Baseline half a cap height below the axis, so the capitals sit centred
+    // on it (Nunito's capitals are 0.705 em tall).
+    nvgText(args.vg, 0.f, box.size.y * 0.5f + FONT_SIZE * 0.705f * 0.5f, text.c_str(), nullptr);
+  }
+};
+
+inline void addModuleName(widget::Widget *panel, const char *name) {
+  auto *label = new ModuleName;
+  label->text = name;
+  uppercaseAscii(label->text);
+  label->box.pos = mm2px(Vec(1.8f, ModuleName::AXIS_MM - 3.f));
+  label->box.size = mm2px(Vec(36.f, 6.f));
+  panel->addChild(label);
+}
+
 } // namespace AnimatekUI

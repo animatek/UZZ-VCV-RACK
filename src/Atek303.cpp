@@ -694,11 +694,8 @@ struct Atek303Widget : ModuleWidget {
 		addOutput(createOutputCentered<AnimatekUI::TekOutputPort>(
 			mm2px(Vec(OUT_X, OUT_JACK_Y)), module, Atek303::AUDIO_OUTPUT));
 
-		auto* moduleName = new AnimatekUI::TextLabel("ATEK303", mm2px(Vec(1.5f, 120.6f)),
-		                                             mm2px(Vec(26.f, 5.8f)));
-		moduleName->fontSize = 13.f;
-		moduleName->color = AnimatekUI::logoBlue();
-		addChild(moduleName);
+		// The name beside the logo: the same on every panel (see ModuleName).
+		AnimatekUI::addModuleName(this, "ATEK303");
 	}
 
 	void appendContextMenu(Menu* menu) override {

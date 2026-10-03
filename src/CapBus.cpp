@@ -354,11 +354,8 @@ struct CapBusWidget : ModuleWidget {
         // The knob column and the fader beside it, as on CAP.
         constexpr float XK = 5.4f;
 
-        auto* moduleName = new TextLabel("BUS", mm2px(Vec(1.2f, 119.9f)),
-                                         mm2px(Vec(11.f, 5.8f)));
-        moduleName->fontSize = 16.f;
-        moduleName->color = nvgRGB(0x2C, 0x7F, 0xFF);
-        addChild(moduleName);
+        // The name beside the logo: the same on every panel (see ModuleName).
+        AnimatekUI::addModuleName(this, "BUS");
 
         auto addLabel = [&](const char* text, float cx, float y, float w) {
             auto label = createWidget<TextLabel>(mm2px(Vec(cx - w * 0.5f, y)));

@@ -768,11 +768,8 @@ struct SideChainWidget : ModuleWidget {
         addChild(createLightCentered<TinyLight<BlueLight>>(mm2px(Vec(W - 1.8f, 2.2f)), module,
                                                            SideChain::CHAIN_OUT_LIGHT));
 
-        auto* moduleName = new TextLabel("CAP", mm2px(Vec(1.8f, 119.9f)),
-                                         mm2px(Vec(14.f, 5.8f)));
-        moduleName->fontSize = 16.f;
-        moduleName->color = nvgRGB(0x2C, 0x7F, 0xFF);
-        addChild(moduleName);
+        // The name beside the logo: the same on every panel (see ModuleName).
+        AnimatekUI::addModuleName(this, "CAP");
 
         auto addLabel = [&](const char* text, float cx, float y, float w) {
             auto label = createWidget<TextLabel>(mm2px(Vec(cx - w * 0.5f, y)));

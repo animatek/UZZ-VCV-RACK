@@ -414,12 +414,8 @@ struct FilterTekWidget : ModuleWidget {
         const float COL3[3] = {7.3f, CX, W - 7.3f};
         const float COL2[2] = {12.5f, W - 12.5f};
 
-        auto* moduleName = new TextLabel("FILTERtek", mm2px(Vec(1.8f, 119.9f)),
-                                         mm2px(Vec(28.f, 5.8f)));
-        moduleName->fontSize = 14.f;
-        moduleName->uppercase = false;
-        moduleName->color = nvgRGB(0x2C, 0x7F, 0xFF);
-        addChild(moduleName);
+        // The name beside the logo: the same on every panel (see ModuleName).
+        AnimatekUI::addModuleName(this, "FILTERtek");
 
         // Lettered in Nunito Bold, the face of Rack's own panels: clearer than
         // the UI font at these sizes. `y` is the top of a 3 mm box; bigger

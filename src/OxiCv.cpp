@@ -702,10 +702,8 @@ struct OxiCvWidget : ModuleWidget {
         static constexpr float LX = 12.0f;
         static constexpr float RX = 28.64f;
 
-        auto* moduleName = new TextLabel("ONE", mm2px(Vec(0.8f, 119.9f)), mm2px(Vec(17.0f, 5.8f)));
-        moduleName->fontSize = 16.f;
-        moduleName->color = nvgRGB(0x2C, 0x7F, 0xFF);
-        addChild(moduleName);
+        // The name beside the logo: the same on every panel (see ModuleName).
+        AnimatekUI::addModuleName(this, "ONE");
 
         // Retro console display (top)
         auto dynMode = createWidget<DynamicModeLabel>(mm2px(Vec(3.0f, 3.5f)));

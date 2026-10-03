@@ -1056,10 +1056,8 @@ struct UnitDistanceSeqWidget : ModuleWidget {
             addChild(l);
         };
 
-        auto* moduleName = new TextLabel("UNIT-D", mm2px(Vec(1.8f, 119.9f)), mm2px(Vec(25.4f, 5.8f)));
-        moduleName->fontSize = 16.f;
-        moduleName->color = nvgRGB(0x2C, 0x7F, 0xFF);
-        addChild(moduleName);
+        // The name beside the logo: the same on every panel (see ModuleName).
+        AnimatekUI::addModuleName(this, "UNIT-D");
 
         label("CLK", 9.f, 2.2f, 10.f);
         label("RST", 23.f, 2.2f, 10.f);

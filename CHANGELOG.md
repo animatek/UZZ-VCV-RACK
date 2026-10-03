@@ -9,6 +9,13 @@ Registro de cambios de los módulos Animatek. Formato basado en
 ## [Unreleased]
 
 ### Fixed
+- **Nombres de los módulos coherentes.** Aviso de Javier: cada nombre tenía su tamaño (13, 14 o
+  16 px), su altura y su mezcla de mayúsculas. Ahora un solo componente, `ModuleName`, los pone
+  todos igual: Nunito Bold, en mayúsculas, a 14 px (el mayor con el que FILTERTEK libra el logo
+  en 8 HP), a 1,8 mm del borde y centrados en el eje del logo, a 123 mm. Lo usan ONE, MULTI,
+  CAP, BUS, ADSRTEK, FILTERTEK, UNIT-D y ATEK303. Los logos de ATEK303 y ATEK303 SEQ, que estaban
+  a 123,5 y 121 mm, bajan a 123 como los demás. UZZ, UZZ-X y ATEK303 SEQ llevan el nombre en otro
+  sitio, dentro de su diseño, y no cambian.
 - **Los rótulos ya no brillan en la sala oscura.** Aviso de Javier: con la luz de Rack bajada
   se seguían viendo todos los textos, porque el rótulo compartido (`TextLabel`) y otros siete
   (las separaciones de ONE, sus rótulos dinámicos, el canal de MULTI, y las secciones y cajas

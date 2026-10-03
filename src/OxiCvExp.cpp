@@ -93,10 +93,8 @@ struct OxiCvExpWidget : ModuleWidget {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/OxiCvExp.svg")));
 
-        auto* moduleName = new TextLabel("MULTI", mm2px(Vec(0.8f, 119.9f)), mm2px(Vec(21.8f, 5.8f)));
-        moduleName->fontSize = 16.f;
-        moduleName->color = nvgRGB(0x2C, 0x7F, 0xFF);
-        addChild(moduleName);
+        // The name beside the logo: the same on every panel (see ModuleName).
+        AnimatekUI::addModuleName(this, "MULTI");
 
         auto title = createWidget<ExpLabel>(mm2px(Vec(0.f, Y_TITLE - 3.5f)));
         title->box.size = mm2px(Vec(PANEL_W, 3.5f));

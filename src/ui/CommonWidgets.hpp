@@ -311,13 +311,17 @@ struct FlatKnob : app::Knob {
       }
     }
 
-    // Pointer.
+    // Pointer: wholly inside the face, round end included, with a little
+    // air before its edge.
     const float a = a0 + t * sweep;
+    const float pw = std::max(1.2f, d * 0.055f);
+    const float pOut = r * 0.8f - pw * 0.5f - std::max(0.8f, d * 0.04f);
+    const float pIn = r * 0.15f;
     nvgBeginPath(vg);
-    nvgMoveTo(vg, cx + std::cos(a) * r * 0.12f, cy + std::sin(a) * r * 0.12f);
-    nvgLineTo(vg, cx + std::cos(a) * r * 0.78f, cy + std::sin(a) * r * 0.78f);
+    nvgMoveTo(vg, cx + std::cos(a) * pIn, cy + std::sin(a) * pIn);
+    nvgLineTo(vg, cx + std::cos(a) * pOut, cy + std::sin(a) * pOut);
     nvgStrokeColor(vg, nvgRGB(0xff, 0xff, 0xff));
-    nvgStrokeWidth(vg, std::max(1.3f, d * 0.07f));
+    nvgStrokeWidth(vg, pw);
     nvgLineCap(vg, NVG_ROUND);
     nvgStroke(vg);
 

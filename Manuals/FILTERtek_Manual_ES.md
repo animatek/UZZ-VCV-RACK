@@ -18,14 +18,15 @@
 - **Su resonancia**, de un leve realce a un pico que resuena con una Q de varios miles, con el **gain control** del original, que baja el nivel a medida que sube la resonancia.
 - **Su saturación:** el original calcula en punto fijo, y sus valores internos chocan con un techo duro. Llevado a la resonancia recorta de una forma muy suya, y FILTERtek la reproduce.
 - **Estéreo**: dos filtros con los mismos ajustes, `IN R` normalizado a `IN L`. Polifónico en cada lado (hasta 16 canales).
-- Un **DRIVE** para llevarlo a esa saturación, y CV con su propio trimmer sobre corte, resonancia y drive, además de V/oct.
+- Una **gráfica de respuesta** que dibuja la curva del filtro en directo, con el mismo modelo por el que pasa el audio.
+- CV con su propio trimmer sobre corte y resonancia, además de V/oct.
 
 ---
 
 ## 2. Inicio rápido
 
 1. Conecta un oscilador a `IN L` y saca `OUT L` a un VCA o a la mezcla; para una fuente estéreo, usa los dos lados.
-2. Gira `CUTOFF` para abrir o cerrar el filtro, `RES` para añadir resonancia y `DRIVE` para que muerda.
+2. Gira `CUTOFF` para abrir o cerrar el filtro y `RES` para añadir resonancia, y mira cómo se mueve la curva en la gráfica.
 3. Conecta una envolvente (ADSRtek, por ejemplo) al jack de CV `CUT` y sube su trimmer para un barrido de filtro.
 4. Conecta el pitch del teclado a `V/OCT` para que el filtro siga las notas.
 
@@ -41,30 +42,32 @@ El corte, en los 128 pasos de un semitono del original: **330 Hz en el paso 60**
 
 La resonancia, en 128 pasos. La Q empieza en 0,5 (sin pico) y crece cada vez más deprisa: unos 2 en el 64, 7 en el 96, 27 en el 112, 100 en el 120, y varios miles en el 127, donde el filtro resuena casi un segundo sin llegar a oscilar por sí solo. Su amortiguación sigue también al corte, como en el original: con el mismo `RES`, el pico se afila al subir.
 
-### Botón de tipo y LEDs
+### LP, BP, HP, BR
 
-El botón recorre **LP**, **BP**, **HP** y **BR**; el LED dice cuál está activo. El tipo está también en el menú contextual.
+Cuatro botones para el tipo de filtro; el iluminado es el que suena.
 
 - **LP, BP, HP** son las tres salidas del mismo filtro. El paso banda no está normalizado: su pico sube con la resonancia.
 - **BR** (banda eliminada) es una muesca con su propia amortiguación, mucho más suave que la resonancia: `RES` la estrecha solo un poco.
 
-### SLOPE: 12 / 24
+### dB/OCT: 12 / 24
+
+Dos botones bajo `GC`; el iluminado es la pendiente.
 
 12 dB por octava es una sección de filtro; 24 dB por octava son dos secciones iguales en cascada, cada una con su resonancia, más baja, así que un pico de 24 dB es más suave que uno de 12 con el mismo `RES`.
 
-### GAIN: ON / OFF
+### GC
 
-El gain control del original. **Activado** (por defecto), el nivel baja al subir la resonancia, hasta unos −40 dB con la resonancia al máximo, y el pico no se dispara. **Desactivado**, la banda de paso queda a nivel completo y el pico se eleva sobre ella, lo que lleva el filtro a su saturación mucho antes.
+El gain control del original, un botón iluminado mientras está activado. **Activado** (por defecto), el nivel baja al subir la resonancia, hasta unos −40 dB con la resonancia al máximo, y el pico no se dispara. **Desactivado**, la banda de paso queda a nivel completo y el pico se eleva sobre ella, lo que lleva el filtro a su saturación mucho antes.
 
 En 12 dB el gain control actúa en la entrada; en 24 dB, entre las dos secciones, así que la primera recibe siempre la señal entera. Por eso una señal fuerte por un filtro de 24 dB con resonancia se rompe aunque el gain control esté activado, como en el original.
 
-### DRIVE
+### Gráfica de respuesta
 
-Nivel de entrada al filtro, de 0 a +24 dB, para llevarlo a su saturación. En 0 dB es exactamente el original. La mitad se compensa a la salida: una señal baja sube algo de volumen al girarlo (+12 dB arriba del todo), y un filtro llevado a fondo a la saturación sale a unos ±5 V, el nivel habitual en Rack, en vez de a su techo interno de ±20 V.
+La respuesta en amplitud del filtro, de 20 Hz a 20 kHz en horizontal y de −54 a +30 dB en vertical, con la línea gris en 0 dB. Se dibuja con el mismo modelo por el que pasa el audio, con el corte y la resonancia del primer canal incluido su CV, el tipo, la pendiente y el gain control, así que una envolvente en `CUT` la barre en directo.
 
-### Trimmers de CV: CUT, RES, DRIVE
+### Trimmers de CV: CUT, RES
 
-Cada jack de CV tiene su trimmer encima, unido por una línea: cuánto y en qué sentido mueve el CV el corte, la resonancia o el drive, de −100 % a +100 %. En 0 el jack no hace nada.
+Cada jack de CV tiene su trimmer encima, unido por una línea: cuánto y en qué sentido mueve el CV el corte o la resonancia, de −100 % a +100 %. En 0 el jack no hace nada.
 
 ---
 
@@ -72,7 +75,7 @@ Cada jack de CV tiene su trimmer encima, unido por una línea: cuánto y en qué
 
 ### IN L / IN R, OUT L / OUT R
 
-Entrada y salida de audio, dos filtros con los mismos ajustes. `IN R` está normalizado a `IN L`, así que una fuente mono sale por los dos lados. El nivel importa: el filtro satura por dentro hacia **±20 V**, donde está el fondo de escala del original, y un oscilador normal de ±5 V queda donde queda uno en el original. Señales más calientes, `DRIVE` o `GAIN` desactivado lo llevan a su saturación. Con `GAIN` desactivado y una señal fuerte justo en una resonancia aguda, la salida llega de verdad a esos ±20 V, como la del original: baja el nivel después o deja el gain control activado.
+Entrada y salida de audio, dos filtros con los mismos ajustes. `IN R` está normalizado a `IN L`, así que una fuente mono sale por los dos lados. El nivel importa: el filtro satura por dentro hacia **±20 V**, donde está el fondo de escala del original, y un oscilador normal de ±5 V queda donde queda uno en el original. Señales más calientes, o `GC` desactivado, lo llevan a su saturación. Con `GC` desactivado y una señal fuerte justo en una resonancia aguda, la salida llega de verdad a esos ±20 V, como la del original: baja el nivel después o deja el gain control activado.
 
 ### V/OCT
 
@@ -85,10 +88,6 @@ Mueve el corte de forma exponencial, escalado por su trimmer: al 50 % es 1 V por
 ### RES
 
 Mueve la resonancia, escalado por su trimmer: al 100 %, 1 V son 24 pasos.
-
-### DRIVE
-
-Mueve el drive, escalado por su trimmer: al 100 %, 1 V son 2,4 dB, dentro de −12 a +36 dB en total.
 
 ---
 

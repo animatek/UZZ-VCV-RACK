@@ -18,14 +18,15 @@
 - **Its resonance**, from a gentle bump to a ringing peak with a Q of several thousand, with the original's **gain control**, which pulls the level down as the resonance rises.
 - **Its saturation:** the original computes in fixed point, and its internal values hit a hard ceiling. Driven into resonance it clips in a way that is its own, and FILTERtek reproduces it.
 - **Stereo**: two filters with the same settings, `IN R` normalled to `IN L`. Polyphonic on each side (up to 16 channels).
-- A **DRIVE** to push it into that saturation, and CV with its own trimmer over cutoff, resonance and drive, plus V/oct.
+- A **response display** that draws the filter's curve live, from the same model the audio runs through.
+- CV with its own trimmer over cutoff and resonance, plus V/oct.
 
 ---
 
 ## 2. Quick start
 
 1. Patch an oscillator into `IN L` and take `OUT L` to a VCA or the mix; for a stereo source, use both sides.
-2. Turn `CUTOFF` to open or close the filter, `RES` to add resonance, `DRIVE` to make it bite.
+2. Turn `CUTOFF` to open or close the filter and `RES` to add resonance, and watch the curve move on the display.
 3. Patch an envelope (ADSRtek, for instance) into the `CUT` CV jack and turn its trimmer up for a filter sweep.
 4. Patch the keyboard's pitch into `V/OCT` so the filter follows the notes.
 
@@ -41,30 +42,32 @@ The cutoff, in the original's 128 steps of a semitone each: **330 Hz at step 60*
 
 The resonance, in 128 steps. The Q starts at 0.5 (no peak at all) and grows faster and faster: about 2 at 64, 7 at 96, 27 at 112, 100 at 120, and several thousand at 127, where the filter rings for most of a second without quite oscillating by itself. Its damping also follows the cutoff, as on the original: at the same `RES` the peak gets sharper higher up.
 
-### Type button and LEDs
+### LP, BP, HP, BR
 
-The button steps through **LP**, **BP**, **HP** and **BR**; the LED shows which one is on. The type is also in the context menu.
+Four buttons for the filter type; the lit one is the one playing.
 
 - **LP, BP, HP** are the three outputs of the same filter. The bandpass is not normalised: its peak rises with the resonance.
 - **BR** (band reject) is a notch with a damping of its own, much gentler than the resonance: `RES` narrows it only a little.
 
-### SLOPE: 12 / 24
+### dB/OCT: 12 / 24
+
+Two buttons under `GC`; the lit one is the slope.
 
 12 dB/octave is one filter section; 24 dB/octave is two identical sections in cascade, each with its own, lower resonance, so a 24 dB peak is softer than a 12 dB one at the same `RES`.
 
-### GAIN: ON / OFF
+### GC
 
-The original's gain control. **On** (the default), the level falls as the resonance rises, down to about −40 dB at full resonance, so the peak stays in check. **Off**, the passband stays at full level and the peak towers over it, which drives the filter into its saturation much sooner.
+The original's gain control, a button lit while it is on. **On** (the default), the level falls as the resonance rises, down to about −40 dB at full resonance, so the peak stays in check. **Off**, the passband stays at full level and the peak towers over it, which drives the filter into its saturation much sooner.
 
 At 12 dB the gain control acts on the input; at 24 dB it acts between the two sections, so the first one always takes the full signal. That is why a loud signal through a resonant 24 dB filter breaks up even with gain control on, as it does on the original.
 
-### DRIVE
+### Response display
 
-Level into the filter, from 0 to +24 dB, to push it into its saturation. At 0 dB it is the original exactly. Half of it is made up for at the output: a quiet signal gets somewhat louder as you turn it up (+12 dB at the top), and a filter driven all the way into clipping comes out at about ±5 V, Rack's usual level, rather than at its internal ceiling of ±20 V.
+The filter's magnitude response, 20 Hz to 20 kHz across and −54 to +30 dB up, with the grey line at 0 dB. It is drawn from the same model the audio runs through, with the first channel's cutoff and resonance including their CV, the type, the slope and gain control, so an envelope on `CUT` sweeps it live.
 
-### CV trimmers: CUT, RES, DRIVE
+### CV trimmers: CUT, RES
 
-Each CV jack has its trimmer above it, joined by a hairline: how much and in which direction the CV moves the cutoff, the resonance or the drive, from −100% to +100%. At 0 the jack does nothing.
+Each CV jack has its trimmer above it, joined by a hairline: how much and in which direction the CV moves the cutoff or the resonance, from −100% to +100%. At 0 the jack does nothing.
 
 ---
 
@@ -72,7 +75,7 @@ Each CV jack has its trimmer above it, joined by a hairline: how much and in whi
 
 ### IN L / IN R, OUT L / OUT R
 
-Audio in and out, two filters with the same settings. `IN R` is normalled to `IN L`, so a mono source comes out on both sides. The level matters: the filter saturates at about **±20 V** inside, where the original's full scale is, and a normal ±5 V oscillator sits where one sits on the original. Hotter signals, `DRIVE`, or `GAIN` off push it into its saturation. With `GAIN` off and a loud signal right on a sharp resonance, the output really does reach that ±20 V, as the original's does: turn the level down after it, or leave gain control on.
+Audio in and out, two filters with the same settings. `IN R` is normalled to `IN L`, so a mono source comes out on both sides. The level matters: the filter saturates at about **±20 V** inside, where the original's full scale is, and a normal ±5 V oscillator sits where one sits on the original. Hotter signals, or `GC` off, push it into its saturation. With `GC` off and a loud signal right on a sharp resonance, the output really does reach that ±20 V, as the original's does: turn the level down after it, or leave gain control on.
 
 ### V/OCT
 
@@ -85,10 +88,6 @@ Moves the cutoff exponentially, scaled by its trimmer: at 50% it is 1 V/octave, 
 ### RES
 
 Moves the resonance, scaled by its trimmer: at 100%, 1 V is 24 steps.
-
-### DRIVE
-
-Moves the drive, scaled by its trimmer: at 100%, 1 V is 2.4 dB, within −12 to +36 dB in all.
 
 ---
 

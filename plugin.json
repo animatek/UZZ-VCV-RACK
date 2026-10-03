@@ -108,7 +108,7 @@
     {
       "slug": "FilterTek",
       "name": "FILTERtek",
-      "description": "Multimode filter modelled on measurements of a classic 90s virtual-analogue modular: lowpass, bandpass, highpass and band reject at 12 or 24 dB/oct, its resonance with gain control, and the hard fixed-point saturation that gives it its edge. Stereo and polyphonic, with drive, V/oct and CV over cutoff, resonance and drive.",
+      "description": "Multimode filter modelled on measurements of a classic 90s virtual-analogue modular: lowpass, bandpass, highpass and band reject at 12 or 24 dB/oct, its resonance with gain control, and the hard fixed-point saturation that gives it its edge. Stereo and polyphonic, with a live response display, V/oct and CV over cutoff and resonance.",
       "manualUrl": "https://github.com/animatek/UZZ-VCV-RACK/blob/main/Manuals/FILTERtek_Manual_EN.md",
       "tags": [
         "Filter",

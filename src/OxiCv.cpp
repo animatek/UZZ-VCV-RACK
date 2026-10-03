@@ -593,8 +593,11 @@ using StaticLabel = TextLabel;
 struct DynamicModeLabel : widget::TransparentWidget {
     OxiCv* module = nullptr;
 
-    void draw(const DrawArgs& args) override {
-        std::shared_ptr<Font> font = APP->window->uiFont;
+    // The display's text: on the light layer, so it stays lit in a dimmed
+    // room as a display should, in the Nunito Bold of the other flat displays.
+    void drawLayer(const DrawArgs& args, int layer) override {
+        if (layer != 1) return;
+        std::shared_ptr<Font> font = APP->window->loadFont(asset::system("res/fonts/Nunito-Bold.ttf"));
         if (!font) return;
         const char* modeStr = (module && module->playMode < PM_COUNT)
             ? PLAY_MODE_SHORT[module->playMode] : "MONO";
@@ -612,16 +615,14 @@ struct DynamicModeLabel : widget::TransparentWidget {
         // Top line — mode (large lighter corporate blue, simulated bold)
         nvgFontSize(args.vg, 13.0f);
         nvgTextLetterSpacing(args.vg, 1.2f);
-        nvgFillColor(args.vg, displayBlue()); // Lighter Corporate Blue
+        nvgFillColor(args.vg, AnimatekUI::logoBlue());
         nvgText(args.vg, cx, box.size.y * 0.38f, topTxt.c_str(), NULL);
-        nvgText(args.vg, cx + 0.2f, box.size.y * 0.38f, topTxt.c_str(), NULL); // Fake bold
 
         // Bottom line — MIDI channel (small, dimmer lighter corporate blue, simulated bold)
         nvgFontSize(args.vg, 7.0f);
         nvgTextLetterSpacing(args.vg, 0.6f);
         nvgFillColor(args.vg, displayBlue(210));
         nvgText(args.vg, cx, box.size.y * 0.78f, botTxt.c_str(), NULL);
-        nvgText(args.vg, cx + 0.15f, box.size.y * 0.78f, botTxt.c_str(), NULL); // Fake bold
 
         // MIDI Activity dot to the left of Channel text
         float light = module ? module->lights[OxiCv::MIDI_LIGHT].getBrightness() : 0.f;

@@ -147,11 +147,11 @@ En modo normal, entrega 10 V en las notas acentuadas y 0 V en las demás. En mod
 Los 16 LEDs RGB muestran el patrón renderizado y destacan el paso actual:
 
 - Apagado: Rest.
-- Verde: ataque Note normal.
-- Azul: Tie, continuación de la nota anterior sin otro ataque.
-- Ámbar/amarillo: Note con slide saliente.
-- Rojo: Note acentuado.
-- Paso actual: rojo a plena luz, tape lo que tape. Es el código de las cajas de ritmo de toda la vida, y es lo único que hay que encontrar sin buscarlo.
+- Azul del logo: ataque Note normal.
+- Azul profundo: Tie, continuación de la nota anterior sin otro ataque.
+- Cian: Note con slide saliente.
+- Casi blanco: Note acentuado.
+- Paso actual: blanco a plena luz, tape lo que tape: en una fila de azules es lo único que se encuentra sin buscarlo.
 
 Cuando coinciden varios atributos, la visualización usa una prioridad clara: tie, después acento, después slide y, finalmente, nota normal. El patrón de audio conserva su articulación interna válida.
 
@@ -337,7 +337,8 @@ sigue saliendo con el botón derecho sobre el tecladito de la izquierda o sobre 
 entre filas.
 
 Los colores son los de los LEDs de paso, así que panel y editor dicen siempre lo mismo:
-verde ataque normal, rojo acento, ámbar slide, azul tie. El slide se dibuja además como una
+azul del logo ataque normal, casi blanco acento, cian slide, azul profundo tie, y pizarra
+las filas de octava. El slide se dibuja además como una
 línea que une las dos notas, que es donde el gesto melódico se ve. La cabeza de
 reproducción cruza todas las filas.
 
@@ -381,7 +382,7 @@ cuatro últimas columnas de la rejilla.
   son esos dos segundos, y queda encendido en azul mientras sigue. Otra pulsación larga lo
   suelta.
 
-Los LEDs se leen como una caja de ritmos: rojo a plena luz por donde va el secuenciador,
+Los LEDs se leen como una caja de ritmos: blanco a plena luz por donde va el secuenciador,
 con un punto más de brillo en el tiempo fuerte; el azul del logotipo en la página que estás
 editando; y un blanco tenue en la página por la que arranca la secuencia, para saber dónde
 empieza con el reloj parado. Una página que cae fuera de `STEPS` enseña el azul más bajo:

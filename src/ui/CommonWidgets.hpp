@@ -193,19 +193,42 @@ struct DisplayBox : TransparentWidget {
   }
 };
 
-template <typename ModuleT, void (ModuleT::*ResetFunc)(), int SkipIdx,
-          int ScalePct = 100>
-struct RandomResetButton : TL1105 {
-  static constexpr float scale() { return (float)ScalePct / 100.f; }
+/** A plain momentary push button in the flat style: the knobs' grey rim and
+face, darker while held. TL1105's size by default. */
+struct FlatPushButton : app::Switch {
+  FlatPushButton() {
+    momentary = true;
+    setDiameter(5.2f);   // TL1105
+  }
+
+  void setDiameter(float mm) { box.size = mm2px(Vec(mm, mm)); }
 
   void draw(const DrawArgs &args) override {
-    drawScaled(args.vg, box.size, scale(), [&] { SvgSwitch::draw(args); });
+    NVGcontext *vg = args.vg;
+    const float d = box.size.x, r = d * 0.5f;
+    const float rimW = std::max(1.2f, d * 0.045f);
+    bool pressed = false;
+    if (engine::ParamQuantity *pq = getParamQuantity())
+      pressed = pq->getValue() > 0.5f;
+    nvgBeginPath(vg);
+    nvgCircle(vg, r, r, r - rimW * 0.5f);
+    nvgFillColor(vg, nvgRGB(0x1b, 0x1b, 0x1b));
+    nvgFill(vg);
+    nvgStrokeWidth(vg, rimW);
+    nvgStrokeColor(vg, nvgRGB(0x5a, 0x5a, 0x5a));
+    nvgStroke(vg);
+    nvgBeginPath(vg);
+    nvgCircle(vg, r, r, r * 0.8f);
+    nvgFillColor(vg, pressed ? nvgRGB(0x22, 0x22, 0x22) : nvgRGB(0x2c, 0x2c, 0x2c));
+    nvgFill(vg);
+    app::Switch::draw(args);
   }
+};
 
-  void drawLayer(const DrawArgs &args, int layer) override {
-    drawScaled(args.vg, box.size, scale(),
-               [&] { SvgSwitch::drawLayer(args, layer); });
-  }
+template <typename ModuleT, void (ModuleT::*ResetFunc)(), int SkipIdx,
+          int ScalePct = 100>
+struct RandomResetButton : FlatPushButton {
+  RandomResetButton() { setDiameter(5.2f * (float)ScalePct / 100.f); }
 
   void onDoubleClick(const event::DoubleClick &e) override {
     if (auto q = getParamQuantity()) {

@@ -6,6 +6,16 @@
 #include <cstdio>
 #include <cstdlib>
 
+// The editor's palette, one family of blues like the rest of the plugin rather
+// than the green, red and amber of a drum machine: a note in the logo blue, a tie
+// in a deeper blue, an accent nearly white, a slide in cyan, and the octave
+// shifts in slate. Each stays apart from the others at a glance.
+inline NVGcolor acidNoteColor() { return nvgRGB(0x2C, 0x7F, 0xFF); }
+inline NVGcolor acidTieColor() { return nvgRGB(0x1E, 0x4E, 0x9C); }
+inline NVGcolor acidAccentColor() { return nvgRGB(0xCF, 0xE6, 0xFF); }
+inline NVGcolor acidSlideColor() { return nvgRGB(0x00, 0xC2, 0xFF); }
+inline NVGcolor acidOctaveColor() { return nvgRGB(0x7F, 0x9C, 0xC4); }
+
 // ---------------------------------------------------------------------------
 // Editor de patrón de ATEK303 SEQ: un piano roll de una octava con las filas de
 // articulación debajo.
@@ -536,10 +546,10 @@ struct AcidEditor : OpaqueWidget {
 			const float x = gx + col * sw;
 			// Mismo código de color que los LEDs de paso, para que panel y editor digan
 			// lo mismo: verde ataque, rojo acento, ámbar slide, azul tie.
-			NVGcolor c = tie            ? nvgRGB(0x1A, 0x73, 0xFF)
-			           : noteAcc[s]     ? nvgRGB(0xFF, 0x26, 0x26)
-			           : noteSld[s]     ? nvgRGB(0xCC, 0xB3, 0x00)
-			                            : nvgRGB(0x2E, 0xCC, 0x40);
+			NVGcolor c = tie            ? acidTieColor()
+			           : noteAcc[s]     ? acidAccentColor()
+			           : noteSld[s]     ? acidSlideColor()
+			                            : acidNoteColor();
 			if (!inLoop(s, start, length)) c = nvgTransRGBA(c, 70);
 			nvgBeginPath(args.vg);
 			nvgRoundedRect(args.vg, x + 1.f, y + 1.f, sw - 2.f, rh - 2.5f, 1.5f);
@@ -568,7 +578,7 @@ struct AcidEditor : OpaqueWidget {
 			nvgBeginPath(args.vg);
 			nvgMoveTo(args.vg, gx + (c + 0.85f) * sw, y0);
 			nvgLineTo(args.vg, gx + (next - base + 0.15f) * sw, y1);
-			nvgStrokeColor(args.vg, nvgRGBA(0xCC, 0xB3, 0x00, 220));
+			nvgStrokeColor(args.vg, nvgTransRGBA(acidSlideColor(), 220));
 			nvgStrokeWidth(args.vg, 1.4f);
 			nvgStroke(args.vg);
 		}
@@ -616,27 +626,27 @@ struct AcidEditor : OpaqueWidget {
 				nvgFill(args.vg);
 
 				float level = 0.f;          // 0 apagado, 0.55 medio, 1 lleno
-				NVGcolor c = nvgRGB(0x2E, 0xCC, 0x40);
+				NVGcolor c = acidNoteColor();
 				switch (r) {
 					case ROW_UP:
 						if (hasNote && noteOct[s] > 0) { level = noteOct[s] > 1 ? 1.f : 0.55f; }
-						c = AnimatekUI::displayBlue();
+						c = acidOctaveColor();
 						break;
 					case ROW_DOWN:
 						if (hasNote && noteOct[s] < 0) { level = noteOct[s] < -1 ? 1.f : 0.55f; }
-						c = AnimatekUI::displayBlue();
+						c = acidOctaveColor();
 						break;
 					case ROW_GATE:
-						if (p.time[s] == AcidTimeState::Note) { level = 1.f; c = nvgRGB(0x2E, 0xCC, 0x40); }
-						else if (p.time[s] == AcidTimeState::Tie) { level = 1.f; c = nvgRGB(0x1A, 0x73, 0xFF); }
+						if (p.time[s] == AcidTimeState::Note) { level = 1.f; c = acidNoteColor(); }
+						else if (p.time[s] == AcidTimeState::Tie) { level = 1.f; c = acidTieColor(); }
 						break;
 					case ROW_ACCENT:
 						if (hasNote && noteAcc[s]) level = 1.f;
-						c = nvgRGB(0xFF, 0x26, 0x26);
+						c = acidAccentColor();
 						break;
 					default:
 						if (hasNote && noteSld[s]) level = 1.f;
-						c = nvgRGB(0xCC, 0xB3, 0x00);
+						c = acidSlideColor();
 						break;
 				}
 				if (level > 0.f) {

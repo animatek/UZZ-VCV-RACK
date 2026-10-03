@@ -147,11 +147,11 @@ In normal mode, outputs 10 V for accented notes and 0 V otherwise. In **Accent a
 The 16 RGB LEDs display the rendered pattern and highlight the current step:
 
 - Off: Rest.
-- Green: ordinary Note attack.
-- Blue: Tie, continuing the preceding note without a new attack.
-- Amber/yellow: Note with outgoing slide.
-- Red: accented Note.
-- Current step: bright red, whatever the step holds. That is the drum-machine code, and it is the one thing you have to find without looking for it.
+- Logo blue: ordinary Note attack.
+- Deep blue: Tie, continuing the preceding note without a new attack.
+- Cyan: Note with outgoing slide.
+- Near white: accented Note.
+- Current step: bright white, whatever the step holds: in a row of blues it is the one thing you find without looking for it.
 
 When attributes overlap, the display uses a clear priority: tie, then accent, then slide, then ordinary note. The audio pattern still retains its valid underlying articulation.
 
@@ -332,8 +332,9 @@ the roll and `GATE` turn the step off, `UP` and `DOWN` return the octave to zero
 passage in one sweep. Right-clicking the keyboard on the left edge, or the gaps between
 rows, still opens the module's context menu.
 
-Colours match the step LEDs, so the panel and the editor always say the same thing: green
-for a plain attack, red for an accent, amber for a slide, blue for a tie. A slide is also
+Colours match the step LEDs, so the panel and the editor always say the same thing: the logo
+blue for a plain attack, near white for an accent, cyan for a slide, a deeper blue for a tie, and
+slate for the octave rows. A slide is also
 drawn as a line joining the two notes, which is where the melodic gesture becomes visible.
 The playhead crosses every row.
 
@@ -377,7 +378,7 @@ columns of the grid.
   playhead, so the editor changes page on its own; the bar filling the button is those two
   seconds, and it lights blue while following. Holding again lets go.
 
-The LEDs read like a drum machine: bright red where the sequencer is, brighter still on the
+The LEDs read like a drum machine: bright white where the sequencer is, brighter still on the
 downbeat; the logo blue on the page you are editing; a dim white on the page the sequence
 starts from, so you can see where it begins with the clock stopped. A page that falls
 outside `STEPS` shows a dimmer blue - still where you are, and it does not sound.

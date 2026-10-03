@@ -570,8 +570,9 @@ struct Atek303Seq : Module, AcidEditorHost {
 			}
 		}
 
-		// Una fila de LEDs para ver el patrón, sin controles: apagado = silencio,
-		// verde = ataque, azul = tie, ámbar = slide, rojo = acento; el paso en curso brilla.
+		// Una fila de LEDs para ver el patrón, sin controles: apagado = silencio, y los
+		// colores del editor (acidNoteColor y compañía): azul = ataque, azul profundo =
+		// tie, cian = slide, casi blanco = acento; el paso en curso brilla.
 		// Enseña la página que se está editando, la misma que el roll: son dieciséis LEDs
 		// para sesenta y cuatro pasos, y seguir a la cabeza saltando de página dejaría la
 		// fila diciendo algo distinto de lo que hay debajo.
@@ -580,15 +581,16 @@ struct Atek303Seq : Module, AcidEditorHost {
 			const int i = lightBase + c;
 			float r = 0.f, g = 0.f, b = 0.f;
 			if (i < MAX_STEPS && relStep(i, base) < len && gen.gate[i]) {
-				if (gen.tie[i]) { r = 0.1f; g = 0.45f; b = 1.f; }
-				else if (gen.accent[i]) { r = 1.f; g = 0.15f; }
-				else if (gen.slide[i]) { r = 0.8f; g = 0.7f; }
-				else { g = 0.8f; }
+				// The editor's colours as RGB light levels (see acidNoteColor).
+				if (gen.tie[i]) { r = 0.12f; g = 0.31f; b = 0.61f; }
+				else if (gen.accent[i]) { r = 0.81f; g = 0.90f; b = 1.f; }
+				else if (gen.slide[i]) { r = 0.f; g = 0.76f; b = 1.f; }
+				else { r = 0.17f; g = 0.50f; b = 1.f; }
 			}
-			// La cabeza se pinta en rojo a plena luz, tape lo que tape: es el código de
-			// las cajas de ritmo de toda la vida y se localiza sin pensar.
+			// La cabeza se pinta en blanco a plena luz, tape lo que tape: en una fila de
+			// azules es lo que se localiza sin pensar.
 			const bool playing = clockStarted && i == step;
-			if (playing) { r = 1.f; g = 0.f; b = 0.f; }
+			if (playing) { r = 1.f; g = 1.f; b = 1.f; }
 			const float dim = playing ? 1.f : 0.28f;
 			lights[STEP_LIGHT + c * 3 + 0].setBrightness(r * dim);
 			lights[STEP_LIGHT + c * 3 + 1].setBrightness(g * dim);
@@ -605,7 +607,7 @@ struct Atek303Seq : Module, AcidEditorHost {
 			const bool editing = pg == editorPage();
 			const bool sounding = clockStarted && step >= first
 			                   && step < first + ACID_PAGE_STEPS;
-			// Mismo código que la fila de pasos: rojo por donde va la cabeza, con un punto
+			// Mismo código que la fila de pasos: blanco por donde va la cabeza, con un punto
 			// más de brillo en el tiempo fuerte. Blanco tenue en la página por la que
 			// arranca la secuencia, para saber dónde empieza con el reloj parado.
 			const float head = sounding ? ((step % 4) == 0 ? 1.f : 0.60f) : 0.f;
@@ -615,8 +617,8 @@ struct Atek303Seq : Module, AcidEditorHost {
 			lights[PAGE_LIGHT + pg * 3 + 0].setBrightness(
 				std::max(blue * 0.17f, start) + head);
 			lights[PAGE_LIGHT + pg * 3 + 1].setBrightnessSmooth(
-				std::max(blue * 0.50f, start), args.sampleTime);
-			lights[PAGE_LIGHT + pg * 3 + 2].setBrightness(std::max(blue, start));
+				std::max(blue * 0.50f, start) + head, args.sampleTime);
+			lights[PAGE_LIGHT + pg * 3 + 2].setBrightness(std::max(blue, start) + head);
 		}
 		lights[GENERATE_LIGHT].setBrightnessSmooth(
 			genPulse.process(args.sampleTime) ? 1.f : 0.f, args.sampleTime);
@@ -858,7 +860,7 @@ struct SeqReadout : Widget {
 		nvgFontFaceId(args.vg, font->handle);
 		nvgFontSize(args.vg, size);
 		nvgTextAlign(args.vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
-		nvgFillColor(args.vg, nvgRGB(0xfb, 0xd5, 0x18));   // el amarillo del sticker
+		nvgFillColor(args.vg, AnimatekUI::logoBlue());   // el azul del sticker
 		nvgText(args.vg, box.size.x / 2, box.size.y / 2, text, NULL);
 	}
 };

@@ -9,6 +9,16 @@ Registro de cambios de los módulos Animatek. Formato basado en
 ## [Unreleased]
 
 ### Fixed
+- **Estilo plano en lo que faltaba.** Avisos de Javier:
+  - UZZ: los botones redondos de aleatorio pasan a `FlatPushButton` (aro y cara grises, más
+    oscura al pulsar); conservan su 90 % y el doble clic que reinicia la fila.
+  - ONE: la pantalla deja el marco negro con borde verde y puntos por el recuadro plano del
+    BUS, y su texto pasa a Nunito Bold sin falsa negrita. Además vuelve a la capa de luz: el
+    cambio anterior de los rótulos la había apagado a oscuras, y es una pantalla.
+  - ATEK303 SEQ: la paleta pasa a una familia de azules como el resto del plugin (nota azul
+    del logo, tie azul profundo, acento casi blanco, slide cian, octavas en pizarra; la cabeza
+    en blanco en vez de rojo) en el editor y en los LEDs; los textos de raíz y escala y la
+    pegatina acid de ATEK303 y su SEQ, del amarillo al azul del logo. Manual al día.
 - **Nombres de los módulos coherentes.** Aviso de Javier: cada nombre tenía su tamaño (13, 14 o
   16 px), su altura y su mezcla de mayúsculas. Ahora un solo componente, `ModuleName`, los pone
   todos igual: Nunito Bold, en mayúsculas, a 14 px (el mayor con el que FILTERTEK libra el logo

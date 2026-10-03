@@ -9,6 +9,11 @@ Registro de cambios de los módulos Animatek. Formato basado en
 ## [Unreleased]
 
 ### Fixed
+- **Repaso antes de publicar.** Tags de `plugin.json` contrastados con `tagAliases` de Rack (todos
+  canónicos), un manual por módulo, catorce slugs registrados, compilación limpia desde cero con
+  el SDK y cppcheck sin avisos en `src/`. Corregido: ATEK303 SEQ ya no se presenta como de 16 pasos
+  (llega a 64, en cuatro páginas), en `plugin.json` y en su manual, cuyo STEPS decía de 1 a 16; y la
+  descripción de CAP, que estaba mal construida y no contaba ni el pan ni la cadena.
 - **Estilo plano en lo que faltaba.** Avisos de Javier:
   - UZZ: los botones redondos de aleatorio pasan a `FlatPushButton` (aro y cara grises, más
     oscura al pulsar); conservan su 90 % y el doble clic que reinicia la fila.

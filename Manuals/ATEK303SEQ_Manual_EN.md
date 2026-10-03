@@ -1,8 +1,8 @@
 # ATEK303 SEQ - User Manual
 
 **Manual version:** 1.0
-**Plugin version:** Animatek 2.5.5
-**Module:** ATEK303 SEQ, 20 HP deterministic 16-step acid generator for VCV Rack
+**Plugin version:** Animatek 2.5.9
+**Module:** ATEK303 SEQ, 20 HP deterministic acid generator of up to 64 steps for VCV Rack
 
 ## 1. Concept
 
@@ -30,7 +30,7 @@ The first clock edge starts step 1 of 16; the module does not emit a note merely
 
 ### STEPS
 
-Sets the playback loop length from 1 to 16 steps; default 16. It changes the active loop immediately. The underlying generated material remains 16 steps, so increasing the length can reveal it again.
+Sets the playback loop length from 1 to 64 steps, four pages of 16; default 16. It changes the active loop immediately. The underlying generated material is always 64 steps long, so increasing the length can reveal it again.
 
 ### NOTES
 

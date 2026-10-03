@@ -71,7 +71,7 @@
     {
       "slug": "SideChain",
       "name": "CAP",
-      "description": "Stereo ducking VCA that lowers audio on each trigger and recovers with adjustable depth, timing and natural variation. It can also work as a lowpass filter or a vactrol-style low-pass gate, and pinged by triggers. A VCA CV input gives ordinary voltage control over gain, and envelope and end-of-cycle outputs are provided.",
+      "description": "Stereo ducking VCA that lowers audio on each trigger and recovers with adjustable depth, timing and natural variation. It also works as a lowpass filter or a vactrol-style low-pass gate that triggers can ping. Pan with CV, a VCA CV input, envelope and end-of-cycle outputs, and CAPs placed side by side chain into a mixer without cables.",
       "manualUrl": "https://github.com/animatek/UZZ-VCV-RACK/blob/main/Manuals/CAP_Manual_EN.md",
       "tags": [
         "Voltage-controlled amplifier",
@@ -161,7 +161,7 @@
     {
       "slug": "ATEK303SEQ",
       "name": "ATEK303 SEQ",
-      "description": "16-step acid pattern generator for ATEK303 or any compatible synth voice. Create repeatable patterns, then mutate their rhythm, octave, accents and slides.",
+      "description": "Acid pattern generator of up to 64 steps for ATEK303 or any compatible synth voice. Create repeatable patterns, edit them in a piano roll, then mutate their rhythm, octave, accents and slides.",
       "manualUrl": "https://github.com/animatek/UZZ-VCV-RACK/blob/main/Manuals/ATEK303SEQ_Manual_EN.md",
       "tags": [
         "Sequencer"

@@ -1292,19 +1292,19 @@ struct Atek303SeqWidget : ModuleWidget {
 			static const float bx[5] = {15.5f, 33.3f, 50.8f, 68.3f, 86.1f};
 			static const char* names[5] = {"GENERATE", "BLOCK", "MUT TIME",
 			                               "MUT NOTE/OCT", "MUT SLD/ACC"};
-			genLayer->addChild(createLightParamCentered<VCVLightBezel<>>(
+			genLayer->addChild(createLightParamCentered<AnimatekUI::FlatLightButton>(
 				mm2px(Vec(bx[0], BTN_Y)), module,
 				Atek303Seq::GENERATE_PARAM, Atek303Seq::GENERATE_LIGHT));
-			genLayer->addChild(createLightParamCentered<VCVLightBezelLatch<>>(
+			genLayer->addChild(createLightParamCentered<AnimatekUI::FlatLightLatch>(
 				mm2px(Vec(bx[1], BTN_Y)), module,
 				Atek303Seq::SEED_LOCK_PARAM, Atek303Seq::SEED_LOCK_LIGHT));
-			genLayer->addChild(createLightParamCentered<VCVLightBezel<>>(
+			genLayer->addChild(createLightParamCentered<AnimatekUI::FlatLightButton>(
 				mm2px(Vec(bx[2], BTN_Y)), module,
 				Atek303Seq::MUTATE_TIME_PARAM, Atek303Seq::MUTATE_TIME_LIGHT));
-			genLayer->addChild(createLightParamCentered<VCVLightBezel<>>(
+			genLayer->addChild(createLightParamCentered<AnimatekUI::FlatLightButton>(
 				mm2px(Vec(bx[3], BTN_Y)), module,
 				Atek303Seq::MUTATE_PITCH_PARAM, Atek303Seq::MUTATE_PITCH_LIGHT));
-			genLayer->addChild(createLightParamCentered<VCVLightBezel<>>(
+			genLayer->addChild(createLightParamCentered<AnimatekUI::FlatLightButton>(
 				mm2px(Vec(bx[4], BTN_Y)), module,
 				Atek303Seq::MUTATE_ARTICULATION_PARAM, Atek303Seq::MUTATE_ARTICULATION_LIGHT));
 			for (int i = 0; i < 5; i++)
@@ -1346,7 +1346,7 @@ struct Atek303SeqWidget : ModuleWidget {
 		// vista estás y se cambia de un clic sin abrir menús.
 		// A la izquierda, en el espejo del sticker acid: es el único hueco de la cabecera
 		// que no pisa ni el sticker ni el logotipo.
-		addParam(createLightParamCentered<VCVLightBezelLatch<>>(
+		addParam(createLightParamCentered<AnimatekUI::FlatLightLatch>(
 			mm2px(Vec(13.6f, 10.0f)), module, Atek303Seq::VIEW_PARAM, Atek303Seq::VIEW_LIGHT));
 		label("EDIT", 13.6f, 14.5f, 14.f, 5.8f);
 

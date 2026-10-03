@@ -341,4 +341,60 @@ struct FlatTrimpot : FlatKnob {                                                 
   }
 };
 
+// ---------------------------------------------------------------------------
+// Flat lit buttons, to go with the flat knobs
+// ---------------------------------------------------------------------------
+//
+// The same rim and face as a FlatKnob, without a pointer. Pressing it darkens
+// the face; its light fills the face in the logo blue, with Rack's halo. A
+// drop-in for VCVLightBezel: createLightParamCentered<FlatLightButton>(...).
+struct FlatButtonLight : app::ModuleLightWidget {
+  FlatButtonLight() {
+    addBaseColor(logoBlue());
+    bgColor = nvgRGBA(0, 0, 0, 0);
+    borderColor = nvgRGBA(0, 0, 0, 0);
+  }
+};
+
+struct FlatLightButton : app::Switch {
+  app::ModuleLightWidget *light;
+
+  FlatLightButton() {
+    momentary = true;
+    box.size = mm2px(Vec(7.2f, 7.2f));   // VCVLightBezel's size
+    light = new FlatButtonLight;
+    light->box.size = box.size.mult(0.8f);
+    light->box.pos = box.size.minus(light->box.size).div(2.f);
+    addChild(light);
+  }
+
+  app::ModuleLightWidget *getLight() { return light; }
+
+  void draw(const DrawArgs &args) override {
+    NVGcontext *vg = args.vg;
+    const float d = box.size.x, r = d * 0.5f;
+    const float rimW = std::max(1.2f, d * 0.045f);
+    bool pressed = false;
+    if (engine::ParamQuantity *pq = getParamQuantity())
+      pressed = momentary && pq->getValue() > 0.5f;
+    nvgBeginPath(vg);
+    nvgCircle(vg, r, r, r - rimW * 0.5f);
+    nvgFillColor(vg, nvgRGB(0x1b, 0x1b, 0x1b));
+    nvgFill(vg);
+    nvgStrokeWidth(vg, rimW);
+    nvgStrokeColor(vg, nvgRGB(0x5a, 0x5a, 0x5a));
+    nvgStroke(vg);
+    nvgBeginPath(vg);
+    nvgCircle(vg, r, r, r * 0.8f);
+    nvgFillColor(vg, pressed ? nvgRGB(0x22, 0x22, 0x22) : nvgRGB(0x2c, 0x2c, 0x2c));
+    nvgFill(vg);
+    app::Switch::draw(args);
+  }
+};
+
+/** Stays down on one click and comes back up on the next, like VCVLightBezelLatch. */
+struct FlatLightLatch : FlatLightButton {
+  FlatLightLatch() { momentary = false; }
+};
+
 } // namespace AnimatekUI

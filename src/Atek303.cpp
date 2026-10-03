@@ -580,6 +580,59 @@ void EnvModQuantity::setDisplayValue(float displayValue) {
 // Panel
 // ---------------------------------------------------------------------------
 
+// The easter egg: the acid face on the panel. A click on it throws the five
+// sound knobs (cutoff, resonance, env mod, decay, accent) to random values,
+// as one undoable step. Waveform and tuning stay put, and so do the CV
+// trimmers: they only act with a cable in, and moving them unseen would make
+// modulation misbehave for no visible reason. The face flashes blue.
+struct AcidFace : OpaqueWidget {
+	Atek303* module = NULL;
+	double flashUntil = 0.0;
+
+	void onButton(const ButtonEvent& e) override {
+		if (e.action != GLFW_PRESS || e.button != GLFW_MOUSE_BUTTON_LEFT || !module)
+			return;
+		// Round face, square box: only clicks on the face itself count.
+		Vec c = box.size.div(2.f);
+		if (e.pos.minus(c).norm() > box.size.x * 0.5f)
+			return;
+		const int ids[] = {Atek303::CUTOFF_PARAM, Atek303::RESONANCE_PARAM, Atek303::ENVMOD_PARAM,
+		                   Atek303::DECAY_PARAM, Atek303::ACCENT_PARAM};
+		auto* complex = new history::ComplexAction;
+		complex->name = "randomize ATEK303";
+		for (int id : ids) {
+			engine::ParamQuantity* pq = module->paramQuantities[id];
+			float oldValue = pq->getValue();
+			pq->setScaledValue(random::uniform());
+			auto* h = new history::ParamChange;
+			h->moduleId = module->id;
+			h->paramId = id;
+			h->oldValue = oldValue;
+			h->newValue = pq->getValue();
+			complex->push(h);
+		}
+		APP->history->push(complex);
+		flashUntil = system::getTime() + 0.35;
+		e.consume(this);
+	}
+
+	void drawLayer(const DrawArgs& args, int layer) override {
+		if (layer == 1) {
+			double left = flashUntil - system::getTime();
+			if (left > 0.0) {
+				float a = (float)(left / 0.35);
+				Vec c = box.size.div(2.f);
+				nvgBeginPath(args.vg);
+				nvgCircle(args.vg, c.x, c.y, box.size.x * 0.5f + 6.f * (1.f - a));
+				nvgFillColor(args.vg, AnimatekUI::logoBlue((uint8_t)(120.f * a)));
+				nvgFill(args.vg);
+			}
+		}
+		OpaqueWidget::drawLayer(args, layer);
+	}
+};
+
+
 struct Atek303Widget : ModuleWidget {
 	// Rejilla del panel, en mm. tools/panel.py usa las mismas para los símbolos de
 	// onda y para el logo, así que si aquí se mueve algo hay que moverlo allí.
@@ -608,6 +661,13 @@ struct Atek303Widget : ModuleWidget {
 	Atek303Widget(Atek303* module) {
 		setModule(module);
 		setPanel(createPanel(asset::plugin(pluginInstance, "res/ATEK303.svg")));
+		// The acid face in the panel art (30.48, 32.9 mm, radius 4.7): the easter egg.
+		{
+			auto* face = createWidget<AcidFace>(mm2px(Vec(30.48f - 4.7f, 32.9f - 4.7f)));
+			face->box.size = mm2px(Vec(9.4f, 9.4f));
+			face->module = module;
+			addChild(face);
+		}
 
 		auto label = [&](const char* text, float x, float y, float w, float size) {
 			auto* l = new AnimatekUI::TextLabel(text, mm2px(Vec(x - w * 0.5f, y)),

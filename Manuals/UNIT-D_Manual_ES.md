@@ -1,8 +1,8 @@
 # UNIT-D — Manual ampliado
 
-**Versión del manual:** 1.0
+**Versión del manual:** 1.1
 
-**Versión del plugin:** Animatek 2.5.5
+**Versión del plugin:** Animatek 2.5.9
 
 **Módulo:** UNIT-D para VCV Rack
 
@@ -117,11 +117,15 @@ Usos típicos:
 
 Si no hay clock, la secuencia no avanza.
 
+El LED entre `CLK` y `RST` parpadea con cada reloj que recibe el módulo.
+
 ### RST
 
 Entrada de reinicio.
 
 Cuando recibe un pulso, UNIT-D vuelve al estado inicial del recorrido. También reinicia el comportamiento determinista interno, de forma que el patrón puede volver al mismo punto musical.
+
+El primer reloj después de un reinicio toca el propio nodo de partida; el recorrido avanza a partir del segundo. Así la frase empieza siempre en la misma nota en vez de saltársela.
 
 Usos típicos:
 
@@ -158,6 +162,8 @@ Usos típicos:
 - Modular lentamente con un LFO.
 - Controlar la complejidad desde otro secuenciador.
 - Crear evolución sin cambiar completamente el seed.
+
+Modular `DENS` cambia la forma del grafo bajo el walker sin reiniciarlo: el recorrido y su patrón de gates siguen avanzando. Solo `RST` devuelve la frase a su inicio.
 
 ---
 
@@ -338,19 +344,19 @@ El walker puede seguir moviéndose aunque algunos pasos no disparen gate. Esto p
 
 Salida de pitch cuantizado.
 
-El módulo convierte la posición X del nodo actual en una nota dentro de una escala menor fija en C.
+El módulo convierte la posición X del nodo actual en una nota dentro de la escala elegida, transportada a la raíz elegida.
 
-Escala usada actualmente:
+Las dos se eligen en el menú contextual (**Scale** y **Root**). Por defecto es C menor, que es lo que siguen usando los patches guardados antes de que existiera el selector.
 
-```text
-C minor: 0, 2, 3, 5, 7, 8, 10
-```
+Escalas disponibles: Minor, Major, Dorian, Phrygian, Lydian, Mixolydian, Harmonic minor, Minor pentatonic, Major pentatonic, Blues y Chromatic.
+
+`RNG` fija cuántas octavas de la escala cubre el eje X. La raíz sube todas las notas entre 0 y 11 semitonos.
 
 Conecta esta salida al `V/OCT` de un oscilador, sampler o voz modular.
 
 ### GATE
 
-Salida de gate.
+Salida de gate. El LED entre `GATE` y `ACC` se enciende mientras el gate de la primera voz está alto.
 
 Depende de:
 
@@ -800,7 +806,7 @@ Filtrar o panoramizar voces.
 - El grafo se recalcula cuando cambian suficientemente `SEED`, `NODES`, `RADIUS`, `TOL` o `DENS`.
 - La generación es determinista.
 - Si el grafo queda sin conexiones, el módulo evita comportamientos inválidos: mantiene pitch estable y no dispara gates imposibles.
-- La escala y la raíz están fijas por ahora: C menor.
+- La escala y la raíz se eligen en el menú contextual; por defecto, C menor.
 - Las salidas `V/O`, `GATE`, `ACC`, `X` e `Y` pueden trabajar en modo polifónico según el ajuste de voces.
 
 ---
@@ -809,16 +815,13 @@ Filtrar o panoramizar voces.
 
 Estas limitaciones no son fallos; simplemente definen el estado actual del módulo:
 
-- La escala está fija en C menor.
-- No hay selector de raíz o escala en el panel.
+- La escala y la raíz están en el menú contextual, no en el panel, y no tienen entrada de CV.
 - La generación está basada en una geometría interna determinista.
 - El módulo está diseñado para control musical, no para demostrar matemáticas.
 - Cambios extremos de seed o geometría pueden producir saltos musicales drásticos.
 
 Posibles mejoras futuras:
 
-- selector de escala,
-- selector de raíz,
 - más modos de recorrido,
 - salida de índice de nodo,
 - control CV adicional para `LOCK`,

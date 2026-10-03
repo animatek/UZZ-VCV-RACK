@@ -6,6 +6,35 @@ Registro de cambios de los módulos Animatek. Formato basado en
 
 **Regla del repo: no se commitea nada sin apuntar el cambio aquí.**
 
+## [Unreleased]
+
+### Added
+- **UNIT-D: escala y raíz en el menú contextual.** Once escalas (menor, mayor, dórica,
+  frigia, lidia, mixolidia, menor armónica, las dos pentatónicas, blues y cromática) y las
+  doce raíces. Por defecto C menor, que era la única que había: los patches anteriores no
+  cambian de nota. Se guardan con el patch y `Initialize` las devuelve a C menor.
+- **UNIT-D: los LEDs de reloj y de gate se ven por fin.** Se calculaban en cada muestra pero
+  nunca se habían puesto en el panel. Van entre `CLK` y `RST` y entre `GATE` y `ACC`. Las
+  cuatro luces de "actividad", que eran lecturas de depuración sin sitio, se quitan.
+
+### Fixed
+- **UNIT-D: el reset ya no se salta el primer paso.** El primer reloj tras un reset (y tras
+  cargar el patch) toca el nodo de partida en vez de salir ya hacia el siguiente. Ese paso
+  no consume contador de gates, así que desde el segundo paso los gates caen exactamente
+  donde caían antes.
+- **UNIT-D: modular `DENS` (o `SEED`, `RADIUS`, `TOL`) ya no congela el ritmo.** Cualquier
+  cambio de geometría reconstruía el grafo y, de paso, rebobinaba el recorrido y ponía el
+  contador de gates a cero; con un LFO en `DENS` eso pasaba cada pocos milisegundos y el
+  patrón de gates se quedaba repitiendo el del primer paso. Ahora el grafo cambia bajo el
+  walker sin reiniciarlo; solo `RST`, `Initialize` y soltar `LOCK` rebobinan. Comprobado
+  instanciando el módulo contra libRack: antes, 32 relojes con un LFO en `DENS` dejaban
+  `gateStep` en 0; ahora llega a 31 y el patrón evoluciona.
+
+### Changed
+- UNIT-D: la generación del grafo y el paso de reloj estaban escritos dos veces cada uno
+  (grafo principal y por voz; paso libre y paso híbrido de `LOCK`). Ahora son una función
+  cada uno.
+
 ## [2.5.8] - 2026-08-25
 
 ### Added

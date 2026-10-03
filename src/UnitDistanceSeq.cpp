@@ -16,7 +16,32 @@ static constexpr int LOCK_LOOP_SIZE = 32;
 static constexpr int SHORT_LOCK_LOOP_SIZE = 16;
 static constexpr float PI = 3.14159265358979323846f;
 static constexpr float DEFAULT_CLOCK_PERIOD = 0.125f;
-static constexpr std::array<int, 7> MINOR_SCALE = {0, 2, 3, 5, 7, 8, 10};
+
+// Scales the X position is quantised into. Natural minor stays first: it was the
+// only scale before the selector existed, so it is what older patches load into.
+struct Scale {
+    const char* name;
+    int size;
+    std::array<int, 12> degrees;
+};
+
+static const Scale SCALES[] = {
+    {"Minor", 7, {0, 2, 3, 5, 7, 8, 10}},
+    {"Major", 7, {0, 2, 4, 5, 7, 9, 11}},
+    {"Dorian", 7, {0, 2, 3, 5, 7, 9, 10}},
+    {"Phrygian", 7, {0, 1, 3, 5, 7, 8, 10}},
+    {"Lydian", 7, {0, 2, 4, 6, 7, 9, 11}},
+    {"Mixolydian", 7, {0, 2, 4, 5, 7, 9, 10}},
+    {"Harmonic minor", 7, {0, 2, 3, 5, 7, 8, 11}},
+    {"Minor pentatonic", 5, {0, 3, 5, 7, 10}},
+    {"Major pentatonic", 5, {0, 2, 4, 7, 9}},
+    {"Blues", 6, {0, 3, 5, 6, 7, 10}},
+    {"Chromatic", 12, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}},
+};
+static constexpr int NUM_SCALES = sizeof(SCALES) / sizeof(SCALES[0]);
+
+static const char* ROOT_NAMES[12] = {
+    "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
 
 struct GraphNode {
     float x = 0.f;
@@ -78,10 +103,11 @@ struct UnitDistanceSeq : Module {
         NUM_OUTPUTS
     };
 
+    // Lights are not stored in patches, so dropping the four activity lights
+    // (debug readouts that never had a place on the panel) breaks nothing.
     enum LightIds {
         CLOCK_LIGHT,
         GATE_LIGHT,
-        ENUMS(ACTIVITY_LIGHTS, 4),
         NUM_LIGHTS
     };
 
@@ -132,6 +158,11 @@ struct UnitDistanceSeq : Module {
     float pitchVolts = 0.f;
     float accentVolts = 0.f;
     bool graphHasEdges = false;
+    int scaleIndex = 0;
+    int rootSemitone = 0;
+    // Set by a reset (and at load): the next clock plays the starting node
+    // instead of walking away from it, so the phrase begins where it should.
+    bool playCurrentOnNextClock = true;
 
     int cachedSeed = -999999;
     int cachedNodes = -1;
@@ -196,9 +227,14 @@ struct UnitDistanceSeq : Module {
         return clamp(fine + musicalWidth, 0.01f, 0.5f);
     }
 
-    void generateVoiceGraph(int voice, int seed, float radius, float tolerance) {
-        voice = clamp(voice, 0, MAX_POLY_VOICES - 1);
-
+    /** Places the nodes for a seed and joins every pair whose distance lies
+    within tolerance of the unit radius. One routine for the main graph and the
+    per-voice ones, so the two can never drift apart. */
+    void buildGraph(int seed, float radius, float tolerance,
+                    std::array<GraphNode, MAX_NODES>& nodes,
+                    std::array<uint64_t, MAX_NODES>& adjacency,
+                    std::array<int, MAX_NODES>& degree,
+                    int& outMaxDegree, int& outEdges) const {
         constexpr float alpha = 0.61803398875f;
         constexpr float beta = 0.41421356237f;
         constexpr float spread = 0.65f;
@@ -212,42 +248,49 @@ struct UnitDistanceSeq : Module {
             float b = fract((float)seed * 0.031f + (float)i * beta);
             float theta1 = 2.f * PI * a;
             float theta2 = 2.f * PI * b;
-            voiceGraphNodes[voice][i].x = std::cos(theta1) + spread * std::cos(theta2);
-            voiceGraphNodes[voice][i].y = std::sin(theta1) + spread * std::sin(theta2);
-            minX = std::min(minX, voiceGraphNodes[voice][i].x);
-            minY = std::min(minY, voiceGraphNodes[voice][i].y);
-            maxX = std::max(maxX, voiceGraphNodes[voice][i].x);
-            maxY = std::max(maxY, voiceGraphNodes[voice][i].y);
-            voiceNeighbors[voice][i] = 0u;
-            voiceDegrees[voice][i] = 0;
+            nodes[i].x = std::cos(theta1) + spread * std::cos(theta2);
+            nodes[i].y = std::sin(theta1) + spread * std::sin(theta2);
+            minX = std::min(minX, nodes[i].x);
+            minY = std::min(minY, nodes[i].y);
+            maxX = std::max(maxX, nodes[i].x);
+            maxY = std::max(maxY, nodes[i].y);
+            adjacency[i] = 0u;
+            degree[i] = 0;
         }
 
         float xSpan = std::max(0.0001f, maxX - minX);
         float ySpan = std::max(0.0001f, maxY - minY);
         for (int i = 0; i < nodeCount; ++i) {
-            voiceGraphNodes[voice][i].nx = clamp((voiceGraphNodes[voice][i].x - minX) / xSpan, 0.f, 1.f);
-            voiceGraphNodes[voice][i].ny = clamp((voiceGraphNodes[voice][i].y - minY) / ySpan, 0.f, 1.f);
+            nodes[i].nx = clamp((nodes[i].x - minX) / xSpan, 0.f, 1.f);
+            nodes[i].ny = clamp((nodes[i].y - minY) / ySpan, 0.f, 1.f);
         }
 
-        int voiceEdgeCount = 0;
-        voiceMaxDegrees[voice] = 0;
+        outEdges = 0;
+        outMaxDegree = 0;
         for (int i = 0; i < nodeCount; ++i) {
             for (int j = i + 1; j < nodeCount; ++j) {
-                float dx = voiceGraphNodes[voice][i].x - voiceGraphNodes[voice][j].x;
-                float dy = voiceGraphNodes[voice][i].y - voiceGraphNodes[voice][j].y;
+                float dx = nodes[i].x - nodes[j].x;
+                float dy = nodes[i].y - nodes[j].y;
                 float d = std::sqrt(dx * dx + dy * dy);
                 if (std::abs(d - radius) < tolerance) {
-                    voiceNeighbors[voice][i] |= (1ull << j);
-                    voiceNeighbors[voice][j] |= (1ull << i);
-                    voiceDegrees[voice][i]++;
-                    voiceDegrees[voice][j]++;
-                    voiceEdgeCount++;
+                    adjacency[i] |= (1ull << j);
+                    adjacency[j] |= (1ull << i);
+                    degree[i]++;
+                    degree[j]++;
+                    outEdges++;
                 }
             }
         }
 
         for (int i = 0; i < nodeCount; ++i)
-            voiceMaxDegrees[voice] = std::max(voiceMaxDegrees[voice], voiceDegrees[voice][i]);
+            outMaxDegree = std::max(outMaxDegree, degree[i]);
+    }
+
+    void generateVoiceGraph(int voice, int seed, float radius, float tolerance) {
+        voice = clamp(voice, 0, MAX_POLY_VOICES - 1);
+        int voiceEdgeCount = 0;
+        buildGraph(seed, radius, tolerance, voiceGraphNodes[voice], voiceNeighbors[voice],
+                   voiceDegrees[voice], voiceMaxDegrees[voice], voiceEdgeCount);
         voiceGraphHasEdges[voice] = voiceEdgeCount > 0;
     }
 
@@ -262,6 +305,12 @@ struct UnitDistanceSeq : Module {
         voiceGraphHasEdges[voice] = graphHasEdges;
     }
 
+    /** Rebuilds the graph when the geometry controls have moved.
+
+    A forced rebuild also rewinds the walk to its deterministic start. One that
+    merely follows a knob or a CV does not: it reshapes the network under the
+    walk and lets it carry on. Rewinding here used to zero the gate counter on
+    every change, so a modulated DENS kept replaying the first step's gates. */
     void rebuildGraph(bool force = false) {
         int seed = effectiveSeed();
         int nodes = clamp((int)std::round(params[NODES_PARAM].getValue()), 8, MAX_NODES);
@@ -291,55 +340,7 @@ struct UnitDistanceSeq : Module {
                 node = -1;
         }
 
-        constexpr float alpha = 0.61803398875f;
-        constexpr float beta = 0.41421356237f;
-        constexpr float spread = 0.65f;
-        float minX = 10.f;
-        float minY = 10.f;
-        float maxX = -10.f;
-        float maxY = -10.f;
-
-        for (int i = 0; i < nodeCount; ++i) {
-            float a = fract((float)seed * 0.017f + (float)i * alpha);
-            float b = fract((float)seed * 0.031f + (float)i * beta);
-            float theta1 = 2.f * PI * a;
-            float theta2 = 2.f * PI * b;
-            graphNodes[i].x = std::cos(theta1) + spread * std::cos(theta2);
-            graphNodes[i].y = std::sin(theta1) + spread * std::sin(theta2);
-            minX = std::min(minX, graphNodes[i].x);
-            minY = std::min(minY, graphNodes[i].y);
-            maxX = std::max(maxX, graphNodes[i].x);
-            maxY = std::max(maxY, graphNodes[i].y);
-            neighbors[i] = 0u;
-            degrees[i] = 0;
-        }
-
-        float xSpan = std::max(0.0001f, maxX - minX);
-        float ySpan = std::max(0.0001f, maxY - minY);
-        for (int i = 0; i < nodeCount; ++i) {
-            graphNodes[i].nx = clamp((graphNodes[i].x - minX) / xSpan, 0.f, 1.f);
-            graphNodes[i].ny = clamp((graphNodes[i].y - minY) / ySpan, 0.f, 1.f);
-        }
-
-        edgeCount = 0;
-        maxDegree = 0;
-        for (int i = 0; i < nodeCount; ++i) {
-            for (int j = i + 1; j < nodeCount; ++j) {
-                float dx = graphNodes[i].x - graphNodes[j].x;
-                float dy = graphNodes[i].y - graphNodes[j].y;
-                float d = std::sqrt(dx * dx + dy * dy);
-                if (std::abs(d - radius) < tolerance) {
-                    neighbors[i] |= (1ull << j);
-                    neighbors[j] |= (1ull << i);
-                    degrees[i]++;
-                    degrees[j]++;
-                    edgeCount++;
-                }
-            }
-        }
-
-        for (int i = 0; i < nodeCount; ++i)
-            maxDegree = std::max(maxDegree, degrees[i]);
+        buildGraph(seed, radius, tolerance, graphNodes, neighbors, degrees, maxDegree, edgeCount);
         graphHasEdges = edgeCount > 0;
         copyMainGraphToVoice(0);
         for (int v = 1; v < MAX_POLY_VOICES; ++v) {
@@ -349,14 +350,17 @@ struct UnitDistanceSeq : Module {
                 copyMainGraphToVoice(v);
         }
         baseWalkState = hashU32((uint32_t)(seed * 73856093u) ^ (uint32_t)radiusKey ^ ((uint32_t)toleranceKey << 11) ^ ((uint32_t)densityKey << 3));
-        walkState = baseWalkState;
         for (int v = 0; v < MAX_POLY_VOICES; ++v) {
-            voiceWalkStates[v] = hashU32(baseWalkState ^ (uint32_t)(v * 0x9e3779b9u));
             voiceNodeOffsets[v] = (int)(hashU32(baseWalkState ^ (uint32_t)(nodeCount * (v + 1)) ^
                                                 (uint32_t)(v * 0x85ebca6bu)) % (uint32_t)std::max(1, nodeCount));
         }
-        gateStep = 0;
-        clearWalkHistory();
+        if (force) {
+            walkState = baseWalkState;
+            for (int v = 0; v < MAX_POLY_VOICES; ++v)
+                voiceWalkStates[v] = hashU32(baseWalkState ^ (uint32_t)(v * 0x9e3779b9u));
+            gateStep = 0;
+            clearWalkHistory();
+        }
         updateAllVoiceOutputs();
     }
 
@@ -523,16 +527,23 @@ struct UnitDistanceSeq : Module {
         updateAllVoiceOutputs();
     }
 
+    const Scale& currentScale() const {
+        // Explicit bounds check rather than clamp(): cppcheck cannot follow
+        // clamp's return value into the array index.
+        if (scaleIndex < 0 || scaleIndex >= NUM_SCALES)
+            return SCALES[0];
+        return SCALES[scaleIndex];
+    }
+
     void updateVoiceOutputs(int voice) {
         voice = clamp(voice, 0, MAX_POLY_VOICES - 1);
         int nodeIndex = clamp(voiceNodes[voice], 0, nodeCount - 1);
         const GraphNode& node = voiceGraphNodes[voice][nodeIndex];
-        int range = clamp((int)std::round(params[RANGE_PARAM].getValue()), 1, 4);
-        int scaleSteps = (int)MINOR_SCALE.size() * range;
-        int scaleIndex = clamp((int)std::floor(node.nx * (float)scaleSteps), 0, scaleSteps - 1);
-        int octave = scaleIndex / (int)MINOR_SCALE.size();
-        int degree = MINOR_SCALE[scaleIndex % (int)MINOR_SCALE.size()];
-        voicePitchVolts[voice] = (float)octave + (float)degree / 12.f;
+        const Scale& scale = currentScale();
+        int step = pitchIndexForNode(nodeIndex, voice);
+        int octave = step / scale.size;
+        int degree = scale.degrees[step % scale.size];
+        voicePitchVolts[voice] = (float)octave + (float)(degree + rootSemitone) / 12.f;
         int vMaxDegree = voiceMaxDegrees[voice];
         voiceAccentVolts[voice] = (vMaxDegree > 0) ? clamp((float)voiceDegrees[voice][nodeIndex] / (float)vMaxDegree, 0.f, 1.f) * 10.f : 0.f;
         voiceXVolts[voice] = node.nx * 10.f;
@@ -581,7 +592,7 @@ struct UnitDistanceSeq : Module {
         voice = clamp(voice, 0, MAX_POLY_VOICES - 1);
         node = clamp(node, 0, nodeCount - 1);
         int range = clamp((int)std::round(params[RANGE_PARAM].getValue()), 1, 4);
-        int scaleSteps = (int)MINOR_SCALE.size() * range;
+        int scaleSteps = currentScale().size * range;
         return clamp((int)std::floor(voiceGraphNodes[voice][node].nx * (float)scaleSteps), 0, scaleSteps - 1);
     }
 
@@ -685,24 +696,43 @@ struct UnitDistanceSeq : Module {
         return node;
     }
 
-    void onClock() {
-        std::array<bool, MAX_POLY_VOICES> fireGates = {};
-        int nextNode = chooseNextNode();
-        pushWalkHistory(currentNode);
-        voiceNodes[0] = nextNode;
-        currentNode = voiceNodes[0];
-        for (int v = 1; v < polyVoices; ++v)
-            voiceNodes[v] = chooseNextNodeForVoice(v);
+    void triggerGate(int voice) {
+        float gateLen = clamp(params[GATE_LENGTH_PARAM].getValue(), 0.05f, 0.95f) * clockPeriod;
+        gatePulses[voice].trigger(clamp(gateLen, 0.001f, 2.f));
+    }
+
+    /** One free step: every voice moves along an edge, and the gates that fire
+    are recorded for LOCK to capture. The first clock after a reset leaves the
+    voices where the reset put them, so the starting node is heard instead of
+    skipped. */
+    void walkOneStep() {
+        // The starting step runs on gate counter 0 and leaves it there, so from
+        // the second step on the gates fall exactly where they did before this
+        // step existed: older patches keep their rhythm, with the start in front.
+        if (playCurrentOnNextClock) {
+            playCurrentOnNextClock = false;
+        }
+        else {
+            int nextNode = chooseNextNode();
+            pushWalkHistory(currentNode);
+            voiceNodes[0] = nextNode;
+            currentNode = voiceNodes[0];
+            for (int v = 1; v < polyVoices; ++v)
+                voiceNodes[v] = chooseNextNodeForVoice(v);
+            gateStep++;
+        }
         updateAllVoiceOutputs();
-        gateStep++;
+        std::array<bool, MAX_POLY_VOICES> fireGates = {};
         for (int v = 0; v < polyVoices; ++v) {
             fireGates[v] = shouldFireGate(voiceNodes[v], v);
-            if (fireGates[v]) {
-                float gateLen = clamp(params[GATE_LENGTH_PARAM].getValue(), 0.05f, 0.95f) * clockPeriod;
-                gatePulses[v].trigger(clamp(gateLen, 0.001f, 2.f));
-            }
+            if (fireGates[v])
+                triggerGate(v);
         }
         recordStep(fireGates);
+    }
+
+    void onClock() {
+        walkOneStep();
         clockPulse.trigger(0.03f);
     }
 
@@ -714,7 +744,9 @@ struct UnitDistanceSeq : Module {
         lockedLoopPos = (lockedLoopPos + 1) % std::max(1, lockedLoopLength);
 
         if (shouldUseLockedStep(pos, amount)) {
-            LockedStep step = lockedLoop[pos];
+            // The locked loop already starts on its first step after a reset.
+            playCurrentOnNextClock = false;
+            const LockedStep& step = lockedLoop[pos];
             int lockedVoices = clamp(step.voiceCount, 1, MAX_POLY_VOICES);
             for (int v = 0; v < polyVoices; ++v)
                 voiceNodes[v] = clamp(step.nodes[v % lockedVoices], 0, nodeCount - 1);
@@ -722,32 +754,25 @@ struct UnitDistanceSeq : Module {
             updateAllVoiceOutputs();
             gateStep++;
             for (int v = 0; v < polyVoices; ++v) {
-                if (step.gates[v % lockedVoices]) {
-                    float gateLen = clamp(params[GATE_LENGTH_PARAM].getValue(), 0.05f, 0.95f) * clockPeriod;
-                    gatePulses[v].trigger(clamp(gateLen, 0.001f, 2.f));
-                }
+                if (step.gates[v % lockedVoices])
+                    triggerGate(v);
             }
         }
         else {
-            std::array<bool, MAX_POLY_VOICES> fireGates = {};
-            int nextNode = chooseNextNode();
-            pushWalkHistory(currentNode);
-            voiceNodes[0] = nextNode;
-            currentNode = voiceNodes[0];
-            for (int v = 1; v < polyVoices; ++v)
-                voiceNodes[v] = chooseNextNodeForVoice(v);
-            updateAllVoiceOutputs();
-            gateStep++;
-            for (int v = 0; v < polyVoices; ++v) {
-                fireGates[v] = shouldFireGate(voiceNodes[v], v);
-                if (fireGates[v]) {
-                    float gateLen = clamp(params[GATE_LENGTH_PARAM].getValue(), 0.05f, 0.95f) * clockPeriod;
-                    gatePulses[v].trigger(clamp(gateLen, 0.001f, 2.f));
-                }
-            }
-            recordStep(fireGates);
+            walkOneStep();
         }
         clockPulse.trigger(0.03f);
+    }
+
+    void onReset(const ResetEvent& e) override {
+        Module::onReset(e);
+        polyVoices = 1;
+        polyUseVoiceSeeds = false;
+        scaleIndex = 0;
+        rootSemitone = 0;
+        rebuildGraph(true);
+        resetPolyVoices();
+        playCurrentOnNextClock = true;
     }
 
     json_t* dataToJson() override {
@@ -755,6 +780,8 @@ struct UnitDistanceSeq : Module {
         json_object_set_new(root, "polyVoices", json_integer(polyVoices));
         json_object_set_new(root, "polyUseVoiceSeeds",
                             json_boolean(polyUseVoiceSeeds));
+        json_object_set_new(root, "scale", json_integer(scaleIndex));
+        json_object_set_new(root, "root", json_integer(rootSemitone));
         return root;
     }
 
@@ -765,6 +792,11 @@ struct UnitDistanceSeq : Module {
             polyVoices = clamp((int)json_integer_value(j), 1, MAX_POLY_VOICES);
         if (json_t* j = json_object_get(root, "polyUseVoiceSeeds"))
             polyUseVoiceSeeds = json_is_true(j);
+        // Missing in patches saved before the selector: they keep C minor.
+        if (json_t* j = json_object_get(root, "scale"))
+            scaleIndex = clamp((int)json_integer_value(j), 0, NUM_SCALES - 1);
+        if (json_t* j = json_object_get(root, "root"))
+            rootSemitone = clamp((int)json_integer_value(j), 0, 11);
         rebuildGraph(true);
         resetPolyVoices();
     }
@@ -803,6 +835,7 @@ struct UnitDistanceSeq : Module {
             else {
                 resetPolyVoices();
             }
+            playCurrentOnNextClock = true;
             updateAllVoiceOutputs();
             for (int v = 0; v < MAX_POLY_VOICES; ++v)
                 gatePulses[v].reset();
@@ -823,8 +856,6 @@ struct UnitDistanceSeq : Module {
         for (int v = 0; v < MAX_POLY_VOICES; ++v)
             gateHigh[v] = gatePulses[v].process(args.sampleTime);
         bool clockHigh = clockPulse.process(args.sampleTime);
-        const GraphNode& node = graphNodes[currentNode];
-
         outputs[VOCT_OUTPUT].setChannels(polyVoices);
         outputs[GATE_OUTPUT].setChannels(polyVoices);
         outputs[ACCENT_OUTPUT].setChannels(polyVoices);
@@ -840,10 +871,6 @@ struct UnitDistanceSeq : Module {
 
         lights[CLOCK_LIGHT].setBrightnessSmooth(clockHigh ? 1.f : 0.f, args.sampleTime);
         lights[GATE_LIGHT].setBrightnessSmooth(gateHigh[0] ? 1.f : 0.f, args.sampleTime);
-        lights[ACTIVITY_LIGHTS + 0].setBrightnessSmooth(node.nx > 0.50f ? 1.f : 0.05f, args.sampleTime);
-        lights[ACTIVITY_LIGHTS + 1].setBrightnessSmooth(node.ny > 0.50f ? 1.f : 0.05f, args.sampleTime);
-        lights[ACTIVITY_LIGHTS + 2].setBrightnessSmooth(graphHasEdges ? 1.f : 0.05f, args.sampleTime);
-        lights[ACTIVITY_LIGHTS + 3].setBrightnessSmooth(edgeCount > nodeCount ? 1.f : 0.05f, args.sampleTime);
     }
 };
 
@@ -996,6 +1023,10 @@ struct UnitDistanceSeqWidget : ModuleWidget {
         addInput(createInputCentered<AnimatekUI::TekInputPort>(mm2px(Vec(23.f, 11.f)), module, UnitDistanceSeq::RESET_INPUT));
         addInput(createInputCentered<AnimatekUI::TekInputPort>(mm2px(Vec(37.f, 11.f)), module, UnitDistanceSeq::SEED_INPUT));
         addInput(createInputCentered<AnimatekUI::TekInputPort>(mm2px(Vec(51.f, 11.f)), module, UnitDistanceSeq::DENSITY_INPUT));
+        // Clock LED in the gap between CLK and RST, gate LED between GATE and
+        // ACC: each sits beside the jack whose activity it shows.
+        addChild(createLightCentered<SmallLight<BlueLight>>(mm2px(Vec(16.f, 11.f)), module,
+                                                            UnitDistanceSeq::CLOCK_LIGHT));
 
         auto* display = new UnitDistanceGraphDisplay(module);
         display->box.pos = mm2px(Vec(2.8f, 17.f));
@@ -1033,6 +1064,8 @@ struct UnitDistanceSeqWidget : ModuleWidget {
         label("Y", 55.f, 104.8f, 8.f);
         addOutput(createOutputCentered<AnimatekUI::TekOutputPort>(mm2px(Vec(7.f, 113.f)), module, UnitDistanceSeq::VOCT_OUTPUT));
         addOutput(createOutputCentered<AnimatekUI::TekOutputPort>(mm2px(Vec(19.f, 113.f)), module, UnitDistanceSeq::GATE_OUTPUT));
+        addChild(createLightCentered<SmallLight<BlueLight>>(mm2px(Vec(25.f, 113.f)), module,
+                                                            UnitDistanceSeq::GATE_LIGHT));
         addOutput(createOutputCentered<AnimatekUI::TekOutputPort>(mm2px(Vec(31.f, 113.f)), module, UnitDistanceSeq::ACCENT_OUTPUT));
         addOutput(createOutputCentered<AnimatekUI::TekOutputPort>(mm2px(Vec(43.f, 113.f)), module, UnitDistanceSeq::X_OUTPUT));
         addOutput(createOutputCentered<AnimatekUI::TekOutputPort>(mm2px(Vec(55.f, 113.f)), module, UnitDistanceSeq::Y_OUTPUT));
@@ -1043,6 +1076,37 @@ struct UnitDistanceSeqWidget : ModuleWidget {
         auto* m = dynamic_cast<UnitDistanceSeq*>(module);
 
         menu->addChild(new ui::MenuSeparator());
+        menu->addChild(createSubmenuItem(
+            "Scale", m ? SCALES[m->scaleIndex].name : "",
+            [m](ui::Menu* sub) {
+                for (int i = 0; i < NUM_SCALES; ++i) {
+                    sub->addChild(createCheckMenuItem(
+                        SCALES[i].name, "",
+                        [m, i]() { return m && m->scaleIndex == i; },
+                        [m, i]() {
+                            if (!m)
+                                return;
+                            m->scaleIndex = i;
+                            m->updateAllVoiceOutputs();
+                        }));
+                }
+            }));
+        menu->addChild(createSubmenuItem(
+            "Root", m ? ROOT_NAMES[m->rootSemitone] : "",
+            [m](ui::Menu* sub) {
+                for (int i = 0; i < 12; ++i) {
+                    sub->addChild(createCheckMenuItem(
+                        ROOT_NAMES[i], "",
+                        [m, i]() { return m && m->rootSemitone == i; },
+                        [m, i]() {
+                            if (!m)
+                                return;
+                            m->rootSemitone = i;
+                            m->updateAllVoiceOutputs();
+                        }));
+                }
+            }));
+
         menu->addChild(createSubmenuItem(
             "Poly seed mode", m && m->polyUseVoiceSeeds ? "Per-voice seed" : "Shared seed",
             [m](ui::Menu* sub) {

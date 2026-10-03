@@ -1,8 +1,8 @@
 # UNIT-D — Expanded User Manual
 
-**Manual version:** 1.0
+**Manual version:** 1.1
 
-**Plugin version:** Animatek 2.5.5
+**Plugin version:** Animatek 2.5.9
 
 **Module:** UNIT-D for VCV Rack
 
@@ -117,11 +117,15 @@ Typical uses:
 
 If no clock is present, the sequence does not advance.
 
+The LED between `CLK` and `RST` flashes on every clock the module receives.
+
 ### RST
 
 Reset input.
 
 When it receives a pulse, UNIT-D returns to the initial traversal state. It also resets the internal deterministic behaviour, so the pattern can return to the same musical point.
+
+The first clock after a reset plays the starting node itself; the walk moves on from the second clock. The phrase therefore begins on the same note every time instead of skipping it.
 
 Typical uses:
 
@@ -158,6 +162,8 @@ Typical uses:
 - Modulate slowly with an LFO.
 - Control complexity from another sequencer.
 - Create evolution without completely changing the seed.
+
+Modulating `DENS` reshapes the graph under the walker without restarting it: the walk and its gate pattern keep moving forward. Only `RST` sends the phrase back to its start.
 
 ---
 
@@ -338,19 +344,19 @@ The walker can keep moving even when some steps do not fire a gate. This creates
 
 Quantised pitch output.
 
-The module turns the X position of the current node into a note inside a fixed C minor scale.
+The module turns the X position of the current node into a note inside the selected scale, transposed to the selected root.
 
-Current scale:
+Both are chosen from the context menu (**Scale** and **Root**). The default is C minor, which is what patches saved before the selector existed keep using.
 
-```text
-C minor: 0, 2, 3, 5, 7, 8, 10
-```
+Available scales: Minor, Major, Dorian, Phrygian, Lydian, Mixolydian, Harmonic minor, Minor pentatonic, Major pentatonic, Blues and Chromatic.
+
+`RNG` sets how many octaves of the scale the X axis covers. The root shifts every note up by 0 to 11 semitones.
 
 Patch this output into the `V/OCT` input of an oscillator, sampler or modular voice.
 
 ### GATE
 
-Gate output.
+Gate output. The LED between `GATE` and `ACC` lights while the first voice's gate is high.
 
 It depends on:
 
@@ -800,7 +806,7 @@ Filter or pan voices.
 - The graph is recalculated when `SEED`, `NODES`, `RADIUS`, `TOL` or `DENS` change enough.
 - Generation is deterministic.
 - If the graph has no connections, the module avoids invalid behaviour: it keeps the pitch stable and does not fire impossible gates.
-- The scale and root are currently fixed: C minor.
+- Scale and root are chosen in the context menu; the default is C minor.
 - `V/O`, `GATE`, `ACC`, `X` and `Y` can work polyphonically according to the voice setting.
 
 ---
@@ -809,16 +815,13 @@ Filter or pan voices.
 
 These limitations are not bugs; they simply define the current state of the module:
 
-- The scale is fixed to C minor.
-- There is no root or scale selector on the panel.
+- Scale and root live in the context menu, not on the panel, and have no CV input.
 - Generation is based on an internal deterministic geometry.
 - The module is designed for musical control, not for proving mathematics.
 - Extreme seed or geometry changes can produce drastic musical jumps.
 
 Possible future improvements:
 
-- scale selector,
-- root selector,
 - more traversal modes,
 - node index output,
 - additional CV control for `LOCK`,

@@ -17,22 +17,23 @@
 - **Four types:** lowpass, bandpass, highpass and band reject, at **12 or 24 dB/octave**.
 - **Its resonance**, from a gentle bump to a ringing peak with a Q of several thousand, with the original's **gain control**, which pulls the level down as the resonance rises.
 - **Its saturation:** the original computes in fixed point, and its internal values hit a hard ceiling. Driven into resonance it clips in a way that is its own, and FILTERtek reproduces it.
-- Polyphonic (up to 16 channels, following `IN`), with V/oct, FM and resonance CV.
+- **Stereo**: two filters with the same settings, `IN R` normalled to `IN L`. Polyphonic on each side (up to 16 channels).
+- A **DRIVE** to push it into that saturation, and CV with its own trimmer over cutoff, resonance and drive, plus V/oct.
 
 ---
 
 ## 2. Quick start
 
-1. Patch an oscillator into `IN` and take `OUT` to a VCA or the mix.
-2. Turn `FREQ` to open or close the filter, `RES` to add resonance.
-3. Patch an envelope (ADSRtek, for instance) into `FM` and turn the `FM` trimmer up for a filter sweep.
+1. Patch an oscillator into `IN L` and take `OUT L` to a VCA or the mix; for a stereo source, use both sides.
+2. Turn `CUTOFF` to open or close the filter, `RES` to add resonance, `DRIVE` to make it bite.
+3. Patch an envelope (ADSRtek, for instance) into the `CUT` CV jack and turn its trimmer up for a filter sweep.
 4. Patch the keyboard's pitch into `V/OCT` so the filter follows the notes.
 
 ---
 
 ## 3. Controls
 
-### FREQ
+### CUTOFF
 
 The cutoff, in the original's 128 steps of a semitone each: **330 Hz at step 60**, from about 10 Hz at 0 to 15.8 kHz at 127. The tooltip shows it in Hz. (The filter really sits about 2 cents below that figure, as the original does.)
 
@@ -57,29 +58,37 @@ The original's gain control. **On** (the default), the level falls as the resona
 
 At 12 dB the gain control acts on the input; at 24 dB it acts between the two sections, so the first one always takes the full signal. That is why a loud signal through a resonant 24 dB filter breaks up even with gain control on, as it does on the original.
 
-### FM and RES CV trimmers
+### DRIVE
 
-How much `FM` and `RES CV` move the cutoff and the resonance, from −100% to +100%. At 0 the jacks do nothing.
+Level into the filter, from 0 to +24 dB, to push it into its saturation. At 0 dB it is the original exactly. Half of it is made up for at the output: a quiet signal gets somewhat louder as you turn it up (+12 dB at the top), and a filter driven all the way into clipping comes out at about ±5 V, Rack's usual level, rather than at its internal ceiling of ±20 V.
+
+### CV trimmers: CUT, RES, DRIVE
+
+Each CV jack has its trimmer above it, joined by a hairline: how much and in which direction the CV moves the cutoff, the resonance or the drive, from −100% to +100%. At 0 the jack does nothing.
 
 ---
 
 ## 4. Inputs and outputs
 
-### IN / OUT
+### IN L / IN R, OUT L / OUT R
 
-Audio in and out. The level matters: the filter saturates at about **±20 V** inside, where the original's full scale is, and a normal ±5 V oscillator sits where one sits on the original. Hotter signals, or `GAIN` off, push it into its saturation.
+Audio in and out, two filters with the same settings. `IN R` is normalled to `IN L`, so a mono source comes out on both sides. The level matters: the filter saturates at about **±20 V** inside, where the original's full scale is, and a normal ±5 V oscillator sits where one sits on the original. Hotter signals, `DRIVE`, or `GAIN` off push it into its saturation. With `GAIN` off and a loud signal right on a sharp resonance, the output really does reach that ±20 V, as the original's does: turn the level down after it, or leave gain control on.
 
 ### V/OCT
 
 Moves the cutoff 1 V per octave, with no trimmer: patch the pitch of a voice here so the filter tracks the keyboard.
 
-### FM
+### CUT
 
-Moves the cutoff exponentially, scaled by the `FM` trimmer: at 50% it is 1 V/octave, at 100% 2 octaves per volt (the original's amount at full).
+Moves the cutoff exponentially, scaled by its trimmer: at 50% it is 1 V/octave, at 100% 2 octaves per volt (the original's amount at full).
 
-### RES CV
+### RES
 
 Moves the resonance, scaled by its trimmer: at 100%, 1 V is 24 steps.
+
+### DRIVE
+
+Moves the drive, scaled by its trimmer: at 100%, 1 V is 2.4 dB, within −12 to +36 dB in all.
 
 ---
 

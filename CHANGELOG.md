@@ -9,9 +9,12 @@ Registro de cambios de los módulos Animatek. Formato basado en
 ## [Unreleased]
 
 ### Added
-- **FILTERtek: filtro multimodo modelado sobre medidas.** Módulo nuevo de 8 HP: LP, BP, HP y
-  banda eliminada a 12 o 24 dB, `FREQ` y `RES` en los 128 pasos del original, gain control,
-  V/OCT, FM y CV de resonancia con sus trimmers, polifónico. Sale de medir el FilterE del G1 en
+- **FILTERtek: filtro multimodo modelado sobre medidas.** Módulo nuevo de 8 HP, estéreo
+  (`IN R` normalizado a `IN L`) y polifónico: LP, BP, HP y banda eliminada a 12 o 24 dB,
+  `CUTOFF` grande arriba con `RES` y `DRIVE` debajo, gain control, y una fila de CV para corte,
+  resonancia y drive, cada uno con su trimmer encima unido por una línea, más V/OCT. El `DRIVE`
+  (0 a +24 dB) empuja el filtro a su saturación y se compensa a medias a la salida: en 0 dB es el
+  original exacto, y a fondo saturado sale a unos ±5 V. Sale de medir el FilterE del G1 en
   G1-Emu (`tools/filtersweep` allí), no de su código: un SVF de Chamberlin (0,02 dB y un grado de
   fase en todo el recorrido) cuya amortiguación sigue al corte, 24 dB como dos secciones iguales,
   banda eliminada con su propia amortiguación, gain control en la entrada (12 dB) o entre

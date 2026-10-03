@@ -95,6 +95,17 @@
       ]
     },
     {
+      "slug": "AdsrTek",
+      "name": "ADSRtek",
+      "description": "ADSR and AD envelope modelled on measurements of a classic 90s virtual-analogue modular: its 128-step time table, its log, linear and exponential attacks, snappy exponential decays and its 24 kHz control rate. Retriggers pick up from the current level. Polyphonic, with CV over every stage and a built-in VCA.",
+      "manualUrl": "https://github.com/animatek/UZZ-VCV-RACK/blob/main/Manuals/ADSRtek_Manual_EN.md",
+      "tags": [
+        "Envelope generator",
+        "Voltage-controlled amplifier",
+        "Polyphonic"
+      ]
+    },
+    {
       "slug": "UnitDistanceSeq",
       "name": "UNIT-D",
       "description": "Generative sequencer that turns a seeded network of points into repeatable melodies, rhythms, accents and modulation. Shape the network, let it evolve or lock a phrase you like.",

@@ -9,6 +9,18 @@ Registro de cambios de los módulos Animatek. Formato basado en
 ## [Unreleased]
 
 ### Added
+- **ADSRtek: envolvente ADSR/AD modelada sobre medidas.** Módulo nuevo de 8 HP: selector
+  ADSR/AD, forma de ataque Log/Lin/Exp, A D S R con CV cada uno (1 V = 12,7 pasos, 10 % en
+  sustain), `GATE`, `RETRIG`, `AMP` para velocidad, VCA incorporado (`IN`/`OUT`), polifónica, y
+  en el menú los escalones de control a 24 kHz (por defecto), invertir y que en AD soltar el gate
+  corte el ataque. Todo sale de grabar las envolventes del original en el emulador del G1-Emu
+  (`tools/envsweep` allí, unas 650 grabaciones) y no de su código DSP: tiempos medidos por paso y
+  forma, decay/release como una sola exponencial con su constante medida por paso, y Log y Exp
+  como procesos que dependen del nivel, con un parámetro ajustado por paso (error 0,2 % y
+  0,6 %), que es lo que hace que un redisparo siga desde donde está. Comparado con el original
+  con los mismos ajustes y gates en doce casos: error máximo entre 0,06 % y 1,1 % de la escala,
+  salvo un ataque de 0,46 ms desplazado menos de un tick. `src/AdsrTekCurves.hpp` es generado.
+  Manual nuevo en inglés y español.
 - **BUS: varias CAP juntas forman un mezclador.** Módulo nuevo de 4 HP. Las CAP pegadas una
   a otra se pasan su estéreo hacia la derecha por el sistema de expansores, post-fader, con
   panorama y sumando la polifonía, y el BUS lo saca por `MIX`. Lleva envío/retorno estéreo

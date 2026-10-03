@@ -900,11 +900,48 @@ struct UnitDistanceGraphDisplay : TransparentWidget {
 
     explicit UnitDistanceGraphDisplay(UnitDistanceSeq* module) : module(module) {}
 
+    // The flat palette of the other displays (FILTERtek, ADSRtek): grey for the
+    // network, the logo blue for what is happening, white for where it is.
+    static void edge(NVGcontext* vg, float ax, float ay, float bx, float by, bool current) {
+        nvgBeginPath(vg);
+        nvgMoveTo(vg, ax, ay);
+        nvgLineTo(vg, bx, by);
+        nvgStrokeColor(vg, current ? AnimatekUI::logoBlue(200) : nvgRGBA(0x5a, 0x63, 0x75, 90));
+        nvgStrokeWidth(vg, current ? 1.3f : 0.6f);
+        nvgStroke(vg);
+    }
+
+    static void node(NVGcontext* vg, float x, float y, float r, float strength) {
+        // strength 0..1: how likely this node is to fire a gate.
+        nvgBeginPath(vg);
+        nvgCircle(vg, x, y, r);
+        nvgFillColor(vg, nvgRGBA(0x8a, 0x95, 0xa8, (uint8_t)(70.f + 150.f * strength)));
+        nvgFill(vg);
+    }
+
+    static void voice(NVGcontext* vg, float x, float y, float r) {
+        nvgBeginPath(vg);
+        nvgCircle(vg, x, y, r);
+        nvgFillColor(vg, AnimatekUI::logoBlue(230));
+        nvgFill(vg);
+    }
+
+    static void current(NVGcontext* vg, float x, float y, float r) {
+        nvgBeginPath(vg);
+        nvgCircle(vg, x, y, r + 4.f);
+        nvgFillColor(vg, AnimatekUI::logoBlue(70));
+        nvgFill(vg);
+        nvgBeginPath(vg);
+        nvgCircle(vg, x, y, r);
+        nvgFillColor(vg, nvgRGB(0xff, 0xff, 0xff));
+        nvgFill(vg);
+    }
+
     /** Grafo de muestra para cuando no hay módulo: doce nodos en anillo, las
     aristas del anillo y sus diagonales cortas, con uno marcado como el actual.
     Mismo dibujo en cada frame. */
     template <typename PxFn, typename PyFn>
-    void drawPreviewGraph(const DrawArgs& args, PxFn px, PyFn py) {
+    void drawPreviewGraph(NVGcontext* vg, PxFn px, PyFn py) {
         constexpr int PREVIEW_NODES = 12;
         constexpr float RADIUS = 0.38f;
         float nx[PREVIEW_NODES], ny[PREVIEW_NODES];
@@ -913,47 +950,54 @@ struct UnitDistanceGraphDisplay : TransparentWidget {
             nx[i] = 0.5f + RADIUS * std::cos(a);
             ny[i] = 0.5f + RADIUS * std::sin(a);
         }
-
         // Cada arista sale una sola vez: yendo siempre hacia adelante, {i, i+1} y
         // {i, i+2} no se repiten ni chocan entre sí. Nada de saltarse las que dan
         // la vuelta, o el anillo quedaría abierto por un lado.
-        const int current = 0;
-        for (int i = 0; i < PREVIEW_NODES; ++i) {
+        const int cur = 0;
+        for (int i = 0; i < PREVIEW_NODES; ++i)
             for (int step : {1, 2}) {
                 int j = (i + step) % PREVIEW_NODES;
-                bool currentEdge = i == current || j == current;
-                nvgBeginPath(args.vg);
-                nvgMoveTo(args.vg, px(nx[i]), py(ny[i]));
-                nvgLineTo(args.vg, px(nx[j]), py(ny[j]));
-                nvgStrokeColor(args.vg, currentEdge ? nvgRGBA(93, 183, 255, 135)
-                                                    : nvgRGBA(130, 150, 170, 45));
-                nvgStrokeWidth(args.vg, currentEdge ? 1.1f : 0.45f);
-                nvgStroke(args.vg);
+                edge(vg, px(nx[i]), py(ny[i]), px(nx[j]), py(ny[j]), i == cur || j == cur);
             }
-        }
-
         for (int i = 0; i < PREVIEW_NODES; ++i) {
-            bool cur = i == current;
-            nvgBeginPath(args.vg);
-            nvgCircle(args.vg, px(nx[i]), py(ny[i]), cur ? 3.0f : 1.6f);
-            nvgFillColor(args.vg, cur ? nvgRGBA(225, 80, 220, 245)
-                                      : nvgRGBA(110, 170, 200, 150));
-            nvgFill(args.vg);
+            if (i == cur)
+                current(vg, px(nx[i]), py(ny[i]), 2.6f);
+            else
+                node(vg, px(nx[i]), py(ny[i]), 1.6f, 0.5f);
         }
     }
 
     void draw(const DrawArgs& args) override {
+        const float w = box.size.x, h = box.size.y;
         nvgBeginPath(args.vg);
-        nvgRoundedRect(args.vg, 0.f, 0.f, box.size.x, box.size.y, 3.f);
-        nvgFillColor(args.vg, nvgRGBA(5, 8, 12, 210));
+        nvgRoundedRect(args.vg, 0.f, 0.f, w, h, 2.5f);
+        nvgFillColor(args.vg, nvgRGB(0x0d, 0x0f, 0x13));
         nvgFill(args.vg);
-
-        nvgBeginPath(args.vg);
-        nvgRoundedRect(args.vg, 0.5f, 0.5f, box.size.x - 1.f, box.size.y - 1.f, 3.f);
-        nvgStrokeColor(args.vg, nvgRGBA(93, 183, 255, 90));
         nvgStrokeWidth(args.vg, 1.f);
+        nvgStrokeColor(args.vg, nvgRGB(0x33, 0x38, 0x4a));
         nvgStroke(args.vg);
+        // A faint grid in quarters, as the filter's display has its decades.
+        nvgStrokeWidth(args.vg, 0.8f);
+        nvgStrokeColor(args.vg, nvgRGB(0x1d, 0x21, 0x29));
+        for (int k = 1; k < 4; k++) {
+            nvgBeginPath(args.vg);
+            nvgMoveTo(args.vg, w * k / 4.f, 1.f);
+            nvgLineTo(args.vg, w * k / 4.f, h - 1.f);
+            nvgStroke(args.vg);
+            nvgBeginPath(args.vg);
+            nvgMoveTo(args.vg, 1.f, h * k / 4.f);
+            nvgLineTo(args.vg, w - 1.f, h * k / 4.f);
+            nvgStroke(args.vg);
+        }
+    }
 
+    /** The network on the light layer, so it stays lit in a dimmed room. */
+    void drawLayer(const DrawArgs& args, int layer) override {
+        if (layer != 1) {
+            TransparentWidget::drawLayer(args, layer);
+            return;
+        }
+        NVGcontext* vg = args.vg;
         float pad = 4.f;
         auto px = [&](float x) { return pad + x * (box.size.x - 2.f * pad); };
         auto py = [&](float y) { return pad + (1.f - y) * (box.size.y - 2.f * pad); };
@@ -962,7 +1006,8 @@ struct UnitDistanceGraphDisplay : TransparentWidget {
         // nullptr. Sin esto el display sale como un recuadro vacío, así que se
         // pinta un grafo de muestra: un anillo fijo, sin estado ni aleatoriedad.
         if (!module) {
-            drawPreviewGraph(args, px, py);
+            drawPreviewGraph(vg, px, py);
+            TransparentWidget::drawLayer(args, layer);
             return;
         }
 
@@ -971,52 +1016,32 @@ struct UnitDistanceGraphDisplay : TransparentWidget {
             for (int j = i + 1; j < module->nodeCount; ++j) {
                 if (!(mask & (1ull << j)))
                     continue;
-                bool currentEdge = i == module->currentNode || j == module->currentNode;
-                nvgBeginPath(args.vg);
-                nvgMoveTo(args.vg, px(module->graphNodes[i].nx), py(module->graphNodes[i].ny));
-                nvgLineTo(args.vg, px(module->graphNodes[j].nx), py(module->graphNodes[j].ny));
-                nvgStrokeColor(args.vg, currentEdge ? nvgRGBA(93, 183, 255, 135)
-                                                    : nvgRGBA(130, 150, 170, 45));
-                nvgStrokeWidth(args.vg, currentEdge ? 1.1f : 0.45f);
-                nvgStroke(args.vg);
+                edge(vg, px(module->graphNodes[i].nx), py(module->graphNodes[i].ny),
+                     px(module->graphNodes[j].nx), py(module->graphNodes[j].ny),
+                     i == module->currentNode || j == module->currentNode);
             }
         }
 
+        const float gateDensity = clamp(module->params[UnitDistanceSeq::GATE_DENSITY_PARAM].getValue(), 0.15f, 1.f);
+        const float gateLength = clamp(module->params[UnitDistanceSeq::GATE_LENGTH_PARAM].getValue(), 0.05f, 0.95f);
         for (int i = 0; i < module->nodeCount; ++i) {
-            bool current = i == module->currentNode;
+            float x = px(module->graphNodes[i].nx), y = py(module->graphNodes[i].ny);
+            float degreeNorm = module->maxDegree > 0 ? clamp((float)module->degrees[i] / (float)module->maxDegree, 0.f, 1.f) : 0.f;
+            float gateChance = clamp(gateDensity * (0.45f + degreeNorm * 0.55f), 0.f, 1.f);
             bool polyActive = false;
-            for (int v = 1; v < module->polyVoices; ++v) {
+            for (int v = 1; v < module->polyVoices; ++v)
                 if (module->voiceNodes[v] == i) {
                     polyActive = true;
                     break;
                 }
-            }
-            float degreeNorm = module->maxDegree > 0 ? clamp((float)module->degrees[i] / (float)module->maxDegree, 0.f, 1.f) : 0.f;
-            float gateDensity = clamp(module->params[UnitDistanceSeq::GATE_DENSITY_PARAM].getValue(), 0.15f, 1.f);
-            float gateLength = clamp(module->params[UnitDistanceSeq::GATE_LENGTH_PARAM].getValue(), 0.05f, 0.95f);
-            float gateChance = clamp(gateDensity * (0.45f + degreeNorm * 0.55f), 0.f, 1.f);
-            float r = current ? 2.0f + gateLength * 2.4f
-                              : (polyActive ? 1.8f + gateLength * 1.3f : 1.1f + degreeNorm * 1.1f);
-            nvgBeginPath(args.vg);
-            nvgCircle(args.vg, px(module->graphNodes[i].nx), py(module->graphNodes[i].ny), r);
-            if (current) {
-                uint8_t red = (uint8_t)(205 + gateChance * 50.f);
-                uint8_t green = (uint8_t)(55 + gateChance * 45.f);
-                uint8_t blue = (uint8_t)(190 + gateChance * 55.f);
-                nvgFillColor(args.vg, nvgRGBA(red, green, blue, 245));
-            }
-            else if (polyActive) {
-                nvgFillColor(args.vg, nvgRGBA(190, 70, 235, 210));
-            }
-            else {
-                uint8_t red = (uint8_t)(70 + gateChance * 120.f);
-                uint8_t green = (uint8_t)(135 + gateChance * 70.f);
-                uint8_t blue = (uint8_t)(175 + (1.f - gateChance) * 60.f);
-                uint8_t alpha = (uint8_t)(65 + gateChance * 165.f);
-                nvgFillColor(args.vg, nvgRGBA(red, green, blue, alpha));
-            }
-            nvgFill(args.vg);
+            if (i == module->currentNode)
+                current(vg, x, y, 2.0f + gateLength * 1.8f);
+            else if (polyActive)
+                voice(vg, x, y, 1.8f + gateLength * 1.3f);
+            else
+                node(vg, x, y, 1.1f + degreeNorm * 1.1f, gateChance);
         }
+        TransparentWidget::drawLayer(args, layer);
     }
 };
 

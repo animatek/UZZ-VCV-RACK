@@ -1,4 +1,5 @@
 #include "plugin.hpp"
+#include <array>
 #include "ui/CommonWidgets.hpp"
 #include "uzz/ClockProcessor.hpp"
 #include "uzz/StepNavigator.hpp"
@@ -117,11 +118,12 @@ struct UZZ : Module {
 
   // Los disparadores ya se inicializan solos, pero guardan su estado en una unión y el
   // análisis estático que la librería pasa al enviar no lo ve: avisa de miembro sin
-  // inicializar por cada array. El `= {}` no cambia nada en ejecución y calla el aviso.
-  dsp::BooleanTrigger rndBtnTrig[NUM_RND_BANKS] = {};
-  dsp::SchmittTrigger rndCvTrig[NUM_RND_BANKS] = {};
-  dsp::BooleanTrigger shiftUpTrig[NUM_SHIFT_ROWS] = {},
-      shiftDownTrig[NUM_SHIFT_ROWS] = {};
+  // inicializar por cada array C. En `std::array` no avisa, y es el mismo objeto. No vale
+  // el `= {}` que se usó antes: GCC 11, el de la compilación de Linux, lo rechaza
+  // porque el constructor de esa unión es inaccesible.
+  std::array<dsp::BooleanTrigger, NUM_RND_BANKS> rndBtnTrig;
+  std::array<dsp::SchmittTrigger, NUM_RND_BANKS> rndCvTrig;
+  std::array<dsp::BooleanTrigger, NUM_SHIFT_ROWS> shiftUpTrig, shiftDownTrig;
   bool skipNextRandom[NUM_RND_BANKS] = {};
 
   bool playCurrentOnNextTick = false;

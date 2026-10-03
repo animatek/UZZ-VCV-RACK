@@ -127,6 +127,11 @@ Registro de cambios de los módulos Animatek. Formato basado en
   cuatro luces de "actividad", que eran lecturas de depuración sin sitio, se quitan.
 
 ### Fixed
+- **UZZ compila otra vez en Linux con GCC 11.** El `= {}` que se puso en 2.5.8 para callar a
+  cppcheck en los arrays de disparadores lo rechaza GCC 11 (el de Ubuntu 22.04 y la compilación
+  de los instaladores): el constructor de la unión interna es inaccesible. Ahora son
+  `std::array`, que cppcheck no marca y ambos compiladores aceptan. Comprobado con GCC 11 en
+  Docker, el GCC local y cppcheck sin avisos.
 - **Repaso antes de publicar.** Tags de `plugin.json` contrastados con `tagAliases` de Rack (todos
   canónicos), un manual por módulo, catorce slugs registrados, compilación limpia desde cero con
   el SDK y cppcheck sin avisos en `src/`. Corregido: ATEK303 SEQ ya no se presenta como de 16 pasos

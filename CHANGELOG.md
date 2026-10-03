@@ -8,36 +8,7 @@ Registro de cambios de los módulos Animatek. Formato basado en
 
 ## [Unreleased]
 
-### Fixed
-- **Repaso antes de publicar.** Tags de `plugin.json` contrastados con `tagAliases` de Rack (todos
-  canónicos), un manual por módulo, catorce slugs registrados, compilación limpia desde cero con
-  el SDK y cppcheck sin avisos en `src/`. Corregido: ATEK303 SEQ ya no se presenta como de 16 pasos
-  (llega a 64, en cuatro páginas), en `plugin.json` y en su manual, cuyo STEPS decía de 1 a 16; y la
-  descripción de CAP, que estaba mal construida y no contaba ni el pan ni la cadena.
-- **Estilo plano en lo que faltaba.** Avisos de Javier:
-  - UZZ: los botones redondos de aleatorio pasan a `FlatPushButton` (aro y cara grises, más
-    oscura al pulsar); conservan su 90 % y el doble clic que reinicia la fila.
-  - ONE: la pantalla deja el marco negro con borde verde y puntos por el recuadro plano del
-    BUS, y su texto pasa a Nunito Bold sin falsa negrita. Además vuelve a la capa de luz: el
-    cambio anterior de los rótulos la había apagado a oscuras, y es una pantalla.
-  - ATEK303 SEQ: la paleta pasa a una familia de azules como el resto del plugin (nota azul
-    del logo, tie azul profundo, acento casi blanco, slide cian, octavas en pizarra; la cabeza
-    en blanco en vez de rojo) en el editor y en los LEDs; los textos de raíz y escala y la
-    pegatina acid de ATEK303 y su SEQ, del amarillo al azul del logo. Manual al día.
-- **Nombres de los módulos coherentes.** Aviso de Javier: cada nombre tenía su tamaño (13, 14 o
-  16 px), su altura y su mezcla de mayúsculas. Ahora un solo componente, `ModuleName`, los pone
-  todos igual: Nunito Bold, en mayúsculas, a 14 px (el mayor con el que FILTERTEK libra el logo
-  en 8 HP), a 1,8 mm del borde y centrados en el eje del logo, a 123 mm. Lo usan ONE, MULTI,
-  CAP, BUS, ADSRTEK, FILTERTEK, UNIT-D y ATEK303. Los logos de ATEK303 y ATEK303 SEQ, que estaban
-  a 123,5 y 121 mm, bajan a 123 como los demás. UZZ, UZZ-X y ATEK303 SEQ llevan el nombre en otro
-  sitio, dentro de su diseño, y no cambian.
-- **Los rótulos ya no brillan en la sala oscura.** Aviso de Javier: con la luz de Rack bajada
-  se seguían viendo todos los textos, porque el rótulo compartido (`TextLabel`) y otros siete
-  (las separaciones de ONE, sus rótulos dinámicos, el canal de MULTI, y las secciones y cajas
-  de ATEK303) se pintaban en la capa de luz, la que no se oscurece. Pasan a la capa normal y se
-  apagan con el panel; solo quedan encendidos los LEDs, los botones encendidos y las pantallas
-  (envolvente, filtro, grafo de UNIT-D, displays de UZZ, nombre del BUS, editor de ATEK303).
-- ADSRtek: la línea de su pantalla, al mismo grosor que la de FILTERtek (1,6 px).
+## [2.5.9] - 2026-10-03
 
 ### Added
 - **ATEK303: easter egg.** Idea de Javier. Un clic en la carita acid del panel lanza a valores
@@ -156,6 +127,35 @@ Registro de cambios de los módulos Animatek. Formato basado en
   cuatro luces de "actividad", que eran lecturas de depuración sin sitio, se quitan.
 
 ### Fixed
+- **Repaso antes de publicar.** Tags de `plugin.json` contrastados con `tagAliases` de Rack (todos
+  canónicos), un manual por módulo, catorce slugs registrados, compilación limpia desde cero con
+  el SDK y cppcheck sin avisos en `src/`. Corregido: ATEK303 SEQ ya no se presenta como de 16 pasos
+  (llega a 64, en cuatro páginas), en `plugin.json` y en su manual, cuyo STEPS decía de 1 a 16; y la
+  descripción de CAP, que estaba mal construida y no contaba ni el pan ni la cadena.
+- **Estilo plano en lo que faltaba.** Avisos de Javier:
+  - UZZ: los botones redondos de aleatorio pasan a `FlatPushButton` (aro y cara grises, más
+    oscura al pulsar); conservan su 90 % y el doble clic que reinicia la fila.
+  - ONE: la pantalla deja el marco negro con borde verde y puntos por el recuadro plano del
+    BUS, y su texto pasa a Nunito Bold sin falsa negrita. Además vuelve a la capa de luz: el
+    cambio anterior de los rótulos la había apagado a oscuras, y es una pantalla.
+  - ATEK303 SEQ: la paleta pasa a una familia de azules como el resto del plugin (nota azul
+    del logo, tie azul profundo, acento casi blanco, slide cian, octavas en pizarra; la cabeza
+    en blanco en vez de rojo) en el editor y en los LEDs; los textos de raíz y escala y la
+    pegatina acid de ATEK303 y su SEQ, del amarillo al azul del logo. Manual al día.
+- **Nombres de los módulos coherentes.** Aviso de Javier: cada nombre tenía su tamaño (13, 14 o
+  16 px), su altura y su mezcla de mayúsculas. Ahora un solo componente, `ModuleName`, los pone
+  todos igual: Nunito Bold, en mayúsculas, a 14 px (el mayor con el que FILTERTEK libra el logo
+  en 8 HP), a 1,8 mm del borde y centrados en el eje del logo, a 123 mm. Lo usan ONE, MULTI,
+  CAP, BUS, ADSRTEK, FILTERTEK, UNIT-D y ATEK303. Los logos de ATEK303 y ATEK303 SEQ, que estaban
+  a 123,5 y 121 mm, bajan a 123 como los demás. UZZ, UZZ-X y ATEK303 SEQ llevan el nombre en otro
+  sitio, dentro de su diseño, y no cambian.
+- **Los rótulos ya no brillan en la sala oscura.** Aviso de Javier: con la luz de Rack bajada
+  se seguían viendo todos los textos, porque el rótulo compartido (`TextLabel`) y otros siete
+  (las separaciones de ONE, sus rótulos dinámicos, el canal de MULTI, y las secciones y cajas
+  de ATEK303) se pintaban en la capa de luz, la que no se oscurece. Pasan a la capa normal y se
+  apagan con el panel; solo quedan encendidos los LEDs, los botones encendidos y las pantallas
+  (envolvente, filtro, grafo de UNIT-D, displays de UZZ, nombre del BUS, editor de ATEK303).
+- ADSRtek: la línea de su pantalla, al mismo grosor que la de FILTERtek (1,6 px).
 - **UNIT-D: el reset ya no se salta el primer paso.** El primer reloj tras un reset (y tras
   cargar el patch) toca el nodo de partida en vez de salir ya hacia el siguiente. Ese paso
   no consume contador de gates, así que desde el segundo paso los gates caen exactamente
@@ -169,6 +169,9 @@ Registro de cambios de los módulos Animatek. Formato basado en
   `gateStep` en 0; ahora llega a 31 y el patrón evoluciona.
 
 ### Changed
+- **ADSRTEK y FILTERTEK, en mayúsculas.** Como el resto de módulos, en el navegador de Rack, en
+  los paneles y en los manuales. Los slugs (`AdsrTek`, `FilterTek`) no cambian, así que los
+  patches guardados siguen abriendo.
 - UNIT-D: la generación del grafo y el paso de reloj estaban escritos dos veces cada uno
   (grafo principal y por voz; paso libre y paso híbrido de `LOCK`). Ahora son una función
   cada uno.

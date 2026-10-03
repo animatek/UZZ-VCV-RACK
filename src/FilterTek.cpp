@@ -12,7 +12,7 @@ using AnimatekUI::TekOutputPort;
 using AnimatekUI::TextLabel;
 
 // ============================================================================
-// FILTERtek - the multimode filter of a classic 90s virtual-analogue modular
+// FILTERTEK - the multimode filter of a classic 90s virtual-analogue modular
 // ============================================================================
 //
 // Modelled on measurements, not on anybody's code. What the recordings show:
@@ -415,7 +415,7 @@ struct FilterTekWidget : ModuleWidget {
         const float COL2[2] = {12.5f, W - 12.5f};
 
         // The name beside the logo: the same on every panel (see ModuleName).
-        AnimatekUI::addModuleName(this, "FILTERtek");
+        AnimatekUI::addModuleName(this, "FILTERTEK");
 
         // Lettered in Nunito Bold, the face of Rack's own panels: clearer than
         // the UI font at these sizes. `y` is the top of a 3 mm box; bigger

@@ -1,10 +1,10 @@
-# FILTERtek User Manual
+# FILTERTEK User Manual
 
 **Manual version:** 1.0
 
 **Plugin version:** Animatek 2.5.9
 
-**Module:** FILTERtek for VCV Rack
+**Module:** FILTERTEK for VCV Rack
 
 **Width:** 8 HP
 
@@ -12,11 +12,11 @@
 
 ## 1. Overview
 
-**FILTERtek** is a multimode filter modelled on measurements of the multimode filter of a classic 90s virtual-analogue modular. Like **ADSRtek**, it comes from recording the original and fitting what came out, not from its code.
+**FILTERTEK** is a multimode filter modelled on measurements of the multimode filter of a classic 90s virtual-analogue modular. Like **ADSRTEK**, it comes from recording the original and fitting what came out, not from its code.
 
 - **Four types:** lowpass, bandpass, highpass and band reject, at **12 or 24 dB/octave**.
 - **Its resonance**, from a gentle bump to a ringing peak with a Q of several thousand, with the original's **gain control**, which pulls the level down as the resonance rises.
-- **Its saturation:** the original computes in fixed point, and its internal values hit a hard ceiling. Driven into resonance it clips in a way that is its own, and FILTERtek reproduces it.
+- **Its saturation:** the original computes in fixed point, and its internal values hit a hard ceiling. Driven into resonance it clips in a way that is its own, and FILTERTEK reproduces it.
 - **Stereo**: two filters with the same settings, `IN R` normalled to `IN L`. Polyphonic on each side (up to 16 channels).
 - A **response display** that draws the filter's curve live, from the same model the audio runs through.
 - CV with its own trimmer over cutoff and resonance, plus V/oct.
@@ -27,7 +27,7 @@
 
 1. Patch an oscillator into `IN L` and take `OUT L` to a VCA or the mix; for a stereo source, use both sides.
 2. Turn `CUTOFF` to open or close the filter and `RES` to add resonance, and watch the curve move on the display.
-3. Patch an envelope (ADSRtek, for instance) into the `CUT` CV jack and turn its trimmer up for a filter sweep.
+3. Patch an envelope (ADSRTEK, for instance) into the `CUT` CV jack and turn its trimmer up for a filter sweep.
 4. Patch the keyboard's pitch into `V/OCT` so the filter follows the notes.
 
 ---

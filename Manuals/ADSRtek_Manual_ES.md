@@ -1,10 +1,10 @@
-# Manual de usuario de ADSRtek
+# Manual de usuario de ADSRTEK
 
 **Versión del manual:** 1.0
 
 **Versión del plugin:** Animatek 2.5.9
 
-**Módulo:** ADSRtek para VCV Rack
+**Módulo:** ADSRTEK para VCV Rack
 
 **Anchura:** 8 HP
 
@@ -12,7 +12,7 @@
 
 ## 1. Descripción general
 
-**ADSRtek** es una envolvente ADSR y AD modelada sobre medidas de las envolventes de un modular virtual analógico clásico de los 90, de los que hicieron de los ataques rápidos y los decays secos su seña de identidad. No es una envolvente genérica con etiqueta vintage: sus tiempos, sus curvas y su comportamiento salen de grabar el original paso a paso y ajustar lo que salía.
+**ADSRTEK** es una envolvente ADSR y AD modelada sobre medidas de las envolventes de un modular virtual analógico clásico de los 90, de los que hicieron de los ataques rápidos y los decays secos su seña de identidad. No es una envolvente genérica con etiqueta vintage: sus tiempos, sus curvas y su comportamiento salen de grabar el original paso a paso y ajustar lo que salía.
 
 Lo que hace y casi ninguna envolvente hace:
 

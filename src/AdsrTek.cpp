@@ -11,7 +11,7 @@ using AnimatekUI::TekOutputPort;
 using AnimatekUI::TextLabel;
 
 // ============================================================================
-// ADSRtek - the envelope of a classic 90s virtual-analogue modular
+// ADSRTEK - the envelope of a classic 90s virtual-analogue modular
 // ============================================================================
 //
 // Modelled on measurements, not on anybody's code: the curves below come
@@ -464,7 +464,7 @@ struct EnvelopeDisplay : TransparentWidget {
         nvgFill(vg);
         curve();
         nvgStrokeColor(vg, AnimatekUI::logoBlue());
-        nvgStrokeWidth(vg, 1.6f);   // the same line as FILTERtek's display
+        nvgStrokeWidth(vg, 1.6f);   // the same line as FILTERTEK's display
         nvgLineJoin(vg, NVG_ROUND);
         nvgLineCap(vg, NVG_ROUND);
         nvgStroke(vg);
@@ -541,7 +541,7 @@ struct AdsrTekWidget : ModuleWidget {
         constexpr float XR = W - 11.0f;
 
         // The name beside the logo: the same on every panel (see ModuleName).
-        AnimatekUI::addModuleName(this, "ADSRtek");
+        AnimatekUI::addModuleName(this, "ADSRTEK");
 
         auto addLabel = [&](const char* text, float cx, float y, float w) {
             auto label = createWidget<TextLabel>(mm2px(Vec(cx - w * 0.5f, y)));

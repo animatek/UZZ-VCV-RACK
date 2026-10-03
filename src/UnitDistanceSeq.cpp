@@ -900,7 +900,7 @@ struct UnitDistanceGraphDisplay : TransparentWidget {
 
     explicit UnitDistanceGraphDisplay(UnitDistanceSeq* module) : module(module) {}
 
-    // The flat palette of the other displays (FILTERtek, ADSRtek): grey for the
+    // The flat palette of the other displays (FILTERTEK, ADSRTEK): grey for the
     // network, the logo blue for what is happening, white for where it is.
     static void edge(NVGcontext* vg, float ax, float ay, float bx, float by, bool current) {
         nvgBeginPath(vg);

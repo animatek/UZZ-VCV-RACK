@@ -1,10 +1,10 @@
-# ADSRtek User Manual
+# ADSRTEK User Manual
 
 **Manual version:** 1.0
 
 **Plugin version:** Animatek 2.5.9
 
-**Module:** ADSRtek for VCV Rack
+**Module:** ADSRTEK for VCV Rack
 
 **Width:** 8 HP
 
@@ -12,7 +12,7 @@
 
 ## 1. Overview
 
-**ADSRtek** is an ADSR and AD envelope modelled on measurements of the envelopes of a classic 90s virtual-analogue modular, the kind that made fast attacks and snappy decays its signature. It is not a generic envelope with a vintage label: its times, curves and behaviour come from recording the original step by step and fitting what came out.
+**ADSRTEK** is an ADSR and AD envelope modelled on measurements of the envelopes of a classic 90s virtual-analogue modular, the kind that made fast attacks and snappy decays its signature. It is not a generic envelope with a vintage label: its times, curves and behaviour come from recording the original step by step and fitting what came out.
 
 What it does that most envelopes do not:
 

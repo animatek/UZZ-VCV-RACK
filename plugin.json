@@ -1,7 +1,7 @@
 {
   "slug": "Animatek",
   "name": "Animatek",
-  "version": "2.5.8",
+  "version": "2.5.9",
   "license": "GPL-3.0-or-later",
   "brand": "Animatek",
   "author": "Javier Melgar",
@@ -96,7 +96,7 @@
     },
     {
       "slug": "AdsrTek",
-      "name": "ADSRtek",
+      "name": "ADSRTEK",
       "description": "ADSR and AD envelope modelled on measurements of a classic 90s virtual-analogue modular: its 128-step time table, its log, linear and exponential attacks, snappy exponential decays and its 24 kHz control rate. Retriggers pick up from the current level. Polyphonic, with CV over every stage and a built-in VCA.",
       "manualUrl": "https://github.com/animatek/UZZ-VCV-RACK/blob/main/Manuals/ADSRtek_Manual_EN.md",
       "tags": [
@@ -107,7 +107,7 @@
     },
     {
       "slug": "FilterTek",
-      "name": "FILTERtek",
+      "name": "FILTERTEK",
       "description": "Multimode filter modelled on measurements of a classic 90s virtual-analogue modular: lowpass, bandpass, highpass and band reject at 12 or 24 dB/oct, its resonance with gain control, and the hard fixed-point saturation that gives it its edge. Stereo and polyphonic, with a live response display, V/oct and CV over cutoff and resonance.",
       "manualUrl": "https://github.com/animatek/UZZ-VCV-RACK/blob/main/Manuals/FILTERtek_Manual_EN.md",
       "tags": [

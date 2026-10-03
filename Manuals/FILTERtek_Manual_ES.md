@@ -1,10 +1,10 @@
-# Manual de usuario de FILTERtek
+# Manual de usuario de FILTERTEK
 
 **Versión del manual:** 1.0
 
 **Versión del plugin:** Animatek 2.5.9
 
-**Módulo:** FILTERtek para VCV Rack
+**Módulo:** FILTERTEK para VCV Rack
 
 **Anchura:** 8 HP
 
@@ -12,11 +12,11 @@
 
 ## 1. Descripción general
 
-**FILTERtek** es un filtro multimodo modelado sobre medidas del filtro multimodo de un modular virtual analógico clásico de los 90. Como **ADSRtek**, sale de grabar el original y ajustar lo que salía, no de su código.
+**FILTERTEK** es un filtro multimodo modelado sobre medidas del filtro multimodo de un modular virtual analógico clásico de los 90. Como **ADSRTEK**, sale de grabar el original y ajustar lo que salía, no de su código.
 
 - **Cuatro tipos:** paso bajo, paso banda, paso alto y banda eliminada, a **12 o 24 dB por octava**.
 - **Su resonancia**, de un leve realce a un pico que resuena con una Q de varios miles, con el **gain control** del original, que baja el nivel a medida que sube la resonancia.
-- **Su saturación:** el original calcula en punto fijo, y sus valores internos chocan con un techo duro. Llevado a la resonancia recorta de una forma muy suya, y FILTERtek la reproduce.
+- **Su saturación:** el original calcula en punto fijo, y sus valores internos chocan con un techo duro. Llevado a la resonancia recorta de una forma muy suya, y FILTERTEK la reproduce.
 - **Estéreo**: dos filtros con los mismos ajustes, `IN R` normalizado a `IN L`. Polifónico en cada lado (hasta 16 canales).
 - Una **gráfica de respuesta** que dibuja la curva del filtro en directo, con el mismo modelo por el que pasa el audio.
 - CV con su propio trimmer sobre corte y resonancia, además de V/oct.
@@ -27,7 +27,7 @@
 
 1. Conecta un oscilador a `IN L` y saca `OUT L` a un VCA o a la mezcla; para una fuente estéreo, usa los dos lados.
 2. Gira `CUTOFF` para abrir o cerrar el filtro y `RES` para añadir resonancia, y mira cómo se mueve la curva en la gráfica.
-3. Conecta una envolvente (ADSRtek, por ejemplo) al jack de CV `CUT` y sube su trimmer para un barrido de filtro.
+3. Conecta una envolvente (ADSRTEK, por ejemplo) al jack de CV `CUT` y sube su trimmer para un barrido de filtro.
 4. Conecta el pitch del teclado a `V/OCT` para que el filtro siga las notas.
 
 ---

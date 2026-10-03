@@ -85,8 +85,15 @@ struct RowShiftDownButton : RowShiftButton {
 
 // Arc knob — a RoundSmallBlackKnob with a value-indicator arc around it.
 // Matches the "ring of progress" look from the original UZZ.
-// The step knobs: a small flat knob with its value arc.
+// A small flat knob with its value arc, for the controls under the grid,
+// where the rows are only 30 px apart.
 struct UzzArcKnob : AnimatekUI::FlatSmallKnob {};
+
+// The step knobs fill more of their 51 x 48 px cell: with the arc painted on
+// the rim rather than around it, the small size left them lost in the grid.
+struct UzzStepKnob : AnimatekUI::FlatKnob {
+  UzzStepKnob() { setDiameter(10.f); }
+};
 
 // Bipolar Trimpot: value 0 always at center regardless of range asymmetry.
 // Left side maps to [minV, 0], right side maps to [0, maxV], each filling half the sweep.

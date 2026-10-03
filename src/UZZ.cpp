@@ -1105,8 +1105,8 @@ struct UZZWidget : ModuleWidget {
 
     auto addArcKnobRow = [&](float y, int paramBase) {
       for (int i = 0; i < cols; ++i)
-        addParam(createParamCentered<UzzArcKnob>(Vec(Xc(i), y), module,
-                                                 paramBase + i));
+        addParam(createParamCentered<UzzStepKnob>(Vec(Xc(i), y), module,
+                                                  paramBase + i));
     };
     addArcKnobRow(UI::Y_PITCH, UZZ::PITCH_PARAMS);
     addArcKnobRow(UI::Y_OCT,   UZZ::OCT_PARAMS);

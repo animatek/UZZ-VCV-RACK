@@ -163,6 +163,13 @@ struct UnitDistanceSeq : Module {
     // Set by a reset (and at load): the next clock plays the starting node
     // instead of walking away from it, so the phrase begins where it should.
     bool playCurrentOnNextClock = true;
+    // Sample & hold on V/O: the pitch only moves on steps that fire a gate, so
+    // the output carries the notes that are heard rather than every node the
+    // walk passes through. The node is held, not the voltage, so a change of
+    // scale or root still reaches a held note.
+    bool sampleHoldPitch = false;
+    std::array<int, MAX_POLY_VOICES> heldNodes = {};
+    std::array<float, MAX_POLY_VOICES> heldPitchVolts = {};
 
     int cachedSeed = -999999;
     int cachedNodes = -1;
@@ -333,8 +340,10 @@ struct UnitDistanceSeq : Module {
         cachedDensity = densityKey;
         nodeCount = nodes;
         currentNode = clamp(currentNode, 0, nodeCount - 1);
-        for (int v = 0; v < MAX_POLY_VOICES; ++v)
+        for (int v = 0; v < MAX_POLY_VOICES; ++v) {
             voiceNodes[v] = clamp(voiceNodes[v], 0, nodeCount - 1);
+            heldNodes[v] = clamp(heldNodes[v], 0, nodeCount - 1);
+        }
         for (int& node : walkHistory) {
             if (node >= nodeCount)
                 node = -1;
@@ -523,6 +532,7 @@ struct UnitDistanceSeq : Module {
                                          (uint32_t)(voiceNodeOffsets[v] * 0x7feb352du));
         }
         currentNode = voiceNodes[0];
+        heldNodes = voiceNodes;
         clearWalkHistory();
         updateAllVoiceOutputs();
     }
@@ -535,15 +545,20 @@ struct UnitDistanceSeq : Module {
         return SCALES[scaleIndex];
     }
 
+    float pitchVoltsForNode(int node, int voice) {
+        const Scale& scale = currentScale();
+        int step = pitchIndexForNode(node, voice);
+        int octave = step / scale.size;
+        int degree = scale.degrees[step % scale.size];
+        return (float)octave + (float)(degree + rootSemitone) / 12.f;
+    }
+
     void updateVoiceOutputs(int voice) {
         voice = clamp(voice, 0, MAX_POLY_VOICES - 1);
         int nodeIndex = clamp(voiceNodes[voice], 0, nodeCount - 1);
         const GraphNode& node = voiceGraphNodes[voice][nodeIndex];
-        const Scale& scale = currentScale();
-        int step = pitchIndexForNode(nodeIndex, voice);
-        int octave = step / scale.size;
-        int degree = scale.degrees[step % scale.size];
-        voicePitchVolts[voice] = (float)octave + (float)(degree + rootSemitone) / 12.f;
+        voicePitchVolts[voice] = pitchVoltsForNode(nodeIndex, voice);
+        heldPitchVolts[voice] = pitchVoltsForNode(heldNodes[voice], voice);
         int vMaxDegree = voiceMaxDegrees[voice];
         voiceAccentVolts[voice] = (vMaxDegree > 0) ? clamp((float)voiceDegrees[voice][nodeIndex] / (float)vMaxDegree, 0.f, 1.f) * 10.f : 0.f;
         voiceXVolts[voice] = node.nx * 10.f;
@@ -699,6 +714,8 @@ struct UnitDistanceSeq : Module {
     void triggerGate(int voice) {
         float gateLen = clamp(params[GATE_LENGTH_PARAM].getValue(), 0.05f, 0.95f) * clockPeriod;
         gatePulses[voice].trigger(clamp(gateLen, 0.001f, 2.f));
+        heldNodes[voice] = voiceNodes[voice];
+        heldPitchVolts[voice] = voicePitchVolts[voice];
     }
 
     /** One free step: every voice moves along an edge, and the gates that fire
@@ -770,6 +787,7 @@ struct UnitDistanceSeq : Module {
         polyUseVoiceSeeds = false;
         scaleIndex = 0;
         rootSemitone = 0;
+        sampleHoldPitch = false;
         rebuildGraph(true);
         resetPolyVoices();
         playCurrentOnNextClock = true;
@@ -782,6 +800,7 @@ struct UnitDistanceSeq : Module {
                             json_boolean(polyUseVoiceSeeds));
         json_object_set_new(root, "scale", json_integer(scaleIndex));
         json_object_set_new(root, "root", json_integer(rootSemitone));
+        json_object_set_new(root, "sampleHoldPitch", json_boolean(sampleHoldPitch));
         return root;
     }
 
@@ -797,6 +816,8 @@ struct UnitDistanceSeq : Module {
             scaleIndex = clamp((int)json_integer_value(j), 0, NUM_SCALES - 1);
         if (json_t* j = json_object_get(root, "root"))
             rootSemitone = clamp((int)json_integer_value(j), 0, 11);
+        if (json_t* j = json_object_get(root, "sampleHoldPitch"))
+            sampleHoldPitch = json_is_true(j);
         rebuildGraph(true);
         resetPolyVoices();
     }
@@ -862,7 +883,7 @@ struct UnitDistanceSeq : Module {
         outputs[X_OUTPUT].setChannels(polyVoices);
         outputs[Y_OUTPUT].setChannels(polyVoices);
         for (int v = 0; v < polyVoices; ++v) {
-            outputs[VOCT_OUTPUT].setVoltage(voicePitchVolts[v], v);
+            outputs[VOCT_OUTPUT].setVoltage(sampleHoldPitch ? heldPitchVolts[v] : voicePitchVolts[v], v);
             outputs[GATE_OUTPUT].setVoltage(gateHigh[v] ? 10.f : 0.f, v);
             outputs[ACCENT_OUTPUT].setVoltage(voiceAccentVolts[v], v);
             outputs[X_OUTPUT].setVoltage(voiceXVolts[v], v);
@@ -1105,6 +1126,14 @@ struct UnitDistanceSeqWidget : ModuleWidget {
                             m->updateAllVoiceOutputs();
                         }));
                 }
+            }));
+
+        menu->addChild(createCheckMenuItem(
+            "Sample & hold V/O on gates", "",
+            [m]() { return m && m->sampleHoldPitch; },
+            [m]() {
+                if (m)
+                    m->sampleHoldPitch ^= true;
             }));
 
         menu->addChild(createSubmenuItem(

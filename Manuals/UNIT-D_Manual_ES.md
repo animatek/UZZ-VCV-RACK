@@ -352,6 +352,8 @@ Escalas disponibles: Minor, Major, Dorian, Phrygian, Lydian, Mixolydian, Harmoni
 
 `RNG` fija cuántas octavas de la escala cubre el eje X. La raíz sube todas las notas entre 0 y 11 semitonos.
 
+**Sample & hold V/O on gates** (menú contextual, apagado por defecto): `V/O` solo se mueve en los pasos que disparan gate y mantiene la última nota tocada entre medias. Apagado sigue cada nodo que visita el recorrido, suene o no, que es lo que interesa para modulación; encendido lleva solo las notas que se oyen, que es lo que quiere una voz con ataque lento, un glide u otro módulo que lea el pitch. Cambiar escala o raíz sigue actualizando la nota retenida. Cada voz polifónica retiene con sus propios gates.
+
 Conecta esta salida al `V/OCT` de un oscilador, sampler o voz modular.
 
 ### GATE

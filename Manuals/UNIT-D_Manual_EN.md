@@ -352,6 +352,8 @@ Available scales: Minor, Major, Dorian, Phrygian, Lydian, Mixolydian, Harmonic m
 
 `RNG` sets how many octaves of the scale the X axis covers. The root shifts every note up by 0 to 11 semitones.
 
+**Sample & hold V/O on gates** (context menu, off by default): `V/O` only moves on steps that fire a gate and holds the last played note in between. Off, it follows every node the walk visits, gated or not, which is what you want for modulation; on, it carries only the notes you hear, which is what a voice with a slow attack, a glide or a second module reading the pitch wants. Changing scale or root still updates a held note. Each polyphonic voice holds on its own gates.
+
 Patch this output into the `V/OCT` input of an oscillator, sampler or modular voice.
 
 ### GATE

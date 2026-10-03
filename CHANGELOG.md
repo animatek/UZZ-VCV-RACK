@@ -9,6 +9,12 @@ Registro de cambios de los módulos Animatek. Formato basado en
 ## [Unreleased]
 
 ### Added
+- **UNIT-D: sample & hold de `V/O` con los gates.** Opción del menú, apagada por defecto:
+  `V/O` solo cambia en los pasos que disparan gate y retiene la última nota entre medias, en
+  vez de soltar el chorro de nodos que recorre el walker aunque no suenen. Se retiene el
+  nodo, no el voltaje, así que cambiar escala o raíz alcanza a la nota retenida. Comprobado
+  contra libRack en 16 pasos con `GDEN` al 50 %: sin la opción, el pitch cambia en 9 pasos
+  sin gate; con ella, en ninguno.
 - **CAP: modos lowpass filter y low-pass gate, y envolvente invertida.** En el menú, `Mode`
   elige sobre qué actúa el control (envolvente × CV de `VCA`): la ganancia (**VCA**, como
   siempre), el corte de un paso bajo SVF de dos polos entre 20 Hz y 20 kHz sin tocar el

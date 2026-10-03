@@ -1407,7 +1407,7 @@ struct UZZWidget : ModuleWidget {
 
     addOutput(createOutputCentered<UzzOutputPort>(
         Vec(UI::X_SWITCH, yBot), module, UZZ::STEP_GATES_OUTPUT));
-    addParam(createParamCentered<CKSS>(Vec(UI::X_SWITCH, yMid), module,
+    addParam(createParamCentered<AnimatekUI::FlatSwitch>(Vec(UI::X_SWITCH, yMid), module,
                                        UZZ::GATE_MODE_PARAM));
     addParam(createParamCentered<AnimatekUI::FlatTrimpot>(Vec(UI::X_SWITCH, yTop), module,
                                           UZZ::SLEW_PARAM));

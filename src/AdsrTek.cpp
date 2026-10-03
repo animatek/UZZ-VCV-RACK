@@ -357,12 +357,12 @@ struct AdsrTekWidget : ModuleWidget {
         // down, so the first option is the bottom label.
         addLabel("AD", XL - 5.0f, 4.0f, 10.f);
         addLabel("ADSR", XL - 5.0f, 9.5f, 10.f);
-        addParam(createParamCentered<CKSS>(mm2px(Vec(XL + 2.5f, 8.5f)), module,
+        addParam(createParamCentered<AnimatekUI::FlatSwitch>(mm2px(Vec(XL + 2.5f, 8.5f)), module,
                                            AdsrTek::MODE_PARAM));
         addLabel("EXP", XR + 5.5f, 2.6f, 10.f);
         addLabel("LIN", XR + 5.5f, 6.6f, 10.f);
         addLabel("LOG", XR + 5.5f, 10.6f, 10.f);
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(XR - 1.5f, 8.5f)), module,
+        addParam(createParamCentered<AnimatekUI::FlatSwitch3>(mm2px(Vec(XR - 1.5f, 8.5f)), module,
                                                 AdsrTek::SHAPE_PARAM));
 
         addChild(createLightCentered<SmallLight<BlueLight>>(mm2px(Vec(W * 0.5f, 8.5f)), module,

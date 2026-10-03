@@ -580,16 +580,6 @@ void EnvModQuantity::setDisplayValue(float displayValue) {
 // Panel
 // ---------------------------------------------------------------------------
 
-// Rack solo ofrece CKSS horizontal de tres posiciones. Para el selector de onda usamos
-// sus frames extremos como un switch de dos posiciones: izquierda = sierra, derecha = pulso.
-struct CKSSHorizontal : app::SvgSwitch {
-	CKSSHorizontal() {
-		shadow->opacity = 0.0;
-		addFrame(Svg::load(asset::system("res/ComponentLibrary/CKSSThreeHorizontal_0.svg")));
-		addFrame(Svg::load(asset::system("res/ComponentLibrary/CKSSThreeHorizontal_2.svg")));
-	}
-};
-
 struct Atek303Widget : ModuleWidget {
 	// Rejilla del panel, en mm. tools/panel.py usa las mismas para los símbolos de
 	// onda y para el logo, así que si aquí se mueve algo hay que moverlo allí.
@@ -697,7 +687,7 @@ struct Atek303Widget : ModuleWidget {
 		}
 
 		// --- banda de abajo: onda, salida y firma ------------------------------
-		addParam(createParamCentered<CKSSHorizontal>(
+		addParam(createParamCentered<AnimatekUI::FlatSwitchH>(
 			mm2px(Vec(COL_L, WAVE_Y)), module, Atek303::WAVEFORM_PARAM));
 
 		label("OUT", OUT_X, OUT_LABEL_Y, 11.f, 7.5f);

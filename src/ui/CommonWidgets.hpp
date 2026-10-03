@@ -401,4 +401,90 @@ struct FlatLightLatch : FlatLightButton {
   FlatLightLatch() { momentary = false; }
 };
 
+// ---------------------------------------------------------------------------
+// Flat toggle switches, to go with the flat knobs
+// ---------------------------------------------------------------------------
+//
+// A dark slot with the knobs' grey rim, and a lever with their face colour and
+// a white bar across it, like the knobs' pointer. Same sizes and convention as
+// Rack's CKSS family: position 0 at the bottom (or the left, horizontal), and a
+// click steps to the next position.
+struct FlatSwitch : app::Switch {
+  int positions = 2;
+  bool horizontal = false;
+
+  FlatSwitch() { box.size = mm2px(Vec(4.74f, 6.99f)); }   // CKSS
+
+  void draw(const DrawArgs &args) override {
+    NVGcontext *vg = args.vg;
+    const float w = box.size.x, h = box.size.y;
+    const float rimW = 1.2f;
+    int index = 0;
+    if (engine::ParamQuantity *pq = getParamQuantity())
+      index = clamp((int)std::round(pq->getValue() - pq->getMinValue()), 0, positions - 1);
+
+    // Slot.
+    nvgBeginPath(vg);
+    nvgRoundedRect(vg, rimW * 0.5f, rimW * 0.5f, w - rimW, h - rimW, 2.f);
+    nvgFillColor(vg, nvgRGB(0x1b, 0x1b, 0x1b));
+    nvgFill(vg);
+    nvgStrokeWidth(vg, rimW);
+    nvgStrokeColor(vg, nvgRGB(0x5a, 0x5a, 0x5a));
+    nvgStroke(vg);
+
+    // Lever: one position's share of the slot, inset from the rim.
+    const float inset = rimW + 1.f;
+    const float len = (horizontal ? w : h) - 2.f * inset;
+    const float cell = len / (float)positions;
+    float lx, ly, lw, lh;
+    if (horizontal) {
+      lx = inset + cell * (float)index;
+      ly = inset;
+      lw = cell;
+      lh = h - 2.f * inset;
+    }
+    else {
+      lx = inset;
+      ly = inset + cell * (float)(positions - 1 - index);   // 0 is the bottom
+      lw = w - 2.f * inset;
+      lh = cell;
+    }
+    nvgBeginPath(vg);
+    nvgRoundedRect(vg, lx, ly, lw, lh, 1.2f);
+    nvgFillColor(vg, nvgRGB(0x3a, 0x3a, 0x3a));
+    nvgFill(vg);
+
+    // The white bar across the lever.
+    nvgBeginPath(vg);
+    if (horizontal) {
+      nvgMoveTo(vg, lx + lw * 0.5f, ly + lh * 0.22f);
+      nvgLineTo(vg, lx + lw * 0.5f, ly + lh * 0.78f);
+    }
+    else {
+      nvgMoveTo(vg, lx + lw * 0.22f, ly + lh * 0.5f);
+      nvgLineTo(vg, lx + lw * 0.78f, ly + lh * 0.5f);
+    }
+    nvgStrokeColor(vg, nvgRGB(0xff, 0xff, 0xff));
+    nvgStrokeWidth(vg, 1.3f);
+    nvgLineCap(vg, NVG_ROUND);
+    nvgStroke(vg);
+
+    app::Switch::draw(args);
+  }
+};
+
+struct FlatSwitch3 : FlatSwitch {                                   // CKSSThree
+  FlatSwitch3() {
+    positions = 3;
+    box.size = mm2px(Vec(4.56f, 9.6f));
+  }
+};
+
+struct FlatSwitchH : FlatSwitch {                                   // two-way, horizontal
+  FlatSwitchH() {
+    horizontal = true;
+    box.size = mm2px(Vec(9.6f, 4.56f));
+  }
+};
+
 } // namespace AnimatekUI

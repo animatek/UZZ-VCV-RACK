@@ -204,6 +204,11 @@ struct AdsrTek : Module {
     bool invert = false;
     bool gateCutsAttack = false;
 
+    // What the envelope display draws: the first channel's settings, CV
+    // included, and where its envelope is. Written by the audio thread, read
+    // by the UI; a torn float is one wrong frame of a drawing at worst.
+    float dispAttack = 10.f, dispDecay = 70.f, dispSustain = 0.5f, dispRelease = 60.f;
+
     AdsrTek() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
@@ -284,13 +289,21 @@ struct AdsrTek : Module {
                                       + inputs[SUSTAIN_CV_INPUT].getPolyVoltage(c) / 10.f,
                                       0.f, 1.f);
                 float attackKnob = knobFor(ATTACK_PARAM, ATTACK_CV_INPUT, c);
+                float decayKnob = knobFor(DECAY_PARAM, DECAY_CV_INPUT, c);
+                float releaseKnob = knobFor(RELEASE_PARAM, RELEASE_CV_INPUT, c);
                 env.step(dt, mode, shape,
                          attackTime(shape, attackKnob),
                          shapeParameter(shape, attackKnob),
-                         decayTau(knobFor(DECAY_PARAM, DECAY_CV_INPUT, c)),
+                         decayTau(decayKnob),
                          sustain,
-                         decayTau(knobFor(RELEASE_PARAM, RELEASE_CV_INPUT, c)),
+                         decayTau(releaseKnob),
                          gateCutsAttack);
+                if (c == 0) {
+                    dispAttack = attackKnob;
+                    dispDecay = decayKnob;
+                    dispSustain = sustain;
+                    dispRelease = releaseKnob;
+                }
                 held[c] = env.level;
             }
 
@@ -324,6 +337,170 @@ struct AdsrTek : Module {
             invert = json_boolean_value(j);
         if (json_t* j = json_object_get(root, "gateCutsAttack"))
             gateCutsAttack = json_boolean_value(j);
+    }
+};
+
+
+/** The envelope, drawn from the same model the audio runs through, and where
+the first channel is on it right now: the active stage lit, a dot riding the
+curve, and A D S R underneath with the current one in blue. Segment widths
+follow the logarithm of each time, since the times run from half a
+millisecond to fifty seconds; sustain gets a fixed share. */
+struct EnvelopeDisplay : TransparentWidget {
+    AdsrTek* module = NULL;
+    static constexpr float LABEL_H = 9.f;   // px for the A D S R strip
+
+    static float segWidth(float seconds) {
+        return std::log10(1.f + seconds * 1000.f);   // 0.5 ms -> 0.18, 50 s -> 4.7
+    }
+
+    /** Level along each stage at a fraction u in [0, 1] of its width. */
+    static float attackAt(int shape, float knob, float u) {
+        if (shape == SHAPE_LOG) {
+            float target = shapeParameter(shape, knob);
+            float rate = std::log(target / (target - 1.f));
+            return std::min(1.f, target * (1.f - std::exp(-rate * u)));
+        }
+        if (shape == SHAPE_EXP) {
+            float offset = shapeParameter(shape, knob);
+            float rate = std::log(1.f + 1.f / offset);
+            return std::min(1.f, offset * (std::exp(rate * u) - 1.f));
+        }
+        return u;
+    }
+
+    void draw(const DrawArgs& args) override {
+        const float w = box.size.x, h = box.size.y;
+        nvgBeginPath(args.vg);
+        nvgRoundedRect(args.vg, 0.f, 0.f, w, h, 2.5f);
+        nvgFillColor(args.vg, nvgRGB(0x0d, 0x0f, 0x13));
+        nvgFill(args.vg);
+        nvgStrokeWidth(args.vg, 1.f);
+        nvgStrokeColor(args.vg, nvgRGB(0x33, 0x38, 0x4a));
+        nvgStroke(args.vg);
+    }
+
+    void drawLayer(const DrawArgs& args, int layer) override {
+        if (layer != 1) {
+            TransparentWidget::drawLayer(args, layer);
+            return;
+        }
+        NVGcontext* vg = args.vg;
+        const float w = box.size.x, h = box.size.y;
+        const float pad = 3.f;
+        const float plotH = h - LABEL_H - pad;
+        const float x0 = pad, x1 = w - pad, y0 = pad, y1 = pad + plotH;
+
+        // Settings: the module's (CV included) or the defaults in the browser.
+        const int mode = module ? (int)std::round(module->params[AdsrTek::MODE_PARAM].getValue()) : MODE_ADSR;
+        const int shape = module ? (int)std::round(module->params[AdsrTek::SHAPE_PARAM].getValue()) : SHAPE_LIN;
+        const float aK = module ? module->dispAttack : 10.f;
+        const float dK = module ? module->dispDecay : 70.f;
+        const float sus = (mode == MODE_ADSR) ? (module ? module->dispSustain : 0.5f) : 0.f;
+        const float rK = module ? module->dispRelease : 60.f;
+        const int stage = module ? module->envelopes[0].stage : STAGE_IDLE;
+        const float level = module ? module->envelopes[0].level : 0.f;
+
+        float wa = segWidth(attackTime(shape, aK));
+        float wd = segWidth(decayTau(dK) * LN_100);
+        float wr = (mode == MODE_ADSR) ? segWidth(decayTau(rK) * LN_100) : 0.f;
+        float wsus = (mode == MODE_ADSR) ? 0.22f * (wa + wd + wr + 0.6f) : 0.f;
+        float total = wa + wd + wsus + wr;
+        float scale = (x1 - x0) / std::max(total, 1e-3f);
+        const float xa = x0, xd = xa + wa * scale, xs = xd + wd * scale, xr = xs + wsus * scale, xe = xr + wr * scale;
+        auto Y = [&](float lv) { return y1 - lv * (y1 - y0); };
+
+        // Each stage as its own path, so the active one can be lit.
+        const int N = 40;
+        auto stroke = [&](bool active) {
+            nvgStrokeColor(vg, active ? AnimatekUI::logoBlue() : AnimatekUI::logoBlue(110));
+            nvgStrokeWidth(vg, active ? 1.8f : 1.2f);
+            nvgLineJoin(vg, NVG_ROUND);
+            nvgLineCap(vg, NVG_ROUND);
+            nvgStroke(vg);
+        };
+        nvgBeginPath(vg);
+        for (int i = 0; i <= N; i++) {
+            float u = (float)i / N;
+            float x = xa + u * (xd - xa), y = Y(attackAt(shape, aK, u));
+            if (i == 0) nvgMoveTo(vg, x, y); else nvgLineTo(vg, x, y);
+        }
+        stroke(stage == STAGE_ATTACK);
+        nvgBeginPath(vg);
+        for (int i = 0; i <= N; i++) {
+            float u = (float)i / N;
+            float lv = sus + (1.f - sus) * std::exp(-LN_100 * u);
+            if (i == N) lv = sus;
+            float x = xd + u * (xs - xd);
+            if (i == 0) nvgMoveTo(vg, x, Y(lv)); else nvgLineTo(vg, x, Y(lv));
+        }
+        stroke(stage == STAGE_DECAY);
+        if (mode == MODE_ADSR) {
+            nvgBeginPath(vg);
+            nvgMoveTo(vg, xs, Y(sus));
+            nvgLineTo(vg, xr, Y(sus));
+            stroke(stage == STAGE_SUSTAIN);
+            nvgBeginPath(vg);
+            for (int i = 0; i <= N; i++) {
+                float u = (float)i / N;
+                float lv = (i == N) ? 0.f : sus * std::exp(-LN_100 * u);
+                float x = xr + u * (xe - xr);
+                if (i == 0) nvgMoveTo(vg, x, Y(lv)); else nvgLineTo(vg, x, Y(lv));
+            }
+            stroke(stage == STAGE_RELEASE);
+        }
+
+        // The dot: where the envelope is, placed on its stage by its level.
+        if (stage != STAGE_IDLE) {
+            float x = xa;
+            if (stage == STAGE_ATTACK) {
+                // invert the attack curve by bisection on u
+                float lo = 0.f, hi = 1.f;
+                for (int k = 0; k < 20; k++) {
+                    float mid = 0.5f * (lo + hi);
+                    if (attackAt(shape, aK, mid) < level) lo = mid; else hi = mid;
+                }
+                x = xa + lo * (xd - xa);
+            }
+            else if (stage == STAGE_DECAY) {
+                float frac = (1.f - sus) > 1e-4f ? clamp((level - sus) / (1.f - sus), 1e-4f, 1.f) : 1e-4f;
+                x = xd + clamp(-std::log(frac) / LN_100, 0.f, 1.f) * (xs - xd);
+            }
+            else if (stage == STAGE_SUSTAIN) {
+                x = 0.5f * (xs + xr);
+            }
+            else if (stage == STAGE_RELEASE) {
+                float ref = std::max(sus, 1e-3f);
+                float frac = clamp(level / ref, 1e-4f, 1.f);
+                x = xr + clamp(-std::log(frac) / LN_100, 0.f, 1.f) * (xe - xr);
+            }
+            float y = Y(level);
+            nvgBeginPath(vg);
+            nvgCircle(vg, x, y, 6.f);
+            nvgFillColor(vg, AnimatekUI::logoBlue(60));
+            nvgFill(vg);
+            nvgBeginPath(vg);
+            nvgCircle(vg, x, y, 2.6f);
+            nvgFillColor(vg, nvgRGB(0xff, 0xff, 0xff));
+            nvgFill(vg);
+        }
+
+        // A D S R under their stages, the current one in blue.
+        std::shared_ptr<window::Font> font = APP->window->loadFont(asset::system("res/fonts/Nunito-Bold.ttf"));
+        if (font && font->handle >= 0) {
+            nvgFontSize(vg, 8.f);
+            nvgFontFaceId(vg, font->handle);
+            nvgTextAlign(vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
+            struct Seg { const char* t; float a, b; int st; };
+            Seg segs[4] = {{"A", xa, xd, STAGE_ATTACK}, {"D", xd, xs, STAGE_DECAY},
+                           {"S", xs, xr, STAGE_SUSTAIN}, {"R", xr, xe, STAGE_RELEASE}};
+            for (int i = 0; i < (mode == MODE_ADSR ? 4 : 2); i++) {
+                float cx = std::max(0.5f * (segs[i].a + segs[i].b), x0 + 3.f);
+                nvgFillColor(vg, segs[i].st == stage ? AnimatekUI::logoBlue() : nvgRGB(0x6a, 0x70, 0x80));
+                nvgText(vg, cx, h - LABEL_H * 0.5f - 1.f, segs[i].t, NULL);
+            }
+        }
+        TransparentWidget::drawLayer(args, layer);
     }
 };
 
@@ -375,10 +552,17 @@ struct AdsrTekWidget : ModuleWidget {
             addParam(createParamCentered<AnimatekUI::FlatKnob>(mm2px(Vec(cx, y + 10.0f)), module,
                                                          paramId));
         };
-        addKnob("ATTACK", XL, 17.0f, AdsrTek::ATTACK_PARAM);
-        addKnob("DECAY", XR, 17.0f, AdsrTek::DECAY_PARAM);
-        addKnob("SUSTAIN", XL, 39.0f, AdsrTek::SUSTAIN_PARAM);
-        addKnob("RELEASE", XR, 39.0f, AdsrTek::RELEASE_PARAM);
+        // Two rows as close as the knobs allow (a 9.6 mm knob takes 14.8 mm with
+        // its label), to free the room for the display.
+        addKnob("ATTACK", XL, 13.8f, AdsrTek::ATTACK_PARAM);
+        addKnob("DECAY", XR, 13.8f, AdsrTek::DECAY_PARAM);
+        addKnob("SUSTAIN", XL, 28.8f, AdsrTek::SUSTAIN_PARAM);
+        addKnob("RELEASE", XR, 28.8f, AdsrTek::RELEASE_PARAM);
+
+        auto* display = createWidget<EnvelopeDisplay>(mm2px(Vec(3.0f, 44.2f)));
+        display->box.size = mm2px(Vec(W - 6.f, 12.0f));
+        display->module = module;
+        addChild(display);
 
         constexpr float CV_Y = 70.0f;
         const float cvX[4] = {5.6f, 15.6f, 25.0f, 35.0f};

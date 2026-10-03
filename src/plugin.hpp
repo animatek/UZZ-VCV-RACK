@@ -64,6 +64,10 @@ struct Atek303SeqMessage {
 struct CapBusMessage {
     float left = 0.f;
     float right = 0.f;
+    // Whether the module on the left is really handing a chain on. A CAP always
+    // is; a BUS only when told to pass its mix on. A BUS that closes its row
+    // sends false, so a CAP to its right starts a new, parallel row.
+    bool linked = false;
 };
 
 // Declare each Model, defined in each module source file
@@ -100,6 +104,7 @@ inline void capBusSend(Module& self, const CapBusMessage& msg) {
     if (!right || (right->model != modelSideChain && right->model != modelCapBus))
         return;
     *static_cast<CapBusMessage*>(right->leftExpander.producerMessage) = msg;
+    // `msg.linked` is the sender's to set: a CAP sets it, a closing BUS clears it.
     right->leftExpander.requestMessageFlip();
 }
 

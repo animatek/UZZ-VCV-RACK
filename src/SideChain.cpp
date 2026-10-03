@@ -233,10 +233,12 @@ struct SideChain : Module {
     in from the left, and what goes out to the right. */
     void sendChain(const CapBusMessage& in, const CapBusMessage& out, float sampleTime) {
         lights[CHAIN_IN_LIGHT].setBrightness(
-            chainInLed.update(capChainModule(leftExpander.module), in, sampleTime));
+            chainInLed.update(in.linked, in, sampleTime));
         lights[CHAIN_OUT_LIGHT].setBrightness(
             chainOutLed.update(capChainModule(rightExpander.module), out, sampleTime));
-        capBusSend(*this, out);
+        CapBusMessage msg = out;
+        msg.linked = true;
+        capBusSend(*this, msg);
     }
 
     SideChain() {
@@ -515,7 +517,7 @@ struct SideChain : Module {
         // takes the sum itself.
         CapBusMessage bus = capBusReceive(*this);
         const CapBusMessage busIn = bus;
-        const bool endOfRow = chainMix && capChainModule(leftExpander.module)
+        const bool endOfRow = chainMix && busIn.linked
                               && !capChainModule(rightExpander.module);
 
         // Nothing patched in means nothing to attenuate: leave both audio

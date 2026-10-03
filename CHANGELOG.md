@@ -9,6 +9,15 @@ Registro de cambios de los módulos Animatek. Formato basado en
 ## [Unreleased]
 
 ### Added
+- **BUS cierra su fila; conmutadores planos.** Petición de Javier: una CAP a la derecha de un
+  BUS empieza ahora una fila nueva en paralelo, con su propia mezcla, en vez de seguir la misma
+  cadena. Para encadenar grupos hacia un master está la opción `Pass the mix on to the right`
+  del BUS. El mensaje de la cadena lleva una marca `linked`, así que una CAP tras un BUS que
+  cierra no se cree el final de la fila anterior y su LED izquierdo queda apagado. Comprobado
+  contra libRack con `CAP CAP BUS CAP CAP`: en paralelo, la última CAP suma solo las suyas (12);
+  pasando la mezcla, todo (15). Además, `FlatSwitch` (2 y 3 posiciones, y horizontal) en lugar
+  de los CKSS de Rack en UZZ, ADSRtek y ATEK303, con ranura y palanca planas a juego con los
+  mandos.
 - **CAP: la última de una fila saca la mezcla aunque no haya BUS.** Petición de Javier. Si una
   fila de CAP termina en una CAP, su `OUT L/R` lleva la suma (la suya más lo que llega, con pan
   y post-fader); las de en medio siguen directas, y un BUS al final sigue mandando. Opción de

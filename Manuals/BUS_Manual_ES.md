@@ -24,6 +24,7 @@ El BUS lleva además un **envío y retorno** estéreo, para insertar un efecto s
 - **Una fila no necesita un BUS para sonar.** Sin él, la última CAP de la fila saca la mezcla por su propio `OUT` (ver el manual de CAP, *Last in a row*). Los `OUT L` / `OUT R` de las demás CAP siguen siendo salidas directas, y conectarlos no quita nada de la mezcla. Un BUS al final añade el envío y retorno, el master y el medidor.
 - Lo que aporta cada CAP es **post-fader** (después de `LEVEL`, del CV de `VCA`, de la envolvente y del modo) y **sumado entre canales polifónicos**.
 - Cada CAP tiene su propio trimmer **PAN** y su CV. Es un control de balance: en el centro los dos lados pasan a ganancia unidad, y girarlo hacia un lado atenúa el otro. Solo afecta a la mezcla, no a las salidas propias de la CAP.
+- **Un BUS cierra su fila.** Una CAP colocada a su derecha empieza una fila nueva, en paralelo, con su propia mezcla; su LED de cadena izquierdo queda apagado. Para que la mezcla siga en cambio, hacia otro grupo y luego un master, activa **Pass the mix on to the right** en el menú contextual del BUS.
 - Una **CAP en bypass** mantiene viva la cadena y aporta su entrada sin procesar, como hacen sus salidas en bypass. Un BUS en bypass deja pasar la cadena tal cual.
 - Cada módulo que cruza la señal añade una muestra de retardo (unos 21 µs a 48 kHz), así que las CAP del extremo izquierdo llegan unas muestras más tarde que las cercanas al BUS. No se oye, salvo que la misma fuente alimente varias CAP a la vez.
 
@@ -69,7 +70,7 @@ El bus tal como llega por la izquierda, antes del retorno y antes de `LEVEL`. Co
 
 ### MIX L / MIX R
 
-El resultado: el bus, mezclado con el retorno según `WET`, por `LEVEL` y colocado por `PAN`. Es también lo que el BUS pasa a su derecha.
+El resultado: el bus, mezclado con el retorno según `WET`, por `LEVEL` y colocado por `PAN`. Con **Pass the mix on to the right** activado, es también lo que el BUS pasa a su derecha.
 
 ---
 
@@ -81,7 +82,7 @@ Pon cuatro CAP y un BUS a su derecha. Conecta un sonido a cada CAP y `MIX L` / `
 
 ### Un efecto sobre un grupo
 
-`CAP CAP BUS CAP CAP BUS`: el primer BUS tiene un delay entre `SEND` y `RETURN` y solo afecta a las dos primeras CAP. Su `MIX` sigue hacia la derecha, donde el último BUS suma las otras dos CAP y hace de master.
+`CAP CAP BUS CAP CAP BUS`, con **Pass the mix on to the right** activado en el primer BUS: tiene un delay entre `SEND` y `RETURN` y solo afecta a las dos primeras CAP. Su mezcla sigue hacia la derecha, donde el último BUS suma las otras dos CAP y hace de master.
 
 ### Reverb mezclada con la señal seca
 

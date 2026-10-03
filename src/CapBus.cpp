@@ -38,6 +38,10 @@ struct CapBus : Module {
     // The LINK LED: dim when a CAP or BUS sits on the left, brighter with the
     // audio arriving from it.
     CapChainLed linkLed;
+    // Off: the BUS closes its row, and a CAP to its right starts a new one in
+    // parallel. On: its mix carries on to the right, so a row can feed a group
+    // insert and then a master further along.
+    bool passOn = false;
 
     // Peak of each side of MIX for the meter. Written by the audio thread and
     // read by the UI; a torn float is one wrong frame of a meter at worst.
@@ -73,9 +77,15 @@ struct CapBus : Module {
         leftExpander.consumerMessage = &busMessages[1];
     }
 
-    bool chainedOnLeft() {
-        Module* left = leftExpander.module;
-        return left && (left->model == modelSideChain || left->model == modelCapBus);
+    /** Sends the mix on to the right, or an empty, unlinked message when this
+    BUS closes its row. */
+    void sendOn(const CapBusMessage& mix, bool linked) {
+        CapBusMessage msg;
+        if (linked) {
+            msg = mix;
+            msg.linked = true;
+        }
+        capBusSend(*this, msg);
     }
 
     void process(const ProcessArgs& args) override {
@@ -107,7 +117,7 @@ struct CapBus : Module {
 
         outputs[MIX_L_OUTPUT].setVoltage(bus.left);
         outputs[MIX_R_OUTPUT].setVoltage(bus.right);
-        capBusSend(*this, bus);
+        sendOn(bus, passOn);
 
         // Instant attack, about 300 ms to fall 20 dB: fast enough to follow a
         // kick, slow enough to read.
@@ -115,19 +125,21 @@ struct CapBus : Module {
         meterL = std::max(std::abs(bus.left), meterL * fall);
         meterR = std::max(std::abs(bus.right), meterR * fall);
 
-        lights[LINK_LIGHT].setBrightness(linkLed.update(chainedOnLeft(), arrived, args.sampleTime));
+        lights[LINK_LIGHT].setBrightness(linkLed.update(arrived.linked, arrived, args.sampleTime));
     }
 
     void onReset(const ResetEvent& e) override {
         Module::onReset(e);
         label.clear();
         customLabel = false;
+        passOn = false;
     }
 
     json_t* dataToJson() override {
         json_t* root = json_object();
         json_object_set_new(root, "label", json_string(label.c_str()));
         json_object_set_new(root, "customLabel", json_boolean(customLabel));
+        json_object_set_new(root, "passOn", json_boolean(passOn));
         return root;
     }
 
@@ -138,6 +150,8 @@ struct CapBus : Module {
             label = json_string_value(j) ? json_string_value(j) : "";
         if (json_t* j = json_object_get(root, "customLabel"))
             customLabel = json_boolean_value(j);
+        if (json_t* j = json_object_get(root, "passOn"))
+            passOn = json_boolean_value(j);
     }
 
     /** Bypassed, the BUS steps out of the way: the chain passes through it
@@ -146,7 +160,7 @@ struct CapBus : Module {
         CapBusMessage bus = capBusReceive(*this);
         outputs[MIX_L_OUTPUT].setVoltage(bus.left);
         outputs[MIX_R_OUTPUT].setVoltage(bus.right);
-        capBusSend(*this, bus);
+        sendOn(bus, bus.linked);
     }
 };
 
@@ -406,6 +420,17 @@ struct CapBusWidget : ModuleWidget {
         addPair("RETURN", 63.5f, CapBus::RETURN_L_INPUT, CapBus::RETURN_R_INPUT, true);
         addPair("SEND", 80.0f, CapBus::SEND_L_OUTPUT, CapBus::SEND_R_OUTPUT, false);
         addPair("MIX", 94.5f, CapBus::MIX_L_OUTPUT, CapBus::MIX_R_OUTPUT, false);
+    }
+
+    void appendContextMenu(ui::Menu* menu) override {
+        CapBus* bus = dynamic_cast<CapBus*>(this->module);
+        if (!bus)
+            return;
+        menu->addChild(new ui::MenuSeparator);
+        menu->addChild(createCheckMenuItem(
+            "Pass the mix on to the right", "",
+            [=]() { return bus->passOn; },
+            [=]() { bus->passOn ^= true; }));
     }
 
     /** The module at the far end of the first cable on a port, if any. */

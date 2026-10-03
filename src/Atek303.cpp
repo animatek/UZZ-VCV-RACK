@@ -585,25 +585,27 @@ void EnvModQuantity::setDisplayValue(float displayValue) {
 // as one undoable step. Waveform and tuning stay put, and so do the CV
 // trimmers: they only act with a cable in, and moving them unseen would make
 // modulation misbehave for no visible reason. The face flashes blue.
+// A double click puts the same five knobs back to their defaults (Rack sends
+// the two clicks first, so it randomizes for an instant before), flashing white.
 struct AcidFace : OpaqueWidget {
 	Atek303* module = NULL;
 	double flashUntil = 0.0;
+	bool flashWhite = false;
 
-	void onButton(const ButtonEvent& e) override {
-		if (e.action != GLFW_PRESS || e.button != GLFW_MOUSE_BUTTON_LEFT || !module)
-			return;
-		// Round face, square box: only clicks on the face itself count.
-		Vec c = box.size.div(2.f);
-		if (e.pos.minus(c).norm() > box.size.x * 0.5f)
-			return;
-		const int ids[] = {Atek303::CUTOFF_PARAM, Atek303::RESONANCE_PARAM, Atek303::ENVMOD_PARAM,
-		                   Atek303::DECAY_PARAM, Atek303::ACCENT_PARAM};
+	/** Sets the five sound knobs, random or default, as one undoable step. */
+	void setSound(bool randomize, const char* name) {
 		auto* complex = new history::ComplexAction;
-		complex->name = "randomize ATEK303";
-		for (int id : ids) {
+		complex->name = name;
+		const int soundParams[] = {Atek303::CUTOFF_PARAM, Atek303::RESONANCE_PARAM,
+		                           Atek303::ENVMOD_PARAM, Atek303::DECAY_PARAM,
+		                           Atek303::ACCENT_PARAM};
+		for (int id : soundParams) {
 			engine::ParamQuantity* pq = module->paramQuantities[id];
 			float oldValue = pq->getValue();
-			pq->setScaledValue(random::uniform());
+			if (randomize)
+				pq->setScaledValue(random::uniform());
+			else
+				pq->reset();
 			auto* h = new history::ParamChange;
 			h->moduleId = module->id;
 			h->paramId = id;
@@ -613,6 +615,27 @@ struct AcidFace : OpaqueWidget {
 		}
 		APP->history->push(complex);
 		flashUntil = system::getTime() + 0.35;
+		flashWhite = !randomize;
+	}
+
+	bool onFace(Vec pos) {
+		return pos.minus(box.size.div(2.f)).norm() <= box.size.x * 0.5f;
+	}
+
+	void onDoubleClick(const DoubleClickEvent& e) override {
+		if (!module)
+			return;
+		setSound(false, "reset ATEK303 sound");
+		e.consume(this);
+	}
+
+	void onButton(const ButtonEvent& e) override {
+		if (e.action != GLFW_PRESS || e.button != GLFW_MOUSE_BUTTON_LEFT || !module)
+			return;
+		// Round face, square box: only clicks on the face itself count.
+		if (!onFace(e.pos))
+			return;
+		setSound(true, "randomize ATEK303");
 		e.consume(this);
 	}
 
@@ -624,7 +647,8 @@ struct AcidFace : OpaqueWidget {
 				Vec c = box.size.div(2.f);
 				nvgBeginPath(args.vg);
 				nvgCircle(args.vg, c.x, c.y, box.size.x * 0.5f + 6.f * (1.f - a));
-				nvgFillColor(args.vg, AnimatekUI::logoBlue((uint8_t)(120.f * a)));
+				nvgFillColor(args.vg, flashWhite ? nvgRGBA(0xff, 0xff, 0xff, (uint8_t)(110.f * a))
+				                                 : AnimatekUI::logoBlue((uint8_t)(120.f * a)));
 				nvgFill(args.vg);
 			}
 		}

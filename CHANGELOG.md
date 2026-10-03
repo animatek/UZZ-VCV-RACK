@@ -38,7 +38,8 @@ Registro de cambios de los módulos Animatek. Formato basado en
 - **ATEK303: easter egg.** Idea de Javier. Un clic en la carita acid del panel lanza a valores
   aleatorios los cinco mandos de sonido (cutoff, resonance, env mod, decay y accent), en un solo
   paso que se deshace con Ctrl+Z, con un destello azul en la carita. Forma de onda, afinación y
-  los atenuadores de CV se quedan como están. No va en el manual: es un easter egg.
+  los atenuadores de CV se quedan como están. Doble clic: los mismos cinco vuelven a su valor por
+  defecto, con destello blanco. No va en el manual: es un easter egg.
 - **ADSRtek: pantalla de la envolvente en directo.** Petición de Javier. Arriba, bajo los
   selectores, y de 20 mm de alto: la envolvente dibujada con el mismo modelo que suena (forma
   de ataque, curvas de decay y release, CV incluido) en una sola línea azul con relleno suave,

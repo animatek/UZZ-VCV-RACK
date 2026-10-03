@@ -119,7 +119,7 @@ struct OxiCvExpWidget : ModuleWidget {
         for (int i = 0; i < NUM_TRACKS; i++) {
             float y = Y_FIRST_ROW + i * Y_ROW_STEP;
 
-            addParam(createParamCentered<Trimpot>(mm2px(Vec(X_CH, y)), module, OxiCvExp::CH_PARAM + i));
+            addParam(createParamCentered<AnimatekUI::FlatTrimpot>(mm2px(Vec(X_CH, y)), module, OxiCvExp::CH_PARAM + i));
 
             static constexpr float LABEL_W = 5.0f, LABEL_H = 6.0f;
             auto num = createWidget<ExpChannelLabel>(mm2px(Vec(X_LABEL - LABEL_W / 2.f, y - LABEL_H / 2.f)));

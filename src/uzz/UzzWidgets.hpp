@@ -85,86 +85,21 @@ struct RowShiftDownButton : RowShiftButton {
 
 // Arc knob — a RoundSmallBlackKnob with a value-indicator arc around it.
 // Matches the "ring of progress" look from the original UZZ.
-struct UzzArcKnob : RoundSmallBlackKnob {
-  void draw(const DrawArgs &args) override {
-    // 1) Draw the value arc BEHIND the knob body.
-    if (auto q = getParamQuantity()) {
-      float minV = q->getMinValue();
-      float maxV = q->getMaxValue();
-      if (maxV > minV) {
-        float val = q->getValue();
-        NVGcontext *vg = args.vg;
-        float cx = box.size.x * 0.5f;
-        float cy = box.size.y * 0.5f;
-        float r = box.size.x * 0.5f + 2.0f;
-
-        // Knob sweep in NanoVG coords (Y-down): bottom-left → bottom-right CW,
-        // 270°.
-        const float a0 = 0.75f * (float)M_PI;
-        const float sweep = 1.5f * (float)M_PI;
-
-        // Track (faint full arc).
-        nvgBeginPath(vg);
-        nvgArc(vg, cx, cy, r, a0, a0 + sweep, NVG_CW);
-        nvgStrokeColor(vg, nvgRGBA(0xFF, 0xFF, 0xFF, 40));
-        nvgStrokeWidth(vg, 1.4f);
-        nvgLineCap(vg, NVG_ROUND);
-        nvgStroke(vg);
-
-        // Value arc.
-        bool bipolar = (minV < 0.f && maxV > 0.f);
-        float t0, t1;
-        if (bipolar) {
-          float zeroT = (0.f - minV) / (maxV - minV);
-          float curT = (val - minV) / (maxV - minV);
-          t0 = std::min(zeroT, curT);
-          t1 = std::max(zeroT, curT);
-        } else {
-          t0 = 0.f;
-          t1 = (val - minV) / (maxV - minV);
-        }
-        if (t1 > t0 + 1e-4f) {
-          nvgBeginPath(vg);
-          nvgArc(vg, cx, cy, r, a0 + t0 * sweep, a0 + t1 * sweep, NVG_CW);
-          nvgStrokeColor(vg, nvgRGBA(0x2C, 0x7F, 0xFF, 230));
-          nvgStrokeWidth(vg, 1.8f);
-          nvgLineCap(vg, NVG_ROUND);
-          nvgStroke(vg);
-        }
-      }
-    }
-    // 2) Draw the knob on top.
-    RoundSmallBlackKnob::draw(args);
-  }
-};
+// The step knobs: a small flat knob with its value arc.
+struct UzzArcKnob : AnimatekUI::FlatSmallKnob {};
 
 // Bipolar Trimpot: value 0 always at center regardless of range asymmetry.
 // Left side maps to [minV, 0], right side maps to [0, maxV], each filling half the sweep.
-struct ProbPulseKnob : Trimpot {
-  void syncAngle() {
-    auto* pq = getParamQuantity();
-    if (fb && tw && pq) {
-      float v    = pq->getValue();
-      float vMin = pq->getMinValue();
-      float vMax = pq->getMaxValue();
-      float t = (v <= 0.f)
-          ? math::rescale(v, vMin, 0.f, 0.f, 0.5f)
-          : math::rescale(v, 0.f, vMax, 0.5f, 1.f);
-      float angle = math::rescale(t, 0.f, 1.f, minAngle, maxAngle);
-      tw->identity();
-      tw->rotate(angle, sw->box.size.div(2));
-      fb->dirty = true;
-    }
-  }
-
-  void onChange(const ChangeEvent& e) override {
-    syncAngle();
-    Knob::onChange(e);
-  }
-
-  void step() override {
-    syncAngle();
-    Trimpot::step();
+struct ProbPulseKnob : AnimatekUI::FlatTrimpot {
+  float position() override {
+    engine::ParamQuantity *pq = getParamQuantity();
+    if (!pq)
+      return 0.5f;
+    float v = pq->getValue();
+    float vMin = pq->getMinValue();
+    float vMax = pq->getMaxValue();
+    return (v <= 0.f) ? math::rescale(v, vMin, 0.f, 0.f, 0.5f)
+                      : math::rescale(v, 0.f, vMax, 0.5f, 1.f);
   }
 };
 

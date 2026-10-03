@@ -682,11 +682,11 @@ struct Atek303Widget : ModuleWidget {
 				const Cell& cell = *cells[c];
 				const float x = c ? COL_R : COL_L;
 				label(cell.name, x, top, 26.f, 7.5f);
-				addParam(createParamCentered<RoundLargeBlackKnob>(
+				addParam(createParamCentered<AnimatekUI::FlatLargeKnob>(
 					mm2px(Vec(x, top + KNOB_DY)), module, cell.knob));
 				if (cell.cv < 0)
 					continue;
-				addParam(createParamCentered<Trimpot>(
+				addParam(createParamCentered<AnimatekUI::FlatTrimpot>(
 					mm2px(Vec(x - SUB_DX, top + SUB_DY)), module, cell.atten));
 				addChild(new AnimatekUI::ConnectorLine(
 					mm2px(x - SUB_DX + 3.4f), mm2px(top + SUB_DY),

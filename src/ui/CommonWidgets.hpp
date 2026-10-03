@@ -232,4 +232,112 @@ struct ScaledSvgSwitch : app::SvgSwitch {
   }
 };
 
+// ---------------------------------------------------------------------------
+// Flat knobs
+// ---------------------------------------------------------------------------
+//
+// Drawn rather than loaded from SVG: a dark disc with a thin rim, a slightly
+// lighter face and a white pointer, plus a value arc around it (blue on a
+// faint track; bipolar ranges fill from the centre). Being drawn, they stay
+// sharp at any zoom and one change here restyles every module. The sizes
+// match Rack's knobs they replace, so nothing on a panel moves.
+struct FlatKnob : app::Knob {
+  bool arc = true;
+
+  FlatKnob() {
+    // 270 degrees, as Rack's own knobs, so the radial setting agrees.
+    minAngle = -0.75f * (float)M_PI;
+    maxAngle = 0.75f * (float)M_PI;
+    setDiameter(9.6f);
+  }
+
+  void setDiameter(float mm) { box.size = mm2px(Vec(mm, mm)); }
+
+  /** Where the pointer is, 0 at the left stop and 1 at the right. Without a
+  module (the browser, the library site), the parameter's default. */
+  virtual float position() {
+    if (engine::ParamQuantity *pq = getParamQuantity())
+      return pq->getScaledValue();
+    return 0.5f;
+  }
+
+  /** Where the arc starts: the centre for a bipolar range, else the left stop. */
+  virtual float arcOrigin() {
+    if (engine::ParamQuantity *pq = getParamQuantity()) {
+      float lo = pq->getMinValue(), hi = pq->getMaxValue();
+      if (lo < 0.f && hi > 0.f)
+        return -lo / (hi - lo);
+    }
+    return 0.f;
+  }
+
+  void draw(const DrawArgs &args) override {
+    NVGcontext *vg = args.vg;
+    const float d = box.size.x;
+    const float r = d * 0.5f;
+    const float cx = r, cy = box.size.y * 0.5f;
+    // NanoVG angles, y down: the left stop is at 135 degrees, sweeping 270 clockwise.
+    const float a0 = 0.75f * (float)M_PI;
+    const float sweep = 1.5f * (float)M_PI;
+    const float t = clamp(position(), 0.f, 1.f);
+
+    if (arc) {
+      const float ra = r + 2.f;
+      nvgBeginPath(vg);
+      nvgArc(vg, cx, cy, ra, a0, a0 + sweep, NVG_CW);
+      nvgStrokeColor(vg, nvgRGBA(0xFF, 0xFF, 0xFF, 40));
+      nvgStrokeWidth(vg, 1.4f);
+      nvgLineCap(vg, NVG_ROUND);
+      nvgStroke(vg);
+      float o = clamp(arcOrigin(), 0.f, 1.f);
+      float t0 = std::min(o, t), t1 = std::max(o, t);
+      if (t1 > t0 + 1e-4f) {
+        nvgBeginPath(vg);
+        nvgArc(vg, cx, cy, ra, a0 + t0 * sweep, a0 + t1 * sweep, NVG_CW);
+        nvgStrokeColor(vg, logoBlue(230));
+        nvgStrokeWidth(vg, 1.8f);
+        nvgLineCap(vg, NVG_ROUND);
+        nvgStroke(vg);
+      }
+    }
+
+    // Body: rim, then face.
+    nvgBeginPath(vg);
+    nvgCircle(vg, cx, cy, r - 0.5f);
+    nvgFillColor(vg, nvgRGB(0x1b, 0x1b, 0x1b));
+    nvgFill(vg);
+    nvgStrokeWidth(vg, std::max(0.8f, d * 0.025f));
+    nvgStrokeColor(vg, nvgRGB(0x5a, 0x5a, 0x5a));
+    nvgStroke(vg);
+    nvgBeginPath(vg);
+    nvgCircle(vg, cx, cy, r * 0.8f);
+    nvgFillColor(vg, nvgRGB(0x2c, 0x2c, 0x2c));
+    nvgFill(vg);
+
+    // Pointer.
+    const float a = a0 + t * sweep;
+    nvgBeginPath(vg);
+    nvgMoveTo(vg, cx + std::cos(a) * r * 0.12f, cy + std::sin(a) * r * 0.12f);
+    nvgLineTo(vg, cx + std::cos(a) * r * 0.78f, cy + std::sin(a) * r * 0.78f);
+    nvgStrokeColor(vg, nvgRGB(0xff, 0xff, 0xff));
+    nvgStrokeWidth(vg, std::max(1.3f, d * 0.07f));
+    nvgLineCap(vg, NVG_ROUND);
+    nvgStroke(vg);
+
+    Knob::draw(args);
+  }
+};
+
+// The sizes of the Rack knobs they stand in for.
+struct FlatSmallKnob : FlatKnob { FlatSmallKnob() { setDiameter(7.68f); } };    // RoundSmallBlackKnob
+struct FlatLargeKnob : FlatKnob { FlatLargeKnob() { setDiameter(12.19f); } };   // RoundLargeBlackKnob
+struct FlatHugeKnob : FlatKnob { FlatHugeKnob() { setDiameter(18.24f); } };     // RoundHugeBlackKnob, Davies1900hLarge
+struct FlatTrimpot : FlatKnob {                                                 // Trimpot
+  FlatTrimpot() {
+    setDiameter(6.05f);
+    // Trimmers are amounts and fine adjustments: no arc, the pointer is enough.
+    arc = false;
+  }
+};
+
 } // namespace AnimatekUI

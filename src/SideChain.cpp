@@ -736,7 +736,7 @@ struct SideChainWidget : ModuleWidget {
         // one axis.
         auto addKnob = [&](const char* text, float y, int paramId) {
             addLabel(text, X1, y, 16.f);
-            addParam(createParamCentered<RoundSmallBlackKnob>(
+            addParam(createParamCentered<AnimatekUI::FlatSmallKnob>(
                 mm2px(Vec(X1, y + 8.5f)), module, paramId));
         };
 
@@ -797,7 +797,7 @@ struct SideChainWidget : ModuleWidget {
         constexpr float PAN_CV_X = 15.24f;
         constexpr float TRIG_X = 25.4f;
         addLabel("PAN", PAN_X, 60.0f, 10.f);
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(PAN_X, 67.5f)), module,
+        addParam(createParamCentered<AnimatekUI::FlatTrimpot>(mm2px(Vec(PAN_X, 67.5f)), module,
                                               SideChain::PAN_PARAM));
         addBareIn(PAN_CV_X, 67.5f, SideChain::PAN_CV_INPUT);
         line(PAN_X + 3.3f, 67.5f, PAN_CV_X - 4.1f, 67.5f);

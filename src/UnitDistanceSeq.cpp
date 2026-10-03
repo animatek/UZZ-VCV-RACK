@@ -1056,27 +1056,27 @@ struct UnitDistanceSeqWidget : ModuleWidget {
 
         label("SEED", 15.f, 44.8f);
         label("NODES", 45.f, 44.8f);
-        addParam(createParamCentered<Davies1900hLargeBlackKnob>(mm2px(Vec(15.f, 59.f)), module, UnitDistanceSeq::SEED_PARAM));
-        addParam(createParamCentered<Davies1900hLargeBlackKnob>(mm2px(Vec(45.f, 59.f)), module, UnitDistanceSeq::NODES_PARAM));
+        addParam(createParamCentered<AnimatekUI::FlatHugeKnob>(mm2px(Vec(15.f, 59.f)), module, UnitDistanceSeq::SEED_PARAM));
+        addParam(createParamCentered<AnimatekUI::FlatHugeKnob>(mm2px(Vec(45.f, 59.f)), module, UnitDistanceSeq::NODES_PARAM));
 
         label("LOCK", 30.f, 61.2f, 12.f);
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(30.f, 69.5f)), module, UnitDistanceSeq::LOCK_PARAM));
+        addParam(createParamCentered<AnimatekUI::FlatTrimpot>(mm2px(Vec(30.f, 69.5f)), module, UnitDistanceSeq::LOCK_PARAM));
 
         label("RADIUS", 15.f, 69.f);
         label("DENS", 45.f, 69.f);
-        addParam(createParamCentered<Davies1900hLargeBlackKnob>(mm2px(Vec(15.f, 84.f)), module, UnitDistanceSeq::RADIUS_PARAM));
-        addParam(createParamCentered<Davies1900hLargeBlackKnob>(mm2px(Vec(45.f, 84.f)), module, UnitDistanceSeq::DENSITY_PARAM));
+        addParam(createParamCentered<AnimatekUI::FlatHugeKnob>(mm2px(Vec(15.f, 84.f)), module, UnitDistanceSeq::RADIUS_PARAM));
+        addParam(createParamCentered<AnimatekUI::FlatHugeKnob>(mm2px(Vec(45.f, 84.f)), module, UnitDistanceSeq::DENSITY_PARAM));
 
         label("TOL", 7.f, 93.5f, 9.f);
         label("WALK", 18.5f, 93.5f, 12.f);
         label("RNG", 30.5f, 93.5f, 9.f);
         label("GLEN", 42.5f, 93.5f, 12.f);
         label("GDEN", 54.f, 93.5f, 12.f);
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(7.f, 101.5f)), module, UnitDistanceSeq::TOLERANCE_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(18.5f, 101.5f)), module, UnitDistanceSeq::WALK_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(30.5f, 101.5f)), module, UnitDistanceSeq::RANGE_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(42.5f, 101.5f)), module, UnitDistanceSeq::GATE_LENGTH_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(54.f, 101.5f)), module, UnitDistanceSeq::GATE_DENSITY_PARAM));
+        addParam(createParamCentered<AnimatekUI::FlatTrimpot>(mm2px(Vec(7.f, 101.5f)), module, UnitDistanceSeq::TOLERANCE_PARAM));
+        addParam(createParamCentered<AnimatekUI::FlatTrimpot>(mm2px(Vec(18.5f, 101.5f)), module, UnitDistanceSeq::WALK_PARAM));
+        addParam(createParamCentered<AnimatekUI::FlatTrimpot>(mm2px(Vec(30.5f, 101.5f)), module, UnitDistanceSeq::RANGE_PARAM));
+        addParam(createParamCentered<AnimatekUI::FlatTrimpot>(mm2px(Vec(42.5f, 101.5f)), module, UnitDistanceSeq::GATE_LENGTH_PARAM));
+        addParam(createParamCentered<AnimatekUI::FlatTrimpot>(mm2px(Vec(54.f, 101.5f)), module, UnitDistanceSeq::GATE_DENSITY_PARAM));
 
         label("V/O", 7.f, 104.8f, 10.f);
         label("GATE", 19.f, 104.8f, 12.f);

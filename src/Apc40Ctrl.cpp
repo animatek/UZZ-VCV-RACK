@@ -252,7 +252,7 @@ struct Apc40CtrlWidget : ModuleWidget {
             lbl->fontSize = 9.0f;
             addChild(lbl);
 
-            addParam(createParamCentered<Trimpot>(mm2px(Vec(x, knob_y)),
+            addParam(createParamCentered<AnimatekUI::FlatTrimpot>(mm2px(Vec(x, knob_y)),
                                                   module, Apc40Ctrl::ATTENUVERT_PARAM + output_idx));
             addOutput(createOutputCentered<AnimatekUI::TekOutputPort>(mm2px(Vec(x, output_y)),
                                                        module, Apc40Ctrl::CV_OUTPUT + output_idx));

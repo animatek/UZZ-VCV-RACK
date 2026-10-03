@@ -449,7 +449,7 @@ struct FilterTekWidget : ModuleWidget {
         };
 
         addLabel("CUTOFF", CX, 4.7f, 24.f, 13.f);
-        addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(CX, 17.5f)), module,
+        addParam(createParamCentered<AnimatekUI::FlatHugeKnob>(mm2px(Vec(CX, 17.5f)), module,
                                                          FilterTek::FREQ_PARAM));
 
         // The four types as buttons, the lit one is the one playing.
@@ -458,7 +458,7 @@ struct FilterTekWidget : ModuleWidget {
             addButton(FilterTek::TYPE_PARAM, i, false, types[i], 5.6f + 9.8f * (float)i, 30.5f, 7.2f, 4.6f);
 
         addLabel("RES", 11.0f, 34.0f, 12.f);
-        addParam(createParamCentered<RoundLargeBlackKnob>(mm2px(Vec(11.0f, 43.5f)), module,
+        addParam(createParamCentered<AnimatekUI::FlatLargeKnob>(mm2px(Vec(11.0f, 43.5f)), module,
                                                           FilterTek::RES_PARAM));
         // Gain control, and the slope under it as two buttons, beside RES.
         addButton(FilterTek::GAIN_CONTROL_PARAM, 1, true, "GC", 30.0f, 37.6f, 13.6f, 4.6f);
@@ -477,7 +477,7 @@ struct FilterTekWidget : ModuleWidget {
         const int cvParams[2] = {FilterTek::CUT_CV_PARAM, FilterTek::RES_CV_PARAM};
         const int cvInputs[2] = {FilterTek::CUT_CV_INPUT, FilterTek::RES_CV_INPUT};
         for (int i = 0; i < 2; i++) {
-            addParam(createParamCentered<Trimpot>(mm2px(Vec(COL3[i], 72.0f)), module, cvParams[i]));
+            addParam(createParamCentered<AnimatekUI::FlatTrimpot>(mm2px(Vec(COL3[i], 72.0f)), module, cvParams[i]));
             line(COL3[i], 75.3f, COL3[i], 77.1f);
             addLabel(cvNames[i], COL3[i], 77.5f, 12.f);
             addInput(createInputCentered<TekInputPort>(mm2px(Vec(COL3[i], 85.0f)), module, cvInputs[i]));

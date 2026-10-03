@@ -367,14 +367,14 @@ struct CapBusWidget : ModuleWidget {
                                                             CapBus::LINK_LIGHT));
 
         addLabel("WET", XK, 11.0f, 10.f);
-        addParam(createParamCentered<RoundSmallBlackKnob>(mm2px(Vec(XK, 19.0f)), module,
+        addParam(createParamCentered<AnimatekUI::FlatSmallKnob>(mm2px(Vec(XK, 19.0f)), module,
                                                           CapBus::WET_PARAM));
         addLabel("PAN", XK, 25.5f, 10.f);
-        addParam(createParamCentered<RoundSmallBlackKnob>(mm2px(Vec(XK, 33.5f)), module,
+        addParam(createParamCentered<AnimatekUI::FlatSmallKnob>(mm2px(Vec(XK, 33.5f)), module,
                                                           CapBus::PAN_PARAM));
         // The CV and its amount, joined by a hairline: the line says that
         // trimmer is that jack's.
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(XK, 43.0f)), module,
+        addParam(createParamCentered<AnimatekUI::FlatTrimpot>(mm2px(Vec(XK, 43.0f)), module,
                                               CapBus::PAN_CV_PARAM));
         addInput(createInputCentered<TekInputPort>(mm2px(Vec(XK, 52.5f)), module,
                                                    CapBus::PAN_CV_INPUT));

@@ -1255,7 +1255,7 @@ struct Atek303SeqWidget : ModuleWidget {
 			for (int i = 0; i < g.n; i++) {
 				const float x = slotX(g, i);
 				labelIn(genLayer, g.k[i].name, x, KNOB_LABEL_Y, step - 0.8f, 6.8f);
-				genLayer->addChild(createParamCentered<RoundBlackKnob>(
+				genLayer->addChild(createParamCentered<AnimatekUI::FlatKnob>(
 					mm2px(Vec(x, KNOB_Y)), module, g.k[i].param));
 			}
 		}

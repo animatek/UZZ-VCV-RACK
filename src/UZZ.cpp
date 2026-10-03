@@ -1185,9 +1185,9 @@ struct UZZWidget : ModuleWidget {
                                              UZZ::DIR_MODE_PARAM));
     addParam(createParamCentered<UzzArcKnob>(Vec(UI::X_CTRL2, yMid), module,
                                              UZZ::SWING_PARAM));
-    addParam(createParamCentered<Trimpot>(Vec(UI::X_CTRL2 - 10.f, yBot), module,
+    addParam(createParamCentered<AnimatekUI::FlatTrimpot>(Vec(UI::X_CTRL2 - 10.f, yBot), module,
                                           UZZ::ACCUM_AMT_PARAM));
-    addParam(createParamCentered<Trimpot>(Vec(UI::X_CTRL2 + 10.f, yBot), module,
+    addParam(createParamCentered<AnimatekUI::FlatTrimpot>(Vec(UI::X_CTRL2 + 10.f, yBot), module,
                                           UZZ::ACCUM_CLIP_PARAM));
 
     // ── Param displays (dark rect + blue text, like OxiCvExp channel label) ──
@@ -1409,7 +1409,7 @@ struct UZZWidget : ModuleWidget {
         Vec(UI::X_SWITCH, yBot), module, UZZ::STEP_GATES_OUTPUT));
     addParam(createParamCentered<CKSS>(Vec(UI::X_SWITCH, yMid), module,
                                        UZZ::GATE_MODE_PARAM));
-    addParam(createParamCentered<Trimpot>(Vec(UI::X_SWITCH, yTop), module,
+    addParam(createParamCentered<AnimatekUI::FlatTrimpot>(Vec(UI::X_SWITCH, yTop), module,
                                           UZZ::SLEW_PARAM));
   }
 

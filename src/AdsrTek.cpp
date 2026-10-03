@@ -372,7 +372,7 @@ struct AdsrTekWidget : ModuleWidget {
         // order the stages run.
         auto addKnob = [&](const char* text, float cx, float y, int paramId) {
             addLabel(text, cx, y, 16.f);
-            addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(cx, y + 10.0f)), module,
+            addParam(createParamCentered<AnimatekUI::FlatKnob>(mm2px(Vec(cx, y + 10.0f)), module,
                                                          paramId));
         };
         addKnob("ATTACK", XL, 17.0f, AdsrTek::ATTACK_PARAM);

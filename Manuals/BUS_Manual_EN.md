@@ -37,7 +37,7 @@ The field at the top. Left empty, it shows the name of the module patched into `
 
 ### LINK LED
 
-Lit when a CAP or another BUS sits against the left edge of the BUS, which means the chain is reaching it. If it is off, nothing is arriving.
+Lit when a CAP or another BUS sits against the left edge of the BUS, which means the chain is reaching it: dim when linked, brighter with the audio arriving, following its level. If it is off, nothing is arriving. Each CAP also has chain LEDs in its top corners, so a break in a row shows where it is.
 
 ### WET
 

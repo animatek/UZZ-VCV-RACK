@@ -102,3 +102,23 @@ inline void capBusSend(Module& self, const CapBusMessage& msg) {
     *static_cast<CapBusMessage*>(right->leftExpander.producerMessage) = msg;
     right->leftExpander.requestMessageFlip();
 }
+
+inline bool capChainModule(Module* m) {
+    return m && (m->model == modelSideChain || m->model == modelCapBus);
+}
+
+// Brillo de un LED de la cadena: apagado sin vecino enlazado; tenue con el enlace
+// hecho y en silencio; y late con el audio que pasa (pico con unos 150 ms de caída,
+// a pleno brillo con 5 V). Es lo que permite ver de un vistazo que dos módulos
+// pegados están de verdad unidos y que el audio pasa del uno al otro.
+struct CapChainLed {
+    float env = 0.f;
+
+    float update(bool linked, const CapBusMessage& msg, float sampleTime) {
+        float level = std::max(std::fabs(msg.left), std::fabs(msg.right));
+        env = std::max(level, env * std::exp(-sampleTime / 0.15f));
+        if (!linked)
+            return 0.f;
+        return 0.2f + 0.8f * clamp(env / 5.f, 0.f, 1.f);
+    }
+};

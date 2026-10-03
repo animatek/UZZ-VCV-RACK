@@ -154,7 +154,7 @@ struct SideChain : Module {
     enum InputId { TRIG_INPUT, DEPTH_CV_INPUT, IN_L_INPUT, IN_R_INPUT,
                    VCA_CV_INPUT, PAN_CV_INPUT, INPUTS_LEN };
     enum OutputId { ENV_OUTPUT, OUT_L_OUTPUT, OUT_R_OUTPUT, EOC_OUTPUT, OUTPUTS_LEN };
-    enum LightId { LIGHTS_LEN };
+    enum LightId { CHAIN_IN_LIGHT, CHAIN_OUT_LIGHT, LIGHTS_LEN };
 
     enum Stage { STAGE_IDLE, STAGE_ATTACK, STAGE_HOLD, STAGE_RECOVER };
 
@@ -223,6 +223,17 @@ struct SideChain : Module {
 
     // Double buffer for the chain bus arriving from the left (see plugin.hpp).
     CapBusMessage busMessages[2];
+    CapChainLed chainInLed, chainOutLed;
+
+    /** Hands the chain on to the right and lights the two chain LEDs: what came
+    in from the left, and what goes out to the right. */
+    void sendChain(const CapBusMessage& in, const CapBusMessage& out, float sampleTime) {
+        lights[CHAIN_IN_LIGHT].setBrightness(
+            chainInLed.update(capChainModule(leftExpander.module), in, sampleTime));
+        lights[CHAIN_OUT_LIGHT].setBrightness(
+            chainOutLed.update(capChainModule(rightExpander.module), out, sampleTime));
+        capBusSend(*this, out);
+    }
 
     SideChain() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
@@ -259,6 +270,8 @@ struct SideChain : Module {
         configOutput(OUT_L_OUTPUT, "Ducked audio left");
         configOutput(OUT_R_OUTPUT, "Ducked audio right");
         configOutput(EOC_OUTPUT, "End of cycle");
+        configLight(CHAIN_IN_LIGHT, "Chain from the left (dim: linked, bright: audio passing)");
+        configLight(CHAIN_OUT_LIGHT, "Chain to the right (dim: linked, bright: audio passing)");
         configBypass(IN_L_INPUT, OUT_L_OUTPUT);
         configBypass(IN_R_INPUT, OUT_R_OUTPUT);
 
@@ -284,6 +297,7 @@ struct SideChain : Module {
     void processBypass(const ProcessArgs& args) override {
         Module::processBypass(args);
         CapBusMessage bus = capBusReceive(*this);
+        const CapBusMessage busIn = bus;
         bool rightPatched = inputs[IN_R_INPUT].isConnected();
         int n = std::max(inputs[IN_L_INPUT].getChannels(), inputs[IN_R_INPUT].getChannels());
         for (int c = 0; c < n; c++) {
@@ -294,7 +308,7 @@ struct SideChain : Module {
             bus.left += left * panL;
             bus.right += right * panR;
         }
-        capBusSend(*this, bus);
+        sendChain(busIn, bus, args.sampleTime);
     }
 
     /** Each channel gets a distinct stream. Sharing one would make every
@@ -494,6 +508,7 @@ struct SideChain : Module {
         // carry it: the sum only comes out of a BUS, so two CAPs that merely
         // sit side by side in an older patch go on sounding as they did.
         CapBusMessage bus = capBusReceive(*this);
+        const CapBusMessage busIn = bus;
 
         // Nothing patched in means nothing to attenuate: leave both audio
         // outputs at zero channels so downstream sees an unconnected jack
@@ -501,7 +516,7 @@ struct SideChain : Module {
         if (audioChannels == 0) {
             outputs[OUT_L_OUTPUT].setChannels(0);
             outputs[OUT_R_OUTPUT].setChannels(0);
-            capBusSend(*this, bus);
+            sendChain(busIn, bus, args.sampleTime);
             return;
         }
 
@@ -552,7 +567,7 @@ struct SideChain : Module {
 
         outputs[OUT_L_OUTPUT].setChannels(audioChannels);
         outputs[OUT_R_OUTPUT].setChannels(audioChannels);
-        capBusSend(*this, bus);
+        sendChain(busIn, bus, args.sampleTime);
     }
 
     json_t* dataToJson() override {
@@ -710,6 +725,13 @@ struct SideChainWidget : ModuleWidget {
         // Name goes bottom left next to the logo, as in the other modules,
         // which frees the whole header strip for the trigger button and lets
         // the slider run the full height of the control section.
+        // The chain LEDs, in the top corners next to the neighbours they talk to:
+        // left, what arrives from a CAP or BUS on the left; right, what goes on.
+        addChild(createLightCentered<TinyLight<BlueLight>>(mm2px(Vec(1.8f, 2.2f)), module,
+                                                           SideChain::CHAIN_IN_LIGHT));
+        addChild(createLightCentered<TinyLight<BlueLight>>(mm2px(Vec(W - 1.8f, 2.2f)), module,
+                                                           SideChain::CHAIN_OUT_LIGHT));
+
         auto* moduleName = new TextLabel("CAP", mm2px(Vec(1.8f, 119.9f)),
                                          mm2px(Vec(14.f, 5.8f)));
         moduleName->fontSize = 16.f;

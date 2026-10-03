@@ -9,6 +9,11 @@ Registro de cambios de los módulos Animatek. Formato basado en
 ## [Unreleased]
 
 ### Added
+- **CAP y BUS: LEDs de la cadena.** CAP lleva dos LEDs diminutos arriba (izquierda: llega la
+  cadena; derecha: la pasa a la derecha) y el LED `LINK` del BUS hace lo mismo: tenues con el
+  enlace hecho, y más brillantes con el audio que pasa. Sale de una prueba de Javier: dos CAP
+  pegadas no sonaban juntas porque la suma solo sale por un BUS, y no había forma de verlo.
+  Comprobado contra libRack: apagados sin vecino, 0,2 enlazados en silencio, pleno con 5 V.
 - **FILTERtek: filtro multimodo modelado sobre medidas.** Módulo nuevo de 8 HP, estéreo
   (`IN R` normalizado a `IN L`) y polifónico: `CUTOFF` grande arriba, botones iluminados para
   LP/BP/HP/BR, `RES` con los botones `GC` y 12/24 al lado, una gráfica con la curva del filtro

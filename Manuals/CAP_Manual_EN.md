@@ -184,6 +184,10 @@ If audio has more channels than `TRIG`, extra audio channels use the last availa
 
 Makes `LEVEL` scale `ENV` as well as audio. Disabled by default, so `ENV` remains a full 10 V at rest regardless of the VCA ceiling.
 
+### Chain LEDs
+
+Two tiny LEDs in the top corners show the chain. The left one lights when a CAP or a BUS sits against the left edge and the chain reaches this CAP; the right one when this CAP hands the chain on to a CAP or BUS on its right. Dim means linked; brighter means audio passing, following its level. Remember that a chain only sounds through a **BUS** at its right end: CAPs side by side with no BUS keep their own outputs as they were and nothing is summed.
+
 ### Fire a trigger
 
 Starts a duck on every envelope channel at once, as a trigger at `TRIG` would. It is what the panel button used to do: audition the duck, or start a self-cycling patch.

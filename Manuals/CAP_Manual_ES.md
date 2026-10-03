@@ -184,6 +184,10 @@ Si el audio tiene más canales que `TRIG`, los canales de audio adicionales usan
 
 Hace que `LEVEL` escale `ENV` además del audio. Está desactivado por defecto, por lo que `ENV` permanece a 10 V en reposo independientemente del techo del VCA.
 
+### LEDs de la cadena
+
+Dos LEDs diminutos en las esquinas de arriba muestran la cadena. El izquierdo se enciende cuando hay una CAP o un BUS pegado al borde izquierdo y la cadena llega a esta CAP; el derecho, cuando esta CAP pasa la cadena a una CAP o un BUS a su derecha. Tenue quiere decir enlazado; más brillante, que pasa audio, según su nivel. Recuerda que la cadena solo suena a través de un **BUS** en su extremo derecho: varias CAP juntas sin BUS mantienen sus salidas como siempre y no se suma nada.
+
 ### Fire a trigger
 
 Inicia un duck en todos los canales de envolvente a la vez, como lo haría un trigger en `TRIG`. Es lo que hacía el botón del panel: escuchar el duck o arrancar un patch autocíclico.

@@ -37,7 +37,7 @@ El campo de arriba. Vacío, muestra el nombre del módulo conectado a `RETURN L`
 
 ### LED LINK
 
-Encendido cuando hay una CAP u otro BUS pegado al borde izquierdo del BUS, es decir, cuando la cadena llega hasta él. Si está apagado, no llega nada.
+Encendido cuando hay una CAP u otro BUS pegado al borde izquierdo del BUS, es decir, cuando la cadena llega hasta él: tenue con el enlace hecho, más brillante con el audio que llega, según su nivel. Si está apagado, no llega nada. Cada CAP lleva además LEDs de cadena en sus esquinas de arriba, así que un corte en la fila se ve dónde está.
 
 ### WET
 

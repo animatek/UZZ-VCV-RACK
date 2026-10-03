@@ -35,6 +35,9 @@ struct CapBus : Module {
     enum LightId { LINK_LIGHT, LIGHTS_LEN };
 
     CapBusMessage busMessages[2];
+    // The LINK LED: dim when a CAP or BUS sits on the left, brighter with the
+    // audio arriving from it.
+    CapChainLed linkLed;
 
     // Peak of each side of MIX for the meter. Written by the audio thread and
     // read by the UI; a torn float is one wrong frame of a meter at worst.
@@ -64,7 +67,7 @@ struct CapBus : Module {
         configOutput(SEND_R_OUTPUT, "Send right");
         configOutput(MIX_L_OUTPUT, "Mix left");
         configOutput(MIX_R_OUTPUT, "Mix right");
-        configLight(LINK_LIGHT, "Chain linked on the left");
+        configLight(LINK_LIGHT, "Chain linked on the left (dim: linked, bright: audio arriving)");
 
         leftExpander.producerMessage = &busMessages[0];
         leftExpander.consumerMessage = &busMessages[1];
@@ -77,6 +80,7 @@ struct CapBus : Module {
 
     void process(const ProcessArgs& args) override {
         CapBusMessage bus = capBusReceive(*this);
+        const CapBusMessage arrived = bus;
 
         outputs[SEND_L_OUTPUT].setVoltage(bus.left);
         outputs[SEND_R_OUTPUT].setVoltage(bus.right);
@@ -111,7 +115,7 @@ struct CapBus : Module {
         meterL = std::max(std::abs(bus.left), meterL * fall);
         meterR = std::max(std::abs(bus.right), meterR * fall);
 
-        lights[LINK_LIGHT].setBrightness(chainedOnLeft() ? 1.f : 0.f);
+        lights[LINK_LIGHT].setBrightness(linkLed.update(chainedOnLeft(), arrived, args.sampleTime));
     }
 
     void onReset(const ResetEvent& e) override {

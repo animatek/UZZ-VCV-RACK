@@ -68,6 +68,8 @@ struct CapBusMessage {
     // is; a BUS only when told to pass its mix on. A BUS that closes its row
     // sends false, so a CAP to its right starts a new, parallel row.
     bool linked = false;
+    // How many CAPs the row has numbered so far: the next CAP is channel + 1.
+    int channel = 0;
 };
 
 // Declare each Model, defined in each module source file

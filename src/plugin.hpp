@@ -76,6 +76,7 @@ extern Model* modelApc40Ctrl; // APC40 controller CV bridge
 extern Model* modelSideChain; // SIDECHAIN trigger-fired ducking envelope
 extern Model* modelCapBus; // BUS: mix, insert send/return and master for a CAP chain
 extern Model* modelAdsrTek; // ADSRtek envelope modelled on a classic 90s modular
+extern Model* modelFilterTek; // FILTERtek multimode filter modelled on a classic 90s modular
 extern Model* modelUnitDistanceSeq; // UNIT-D unit-distance graph sequencer
 extern Model* modelBlank3; // 3HP blank panel
 extern Model* modelBlankAcid; // 3HP blank panel, acid smiley marks

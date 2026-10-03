@@ -106,6 +106,16 @@
       ]
     },
     {
+      "slug": "FilterTek",
+      "name": "FILTERtek",
+      "description": "Multimode filter modelled on measurements of a classic 90s virtual-analogue modular: lowpass, bandpass, highpass and band reject at 12 or 24 dB/oct, its resonance with gain control, and the hard fixed-point saturation that gives it its edge. Polyphonic, with V/oct, FM and resonance CV.",
+      "manualUrl": "https://github.com/animatek/UZZ-VCV-RACK/blob/main/Manuals/FILTERtek_Manual_EN.md",
+      "tags": [
+        "Filter",
+        "Polyphonic"
+      ]
+    },
+    {
       "slug": "UnitDistanceSeq",
       "name": "UNIT-D",
       "description": "Generative sequencer that turns a seeded network of points into repeatable melodies, rhythms, accents and modulation. Shape the network, let it evolve or lock a phrase you like.",

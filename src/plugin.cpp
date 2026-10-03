@@ -16,6 +16,7 @@ void init(Plugin* p) {
 		p->addModel(modelSideChain); // SIDECHAIN trigger-fired ducking envelope
 		p->addModel(modelCapBus); // BUS: mix, insert send/return and master for CAP
 		p->addModel(modelAdsrTek); // ADSRtek envelope modelled on a classic 90s modular
+		p->addModel(modelFilterTek); // FILTERtek multimode filter modelled on a classic 90s modular
 		p->addModel(modelUnitDistanceSeq); // UNIT-D unit-distance graph sequencer
 		p->addModel(modelBlank3); // 3HP blank panel
 		p->addModel(modelBlankAcid); // 3HP blank panel, acid smiley marks

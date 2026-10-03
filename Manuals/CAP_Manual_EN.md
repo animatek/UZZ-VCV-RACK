@@ -30,7 +30,7 @@ CAP handles stereo and polyphonic audio. By default, one envelope is shared by a
 6. Reduce `DEPTH` for subtle movement. Increase `JITTER` when repeated hits should breathe rather than repeat identically.
 7. Patch `VCA` for voltage control over gain: the CV multiplies what `LEVEL` sets, so CAP works as an ordinary VCA even with no trigger arriving.
 
-Press the panel trigger button, beside the `TRIG` jack and tied to it by a hairline, to audition the duck without patching a trigger source.
+To audition the duck without patching a trigger source, right-click CAP and choose **Fire a trigger**.
 
 ---
 
@@ -73,9 +73,11 @@ At 0%, every hit uses the nominal settings. Higher values create more organic mo
 
 Sets the VCA's maximum gain from **0% to 100%**. Default: **100%**. It scales the audio at rest as well as during a duck. By default it does not scale `ENV`; the context-menu option **Level attenuates ENV** changes that behavior.
 
-### Manual trigger button
+### PAN
 
-Starts a duck without an external trigger. It takes the left column of the `TRIG` row and a panel hairline ties it to the labelled jack on its right, because they do the same job. Like `D-CV` and `VCA` it carries no label of its own: the line says what it is. The button fires all current envelope channels together and is edge-sensitive, so holding it does not repeatedly retrigger CAP.
+Places this CAP in the stereo mix of a chain, from hard left to hard right, at the left end of the `TRIG` row; a hairline ties it to its CV jack. It is a balance control, unity in the centre, and only matters when CAPs sit side by side with a **BUS** to their right: this CAP's own outputs never change. See the BUS manual for how the chain works.
+
+The trimmer took the place of the manual trigger button, which moved to the context menu as **Fire a trigger**. No jack went away, so patches made before keep all their cables.
 
 ---
 
@@ -83,7 +85,7 @@ Starts a duck without an external trigger. It takes the left column of the `TRIG
 
 ### TRIG
 
-Trigger or gate input, in the right column of the `TRIG` row and under its label. It accepts polyphonic signals and uses Schmitt-trigger thresholds: the signal becomes high at **1 V** and must return below **0.1 V** before another rising edge can fire. A sustained gate therefore triggers once.
+Trigger or gate input, at the right end of the `TRIG` row and under its label. It accepts polyphonic signals and uses Schmitt-trigger thresholds: the signal becomes high at **1 V** and must return below **0.1 V** before another rising edge can fire. A sustained gate therefore triggers once.
 
 The number of `TRIG` channels sets the envelope and utility-output polyphony, with a minimum of one channel when no cable is connected.
 
@@ -96,6 +98,10 @@ Polyphonic depth CV. The jack carries no label: a panel hairline runs from it up
 Polyphonic gain CV. Like `D-CV` it carries no label: the panel hairline runs from the jack up to the `LEVEL` fader, which is what this CV scales. It is unipolar and linear: **0 V closes the VCA and 10 V passes the full ceiling**, with negative voltage treated as 0 V. It multiplies what `LEVEL` sets rather than replacing it, so `LEVEL` stays the ceiling and the CV trims down from there. Unpatched, it attenuates nothing, so an older patch sounds exactly as it did.
 
 This input is what makes CAP an ordinary voltage-controlled amplifier: patch an envelope into it and you have a plain VCA, with trigger-fired ducking available on top when you want it. It does not affect `ENV` or `EOC`: the envelope is what the module generates, not what it amplifies. The meter does follow it, since the meter shows the gain actually applied.
+
+### PAN CV
+
+Polyphonic CV for `PAN`, added to the trimmer: **±5 V sweeps the whole range** and the sum is limited to hard left and hard right. Each audio channel takes its own CV channel. It only affects the chain mix.
 
 ### IN L
 
@@ -178,9 +184,9 @@ If audio has more channels than `TRIG`, extra audio channels use the last availa
 
 Makes `LEVEL` scale `ENV` as well as audio. Disabled by default, so `ENV` remains a full 10 V at rest regardless of the VCA ceiling.
 
-### Chain mix (pan)
+### Fire a trigger
 
-A slider that places this CAP in the stereo mix of a chain, from hard left to hard right. It is a balance control, unity in the centre, and only matters when CAPs sit side by side with a **BUS** to their right; this CAP's own outputs never change. See the BUS manual for how the chain works.
+Starts a duck on every envelope channel at once, as a trigger at `TRIG` would. It is what the panel button used to do: audition the duck, or start a self-cycling patch.
 
 ### Reset jitter seed
 
@@ -234,7 +240,7 @@ Set **Mode** to **Lowpass filter** and leave the envelope ducking. Run a pad or 
 
 ### Self-cycling function generator
 
-Patch `EOC` back to `TRIG`. After pressing the manual trigger button once, each completed recovery starts the next cycle. The period is approximately the 2 ms fall, 12 ms hold, and selected recovery combined; jitter makes successive cycles breathe. Break the feedback cable or interrupt the trigger path to stop it.
+Patch `EOC` back to `TRIG`. After **Fire a trigger** in the context menu, each completed recovery starts the next cycle. The period is approximately the 2 ms fall, 12 ms hold, and selected recovery combined; jitter makes successive cycles breathe. Break the feedback cable or interrupt the trigger path to stop it.
 
 ---
 

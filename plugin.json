@@ -86,7 +86,7 @@
     {
       "slug": "CapBus",
       "name": "BUS",
-      "description": "Mix output for a row of CAP modules placed side by side, chained without cables. Adds a stereo send and return for an insert effect, a wet control, a master level and a peak meter.",
+      "description": "Mix output for a row of CAP modules placed side by side, chained without cables. Adds a stereo send and return for an insert effect, a wet control, a pan with CV, a master fader with a stereo meter, and a name that fills in with the effect patched to it.",
       "manualUrl": "https://github.com/animatek/UZZ-VCV-RACK/blob/main/Manuals/BUS_Manual_EN.md",
       "tags": [
         "Mixer",

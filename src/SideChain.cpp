@@ -2,6 +2,7 @@
 #include "ui/CommonWidgets.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 
 using AnimatekUI::ConnectorLine;
@@ -151,7 +152,7 @@ struct SideChain : Module {
     enum ParamId { RECOVERY_PARAM, DEPTH_PARAM, JITTER_PARAM, LEVEL_PARAM,
                    TRIG_PARAM, PAN_PARAM, PARAMS_LEN };
     enum InputId { TRIG_INPUT, DEPTH_CV_INPUT, IN_L_INPUT, IN_R_INPUT,
-                   VCA_CV_INPUT, INPUTS_LEN };
+                   VCA_CV_INPUT, PAN_CV_INPUT, INPUTS_LEN };
     enum OutputId { ENV_OUTPUT, OUT_L_OUTPUT, OUT_R_OUTPUT, EOC_OUTPUT, OUTPUTS_LEN };
     enum LightId { LIGHTS_LEN };
 
@@ -205,6 +206,8 @@ struct SideChain : Module {
     int meterBars = 1;
 
     bool levelAffectsEnv = false;
+    // Set from the context menu (UI thread), consumed by the audio thread.
+    std::atomic<bool> manualTriggerPending{false};
     int gateMode = MODE_VCA;
     // Off is the ducker: rest is open and a hit closes. On, the envelope is
     // flipped so rest is closed and a hit opens to DEPTH, then RECOVERY closes
@@ -238,16 +241,18 @@ struct SideChain : Module {
         // Ceiling of the VCA. At 100% the module behaves exactly as before it
         // had a slider, so old patches sound unchanged.
         configParam(LEVEL_PARAM, 0.f, 1.f, 1.f, "Level", "%", 0.f, 100.f);
+        // The panel button gave its place to PAN; the parameter stays so older
+        // patches load cleanly, and the trigger lives on in the context menu.
         configButton(TRIG_PARAM, "Manual trigger");
-        // Where this CAP sits in the chain's stereo mix. It has no knob on the
-        // panel, only a slider in the context menu, so randomising the module
-        // must not throw a channel sideways where nobody can see it.
+        // Where this CAP sits in the chain's stereo mix. Randomising the
+        // module must not throw a channel sideways.
         configParam(PAN_PARAM, -1.f, 1.f, 0.f, "Pan in the chain mix", "%", 0.f, 100.f);
         paramQuantities[PAN_PARAM]->randomizeEnabled = false;
 
         configInput(TRIG_INPUT, "Trigger");
         configInput(DEPTH_CV_INPUT, "Depth CV");
         configInput(VCA_CV_INPUT, "VCA CV");
+        configInput(PAN_CV_INPUT, "Pan CV (±5 V sweeps it all, added to PAN)");
         configInput(IN_L_INPUT, "Audio left");
         configInput(IN_R_INPUT, "Audio right (normalled to left)");
         configOutput(ENV_OUTPUT, "Ducked envelope");
@@ -266,8 +271,9 @@ struct SideChain : Module {
     /** Balance, not equal-power pan: the centre stays at unity, so a chain of
     CAPs left in the middle mixes at exactly the level each one outputs, and a
     stereo source keeps its own image until it is pushed to one side. */
-    void panGains(float& gainL, float& gainR) {
-        float pan = params[PAN_PARAM].getValue();
+    void panGains(int c, float& gainL, float& gainR) {
+        float pan = params[PAN_PARAM].getValue() + inputs[PAN_CV_INPUT].getPolyVoltage(c) / 5.f;
+        pan = clamp(pan, -1.f, 1.f);
         gainL = (pan > 0.f) ? 1.f - pan : 1.f;
         gainR = (pan < 0.f) ? 1.f + pan : 1.f;
     }
@@ -279,10 +285,10 @@ struct SideChain : Module {
         Module::processBypass(args);
         CapBusMessage bus = capBusReceive(*this);
         bool rightPatched = inputs[IN_R_INPUT].isConnected();
-        float panL, panR;
-        panGains(panL, panR);
         int n = std::max(inputs[IN_L_INPUT].getChannels(), inputs[IN_R_INPUT].getChannels());
         for (int c = 0; c < n; c++) {
+            float panL, panR;
+            panGains(c, panL, panR);
             float left = inputs[IN_L_INPUT].getPolyVoltage(c);
             float right = rightPatched ? inputs[IN_R_INPUT].getPolyVoltage(c) : left;
             bus.left += left * panL;
@@ -346,11 +352,12 @@ struct SideChain : Module {
         float baseExponent = CURVE_EXPONENTS[curveShape];
         float baseLevel = params[LEVEL_PARAM].getValue();
         float envScale = levelAffectsEnv ? baseLevel : 1.f;
-        // The button fires every channel at once, which is what you want from
-        // a panel control. Summing it into the trigger voltage rather than
-        // handling it apart means holding it down still only fires once: the
-        // Schmitt trigger is edge-based.
+        // A manual trigger (the context menu now, the panel button once) fires
+        // every channel at once. It is summed into the trigger voltage for one
+        // sample: the Schmitt trigger sees an edge and re-arms right after.
         float manual = params[TRIG_PARAM].getValue() * 10.f;
+        if (manualTriggerPending.exchange(false))
+            manual = 10.f;
 
         // El atenuador de la VCA. Multiplica la ganancia en vez de sustituir al
         // fader, así que el fader sigue siendo el tope y el CV recorta desde ahí:
@@ -498,9 +505,6 @@ struct SideChain : Module {
             return;
         }
 
-        float panL, panR;
-        panGains(panL, panR);
-
         // Highest cutoff the filter is allowed: tan() blows up at Nyquist.
         const float maxCutoff = 0.45f * args.sampleRate;
         if (gateMode != lastGateMode) {
@@ -521,6 +525,8 @@ struct SideChain : Module {
             // Right is normalled to left: one cable feeds both outputs, which
             // turns the module into a mono-to-stereo ducker for free.
             float right = rightPatched ? inputs[IN_R_INPUT].getPolyVoltage(c) : left;
+            float panL, panR;
+            panGains(c, panL, panR);
 
             float gain = control * baseLevel;
             if (gateMode != MODE_VCA) {
@@ -781,17 +787,22 @@ struct SideChainWidget : ModuleWidget {
         line(X1, 45.9f, X1, 49.9f);
         line(X2, 45.9f, X2, 49.9f);
 
-        // La fila del disparo: el botón y el jack que hace su mismo trabajo, unidos
-        // por la línea. La etiqueta va encima del jack que nombra, como en el resto
-        // del panel; el botón no lleva la suya, que es justo para lo que está
-        // dibujada la línea que lo une al jack.
-        addLabel("TRIG", X2, 60.0f, 14.f);
-        addParam(createParamCentered<TL1105>(mm2px(Vec(X1, 67.5f)), module,
-                                             SideChain::TRIG_PARAM));
-        addBareIn(X2, 67.5f, SideChain::TRIG_INPUT);
-        // Del borde del botón (radio 2.6 mm) al del jack (radio 4.01 mm), dejando a
-        // cada uno el mismo aire que tenía antes de intercambiarlos.
-        line(X1 + 3.8f, 67.5f, X2 - 4.6f, 67.5f);
+        // La fila del disparo, que ahora es también la del panorama: el mando PAN y su
+        // jack de CV unidos por la línea, y el TRIG a la derecha. Tres cosas donde
+        // antes había dos: el botón manual cedió su sitio (el disparo sigue en el menú)
+        // y el TRIG se corre hasta 25,4 mm, fuera de la columna X2 pero con el mismo
+        // milímetro de aire al borde que el resto. Ningún jack desaparece, así que los
+        // patches anteriores no pierden cables.
+        constexpr float PAN_X = 5.0f;
+        constexpr float PAN_CV_X = 15.24f;
+        constexpr float TRIG_X = 25.4f;
+        addLabel("PAN", PAN_X, 60.0f, 10.f);
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(PAN_X, 67.5f)), module,
+                                              SideChain::PAN_PARAM));
+        addBareIn(PAN_CV_X, 67.5f, SideChain::PAN_CV_INPUT);
+        line(PAN_X + 3.3f, 67.5f, PAN_CV_X - 4.1f, 67.5f);
+        addLabel("TRIG", TRIG_X, 60.0f, 10.f);
+        addBareIn(TRIG_X, 67.5f, SideChain::TRIG_INPUT);
 
         // Todo lo que entra, arriba de la línea; todo lo que sale, debajo. La línea
         // del panel (y = 88 en el SVG) separa los dos bloques sin moverse de donde
@@ -815,6 +826,11 @@ struct SideChainWidget : ModuleWidget {
             return;
 
         menu->addChild(new ui::MenuSeparator);
+        // What the panel button used to do: fire every channel once. It is
+        // what starts a self-cycling patch (EOC into TRIG).
+        menu->addChild(createMenuItem("Fire a trigger", "", [=]() {
+            module->manualTriggerPending = true;
+        }));
         menu->addChild(createSubmenuItem("Mode", GATE_MODE_NAMES[module->gateMode],
                                          [=](ui::Menu* sub) {
             for (int i = 0; i < NUM_GATE_MODES; i++) {
@@ -859,16 +875,6 @@ struct SideChainWidget : ModuleWidget {
             module->baseSeed = random::u64();
             module->reseedVoices(module->baseSeed);
         }));
-
-        // The pan only matters inside a chain, and the panel has no room left
-        // for a knob, so it lives here as a slider on the real parameter,
-        // which the patch saves. Unlike a panel knob it leaves no undo step.
-        menu->addChild(new ui::MenuSeparator);
-        menu->addChild(createMenuLabel("Chain mix"));
-        auto* panSlider = new ui::Slider;
-        panSlider->quantity = module->paramQuantities[SideChain::PAN_PARAM];
-        panSlider->box.size.x = 200.f;
-        menu->addChild(panSlider);
     }
 };
 

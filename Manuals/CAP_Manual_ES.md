@@ -30,7 +30,7 @@ CAP admite audio estéreo y polifónico. Por defecto, todo el audio comparte una
 6. Reduce `DEPTH` para un movimiento sutil. Aumenta `JITTER` cuando quieras que los golpes repetidos respiren en vez de ser idénticos.
 7. Conecta `VCA` si quieres controlar la ganancia por tensión: el CV multiplica lo que fija `LEVEL`, así que CAP funciona como una VCA normal aunque no le llegue ningún trigger.
 
-Pulsa el botón de trigger del panel, al lado del jack `TRIG` y unido a él por una línea, para escuchar el duck sin conectar una fuente de triggers.
+Para escuchar el duck sin conectar una fuente de triggers, haz clic derecho sobre CAP y elige **Fire a trigger**.
 
 ---
 
@@ -73,9 +73,11 @@ Al 0%, todos los golpes usan los valores nominales. Los valores altos generan un
 
 Fija la ganancia máxima del VCA entre **0% y 100%**. Valor por defecto: **100%**. Escala el audio tanto en reposo como durante el duck. Por defecto no escala `ENV`; la opción contextual **Level attenuates ENV** cambia este comportamiento.
 
-### Botón de trigger manual
+### PAN
 
-Inicia un duck sin trigger externo. Ocupa la columna izquierda de la fila `TRIG` y una línea del panel lo une con el jack etiquetado que tiene a la derecha, porque hacen el mismo trabajo. Como `D-CV` y `VCA`, no lleva etiqueta propia: la línea dice lo que es. El botón dispara a la vez todos los canales de envolvente actuales y detecta flancos, por lo que mantenerlo pulsado no redispara CAP continuamente.
+Coloca esta CAP en la mezcla estéreo de una cadena, de todo a la izquierda a todo a la derecha, en el extremo izquierdo de la fila `TRIG`; una línea lo une a su jack de CV. Es un control de balance, a ganancia unidad en el centro, y solo cuenta cuando hay varias CAP juntas con un **BUS** a su derecha: las salidas propias de esta CAP no cambian nunca. Cómo funciona la cadena está en el manual de BUS.
+
+El trimmer ocupa el sitio del botón de trigger manual, que ha pasado al menú contextual como **Fire a trigger**. No ha desaparecido ningún jack, así que los patches anteriores conservan todos sus cables.
 
 ---
 
@@ -83,7 +85,7 @@ Inicia un duck sin trigger externo. Ocupa la columna izquierda de la fila `TRIG`
 
 ### TRIG
 
-Entrada de trigger o gate, en la columna derecha de la fila `TRIG` y bajo su etiqueta. Admite señales polifónicas y usa umbrales Schmitt: la señal pasa a estado alto al alcanzar **1 V** y debe volver por debajo de **0,1 V** antes de que otro flanco ascendente pueda disparar. Por tanto, un gate sostenido dispara una sola vez.
+Entrada de trigger o gate, en el extremo derecho de la fila `TRIG` y bajo su etiqueta. Admite señales polifónicas y usa umbrales Schmitt: la señal pasa a estado alto al alcanzar **1 V** y debe volver por debajo de **0,1 V** antes de que otro flanco ascendente pueda disparar. Por tanto, un gate sostenido dispara una sola vez.
 
 El número de canales de `TRIG` determina la polifonía de la envolvente y de las salidas auxiliares, con un mínimo de un canal cuando no hay cable.
 
@@ -96,6 +98,10 @@ CV polifónico de profundidad. El jack no lleva etiqueta: una línea del panel s
 CV polifónico de ganancia. Como `D-CV`, no lleva etiqueta: la línea del panel sube desde el jack hasta el fader `LEVEL`, que es lo que este CV escala. Es unipolar y lineal: **0 V cierra la VCA y 10 V deja pasar el tope entero**, y los voltajes negativos se tratan como 0 V. Multiplica lo que fija `LEVEL` en vez de sustituirlo, así que `LEVEL` sigue siendo el techo y el CV recorta desde ahí. Sin cable no atenúa nada, de modo que un patch anterior suena exactamente igual.
 
 Esta entrada es lo que convierte a CAP en una VCA controlada por tensión de las de siempre: conéctale una envolvente y tienes una VCA normal, con el ducking por trigger disponible encima si lo necesitas. No afecta a `ENV` ni a `EOC`: la envolvente es lo que el módulo genera, no lo que amplifica. El medidor sí la tiene en cuenta, porque muestra la ganancia realmente aplicada.
+
+### PAN CV
+
+CV polifónico para `PAN`, sumado al trimmer: **±5 V recorren todo el rango** y la suma se limita a los extremos. Cada canal de audio toma su propio canal de CV. Solo afecta a la mezcla de la cadena.
 
 ### IN L
 
@@ -178,9 +184,9 @@ Si el audio tiene más canales que `TRIG`, los canales de audio adicionales usan
 
 Hace que `LEVEL` escale `ENV` además del audio. Está desactivado por defecto, por lo que `ENV` permanece a 10 V en reposo independientemente del techo del VCA.
 
-### Chain mix (panorama)
+### Fire a trigger
 
-Un deslizador que coloca esta CAP en la mezcla estéreo de una cadena, de todo a la izquierda a todo a la derecha. Es un control de balance, a ganancia unidad en el centro, y solo cuenta cuando hay varias CAP juntas con un **BUS** a su derecha; las salidas propias de esta CAP no cambian nunca. Cómo funciona la cadena está en el manual de BUS.
+Inicia un duck en todos los canales de envolvente a la vez, como lo haría un trigger en `TRIG`. Es lo que hacía el botón del panel: escuchar el duck o arrancar un patch autocíclico.
 
 ### Reset jitter seed
 
@@ -234,7 +240,7 @@ Pon **Mode** en **Lowpass filter** y deja la envolvente en ducking. Pasa un pad 
 
 ### Generador de funciones autocíclico
 
-Conecta `EOC` de vuelta a `TRIG`. Tras pulsar una vez el botón de trigger manual, cada recuperación completada inicia el siguiente ciclo. El periodo es aproximadamente la suma de la caída de 2 ms, el hold de 12 ms y la recuperación elegida; el jitter hace respirar los ciclos sucesivos. Desconecta el cable de realimentación o interrumpe la ruta de trigger para detenerlo.
+Conecta `EOC` de vuelta a `TRIG`. Tras **Fire a trigger** en el menú contextual, cada recuperación completada inicia el siguiente ciclo. El periodo es aproximadamente la suma de la caída de 2 ms, el hold de 12 ms y la recuperación elegida; el jitter hace respirar los ciclos sucesivos. Desconecta el cable de realimentación o interrumpe la ruta de trigger para detenerlo.
 
 ---
 

@@ -9,6 +9,17 @@ Registro de cambios de los módulos Animatek. Formato basado en
 ## [Unreleased]
 
 ### Added
+- **BUS: panorama con CV, fader-medidor y nombre.** `LEVEL` pasa a un fader que es también el
+  medidor estéreo, como en CAP, y en su sitio entra `PAN` con su jack de CV y su trimmer de
+  cantidad. Arriba, un campo de nombre: vacío muestra el módulo conectado a `RETURN L` (o al que
+  va `SEND L`), o `MIX` en gris si no hay nada; lo que se escribe a mano manda y se guarda. Las
+  filas de jacks bajan para hacer sitio. Comprobado contra libRack: balance, CV y trimmer en los
+  dos sentidos dan lo esperado. El nombre automático solo se puede ver en Rack.
+- **CAP: `PAN` en el panel, con CV.** El trimmer y su jack entran en la fila del `TRIG`, en el
+  sitio del botón de trigger manual, que pasa al menú como **Fire a trigger** (sigue arrancando
+  los patches autocíclicos). El `TRIG` se corre a la derecha. No desaparece ningún jack, así que
+  los patches anteriores conservan sus cables; el deslizador de pan del menú se va. El modo VCA
+  sigue igual bit a bit que `main` y la cadena da lo mismo en sus ocho casos.
 - **ADSRtek: envolvente ADSR/AD modelada sobre medidas.** Módulo nuevo de 8 HP: selector
   ADSR/AD, forma de ataque Log/Lin/Exp, A D S R con CV cada uno (1 V = 12,7 pasos, 10 % en
   sustain), `GATE`, `RETRIG`, `AMP` para velocidad, VCA incorporado (`IN`/`OUT`), polifónica, y

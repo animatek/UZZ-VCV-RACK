@@ -1010,7 +1010,7 @@ struct AcidPageButtons : OpaqueWidget {
 	void capGeometry(Vec& c, float& radius) const {
 		const Rect r = buttonRect();
 		c = r.pos.plus(r.size.div(2.f));
-		radius = r.size.x * 0.5f * 0.627f;  // la misma proporción que VCVBezel
+		radius = r.size.x * 0.5f * 0.8f;  // la cara, como en los botones planos (FlatLightButton)
 	}
 
 	// El botón es de panel, no de pantalla: va en la capa normal, como los jacks.
@@ -1037,28 +1037,21 @@ struct AcidPageButtons : OpaqueWidget {
 		Vec c;
 		float radius;
 		capGeometry(c, radius);
-		// Mismos tres círculos que VCVBezel, a escala: aro negro, corona clara arriba y
-		// oscura abajo, y el casquillo gris. Pulsado, los grises bajan un escalón.
+		// El estilo plano de los botones y mandos del plugin: aro gris fino y cara gris
+		// lisa. Pulsado, la cara baja un escalón; el azul de seguir al cabezal la llena
+		// en la capa de luz (drawLayer).
+		const float d = r.size.x;
+		const float rimW = std::max(1.2f, d * 0.045f);
 		nvgBeginPath(args.vg);
-		nvgCircle(args.vg, c.x, c.y, r.size.x * 0.5f);
-		nvgFillColor(args.vg, nvgRGB(0x00, 0x00, 0x00));
+		nvgCircle(args.vg, c.x, c.y, d * 0.5f - rimW * 0.5f);
+		nvgFillColor(args.vg, nvgRGB(0x1b, 0x1b, 0x1b));
 		nvgFill(args.vg);
-
-		const float ring = r.size.x * 0.5f * 0.825f;
-		NVGpaint rim = nvgLinearGradient(args.vg, c.x, c.y - ring, c.x, c.y + ring,
-		                                 held ? nvgRGB(0x5E, 0x5E, 0x5E) : nvgRGB(0x78, 0x78, 0x78),
-		                                 held ? nvgRGB(0x37, 0x37, 0x37) : nvgRGB(0x47, 0x47, 0x47));
-		nvgBeginPath(args.vg);
-		nvgCircle(args.vg, c.x, c.y, ring);
-		nvgFillPaint(args.vg, rim);
-		nvgFill(args.vg);
-
-		NVGpaint cap = nvgLinearGradient(args.vg, c.x, c.y - radius, c.x, c.y + radius,
-		                                 held ? nvgRGB(0x47, 0x47, 0x47) : nvgRGB(0x5B, 0x5B, 0x5B),
-		                                 held ? nvgRGB(0x55, 0x55, 0x55) : nvgRGB(0x6C, 0x6C, 0x6C));
+		nvgStrokeWidth(args.vg, rimW);
+		nvgStrokeColor(args.vg, nvgRGB(0x5a, 0x5a, 0x5a));
+		nvgStroke(args.vg);
 		nvgBeginPath(args.vg);
 		nvgCircle(args.vg, c.x, c.y, radius);
-		nvgFillPaint(args.vg, cap);
+		nvgFillColor(args.vg, held ? nvgRGB(0x22, 0x22, 0x22) : nvgRGB(0x2c, 0x2c, 0x2c));
 		nvgFill(args.vg);
 		OpaqueWidget::draw(args);
 	}
@@ -1082,7 +1075,7 @@ struct AcidPageButtons : OpaqueWidget {
 				nvgScissor(args.vg, c.x - radius, c.y - radius, 2.f * radius * fill, 2.f * radius);
 				nvgBeginPath(args.vg);
 				nvgCircle(args.vg, c.x, c.y, radius);
-				nvgFillColor(args.vg, AnimatekUI::logoBlue(210));
+				nvgFillColor(args.vg, AnimatekUI::logoBlue());
 				nvgFill(args.vg);
 				nvgRestore(args.vg);
 			}

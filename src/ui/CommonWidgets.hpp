@@ -75,6 +75,9 @@ struct TekOutputPort : PJ301MPort {
   }
 };
 
+// Panel lettering is drawn in the ordinary layer, not the light layer: in a
+// dimmed room it fades with the panel, as printed text would, and only
+// lights and displays stay bright.
 struct TextLabel : TransparentWidget {
   std::string text;
   float fontSize = 9.f;
@@ -92,9 +95,7 @@ struct TextLabel : TransparentWidget {
     box.size = size;
   }
 
-  void drawLayer(const DrawArgs &args, int layer) override {
-    if (layer != 1)
-      return;
+  void draw(const DrawArgs &args) override {
     std::shared_ptr<Font> font =
         fontPath.empty() ? APP->window->uiFont : APP->window->loadFont(fontPath);
     if (!font)
@@ -119,9 +120,7 @@ struct HorizontalSeparator : TransparentWidget {
   float strokeWidth = 1.f;
   uint8_t alpha = 180;
 
-  void drawLayer(const DrawArgs &args, int layer) override {
-    if (layer != 1)
-      return;
+  void draw(const DrawArgs &args) override {
     nvgBeginPath(args.vg);
     nvgMoveTo(args.vg, 0.f, box.size.y / 2.f);
     nvgLineTo(args.vg, box.size.x, box.size.y / 2.f);

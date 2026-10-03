@@ -69,8 +69,7 @@ struct ExpChannelLabel : widget::TransparentWidget {
     OxiCvExp* module = nullptr;
     int trackIdx = 0;
 
-    void drawLayer(const DrawArgs& args, int layer) override {
-        if (layer != 1) return;
+    void draw(const DrawArgs& args) override {
         std::shared_ptr<Font> font = APP->window->uiFont;
         if (!font) return;
 

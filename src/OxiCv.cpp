@@ -593,8 +593,7 @@ using StaticLabel = TextLabel;
 struct DynamicModeLabel : widget::TransparentWidget {
     OxiCv* module = nullptr;
 
-    void drawLayer(const DrawArgs& args, int layer) override {
-        if (layer != 1) return;
+    void draw(const DrawArgs& args) override {
         std::shared_ptr<Font> font = APP->window->uiFont;
         if (!font) return;
         const char* modeStr = (module && module->playMode < PM_COUNT)
@@ -653,8 +652,7 @@ struct DynamicCcLabel : widget::TransparentWidget {
     OxiCv* module = nullptr;
     int ccIndex = 0;
 
-    void drawLayer(const DrawArgs& args, int layer) override {
-        if (layer != 1) return;
+    void draw(const DrawArgs& args) override {
         std::shared_ptr<Font> font = APP->window->uiFont;
         if (!font) return;
         int ccNum = module ? module->ccNumbers[ccIndex] : 0;
@@ -673,8 +671,7 @@ struct DynamicCcLabel : widget::TransparentWidget {
 struct DynamicClkDivLabel : widget::TransparentWidget {
     OxiCv* module = nullptr;
 
-    void drawLayer(const DrawArgs& args, int layer) override {
-        if (layer != 1) return;
+    void draw(const DrawArgs& args) override {
         std::shared_ptr<Font> font = APP->window->uiFont;
         if (!font) return;
         int idx = module ? clamp(module->clkDivIdx, 0, NUM_DIVS - 1) : 0;

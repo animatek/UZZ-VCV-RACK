@@ -8,6 +8,15 @@ Registro de cambios de los módulos Animatek. Formato basado en
 
 ## [Unreleased]
 
+### Fixed
+- **Los rótulos ya no brillan en la sala oscura.** Aviso de Javier: con la luz de Rack bajada
+  se seguían viendo todos los textos, porque el rótulo compartido (`TextLabel`) y otros siete
+  (las separaciones de ONE, sus rótulos dinámicos, el canal de MULTI, y las secciones y cajas
+  de ATEK303) se pintaban en la capa de luz, la que no se oscurece. Pasan a la capa normal y se
+  apagan con el panel; solo quedan encendidos los LEDs, los botones encendidos y las pantallas
+  (envolvente, filtro, grafo de UNIT-D, displays de UZZ, nombre del BUS, editor de ATEK303).
+- ADSRtek: la línea de su pantalla, al mismo grosor que la de FILTERtek (1,6 px).
+
 ### Added
 - **ADSRtek: pantalla de la envolvente en directo.** Petición de Javier. Arriba, bajo los
   selectores, y de 20 mm de alto: la envolvente dibujada con el mismo modelo que suena (forma

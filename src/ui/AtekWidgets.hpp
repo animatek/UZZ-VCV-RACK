@@ -14,9 +14,7 @@ struct SectionLabel : TransparentWidget {
 		box.size = size;
 	}
 
-	void drawLayer(const DrawArgs& args, int layer) override {
-		if (layer != 1)
-			return;
+	void draw(const DrawArgs& args) override {
 		std::shared_ptr<Font> font = APP->window->uiFont;
 		if (!font)
 			return;
@@ -57,9 +55,7 @@ struct GroupBox : TransparentWidget {
 		box.size = size;
 	}
 
-	void drawLayer(const DrawArgs& args, int layer) override {
-		if (layer != 1)
-			return;
+	void draw(const DrawArgs& args) override {
 		std::shared_ptr<Font> font = APP->window->uiFont;
 		if (!font)
 			return;

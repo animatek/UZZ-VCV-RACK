@@ -464,7 +464,7 @@ struct EnvelopeDisplay : TransparentWidget {
         nvgFill(vg);
         curve();
         nvgStrokeColor(vg, AnimatekUI::logoBlue());
-        nvgStrokeWidth(vg, 1.8f);
+        nvgStrokeWidth(vg, 1.6f);   // the same line as FILTERtek's display
         nvgLineJoin(vg, NVG_ROUND);
         nvgLineCap(vg, NVG_ROUND);
         nvgStroke(vg);

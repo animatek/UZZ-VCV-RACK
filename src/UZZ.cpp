@@ -127,8 +127,6 @@ struct UZZ : Module {
   bool skipNextRandom[NUM_RND_BANKS] = {};
 
   bool playCurrentOnNextTick = false;
-  bool resetPending = false;
-  int resetTargetStep = 0;
   bool eocOnReset = false;
 
   int accumOffset[16] = {};
@@ -303,9 +301,8 @@ struct UZZ : Module {
     pitchOut = 0.f;
     pitchInit = false;
 
-    playCurrentOnNextTick = false;
-    resetPending = false;
-    resetTargetStep = start;
+    // Step `start` is lit, so the first clock must play it, not skip to the next.
+    playCurrentOnNextTick = true;
 
     for (int i = 0; i < 16; ++i)
       accumOffset[i] = 0;
@@ -753,9 +750,14 @@ struct UZZ : Module {
 
     // Reset
     if (rstTrig.process(inputs[RESET_INPUT].getVoltage())) {
-      resetPending = true;
-      resetTargetStep = start;
+      // Apply at once, even when the clock edge lands on this same sample:
+      // that tick then plays the start step instead of replaying the old one
+      // and leaving the whole run one clock behind.
+      step = start;
       playCurrentOnNextTick = true;
+      holdPulsesLeft = 0;
+      holdPlaying = false;
+      pulsesRemaining = 0;
 
       for (int i = 0; i < 16; ++i)
         accumOffset[i] = 0;
@@ -833,9 +835,7 @@ struct UZZ : Module {
       // step
       bool holdFired = false;
       if ((effMode == PM_HOLD || effMode == PM_GATED) && holdPulsesLeft > 0) {
-        if (resetPending) {
-          holdPulsesLeft = 0; // reset interrupts hold
-        } else {
+        {
           --holdPulsesLeft;
           if (effMode == PM_HOLD && holdPlaying) {
             // PM_HOLD: re-fire a gate on each tick
@@ -913,7 +913,6 @@ struct UZZ : Module {
         int mode = (int)std::round(params[STEP_MODE_PARAMS + step].getValue());
         int k = (step - start + 16) & 15;
 
-        bool resetFiresAfterGate = resetPending;
         bool playing =
             !muteGlobal &&
             (mode == SM_PLAY || mode == SM_ACCUM_UP || mode == SM_ACCUM_DOWN ||
@@ -1016,18 +1015,7 @@ struct UZZ : Module {
           gatePulse.reset();
         }
 
-        if (resetFiresAfterGate) {
-          step = resetTargetStep;
-          playCurrentOnNextTick = true;
-          resetPending = false;
-        }
       }
-    }
-
-    if (!clockNow && resetPending) {
-      step = resetTargetStep;
-      playCurrentOnNextTick = true;
-      resetPending = false;
     }
 
     // Ratchet sub-pulses

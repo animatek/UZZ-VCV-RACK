@@ -8,6 +8,18 @@ Registro de cambios de los módulos Animatek. Formato basado en
 
 ## [Unreleased]
 
+## [2.5.10] - 2026-10-04
+
+### Fixed
+- **UZZ: el reset ya no deja la secuencia un paso desplazada.** Aviso de un usuario al sincronizarlo
+  con otros secuenciadores: tras resetear, UZZ marcaba el paso 1 pero el primer reloj salía al 2.
+  Dos causas. (1) Tras cargar un patch o "Initialize" el paso de arranque quedaba encendido pero el
+  primer reloj lo saltaba. (2) Si el reset y el flanco de reloj caían en la misma muestra, ese reloj
+  repetía el paso anterior y el paso 1 sonaba un reloj tarde; ahora el reset se aplica al instante y
+  ese reloj toca el paso de arranque. El reset corta también hold y ráfagas en curso. Probado
+  en Rack por Javier (reset con reloj simultáneo y carga de patch); el fallo original no se llegó a
+  reproducir.
+
 ## [2.5.9] - 2026-10-03
 
 ### Added

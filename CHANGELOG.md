@@ -8,6 +8,30 @@ Registro de cambios de los módulos Animatek. Formato basado en
 
 ## [Unreleased]
 
+### Added
+- **ATEK303: capa extra antes del filtro** (menú → *Extra layer*), con la arquitectura de fuentes
+  del TB-3 rehecha con código propio: seno con su afinación (−24 a +48 semitonos), la otra onda
+  del 303 con desafinación fina, ruido blanco o rosa, ring-mod 303 × seno y cross-mod (FM del
+  seno sobre el 303). Siete recetas sacadas de las familias de sonidos del TB-3 (Sub, Fat, Shine,
+  Metal, Growl, Breath). Apagada por defecto: con todo a 0 la salida es idéntica bit a bit a la
+  de antes (render de sierra y cuadrado comparado con `cmp`). Solo con el oscilador ATEK.
+  Primera prueba en Rack (Javier): solo se notaban Fat, Shine y Growl. El mezclador del TB-3 es
+  lineal (curva 0x0C del firmware) y pone el seno al 2–10 %, un matiz casi inaudible; los rangos
+  suben (seno hasta 100 %, ruido hasta 50 %, ring hasta 100 %) y el ring pasa a ser un fundido
+  seco → producto. Medido en render: cada receta queda entre −13 y 0 dB del 303 solo, sin
+  recortes (pico ≤ 0,88). Breath vuelve a su receta del principio, rosa al 10 % (al 50 % se pasaba, dijo Javier).
+- **ATEK303: la otra onda se afina aparte** (*Other wave pitch*: −12, +12, +19, +24 semitonos;
+  *Other wave detune*: de −25 a +40 cents). La onda principal no cambia nunca de afinación. Y
+  cuatro **recetas de bajo** al estilo del banco b del TB-3 (*Bass recipes*), que también colocan
+  la onda, el cutoff, la resonancia, el env mod y el decay: *Detuned pair + sub*, *Fifth up*,
+  *Fifth up, plucked* y *Octave up, screaming*. Son valores propios a partir de la mezcla de cada
+  sonido, no su tabla. Apagada, la salida sigue idéntica bit a bit (render de sierra y cuadrado).
+  La quinta de *Fifth up* aporta −11 dB sobre el 303 con los mismos mandos; sin probar en Rack.
+- **ATEK303: +36 semitonos para la otra onda** (apilar en octavas como los leads del TB-3) y
+  **cross-mod extrema** al 50 y al 100 % (como sus SFX). Con la extrema el incremento de fase se
+  limita a Nyquist. Banco: sin muestras no finitas ni recortes (pico ≤ 0,83, también con el seno a
+  +48); apagada, idéntica bit a bit.
+
 ## [2.5.10] - 2026-10-04
 
 ### Fixed

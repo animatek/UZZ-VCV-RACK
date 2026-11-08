@@ -2,6 +2,7 @@
 #include "rosic_Open303.h"
 
 #include <cmath>
+#include <cstdint>
 
 // ---------------------------------------------------------------------------
 // Oscilador ATEK — modelo estructural del VCO del TB-303 (esquema pág. 5).
@@ -63,6 +64,59 @@ struct AtekOsc : rosic::Open303::ExternalOscillator {
 	// Coeficientes de las cuatro celdas de un polo
 	double aLpSaw = 1.0, aLpSq = 1.0, aHpSaw = 0.0, aHpSq = 0.0;
 
+	// --- capa extra ------------------------------------------------------------
+	// Fuentes que el TB-3 suma al 303 antes del filtro (ver «Sonidos de fábrica» en
+	// Roland TB3 Mod/NOTES.md): un seno afinado aparte, la otra onda del TB con su
+	// propia desafinación, ruido, ring-mod del TB por el seno y FM del seno sobre el
+	// TB. Es una idea de arquitectura, no código suyo. Con todo a 0 la salida es
+	// exactamente la de antes.
+	double sinLevel = 0.0;      // 0..1, nivel del seno
+	double sinRatio = 0.5;      // relación de frecuencia con el TB (−12 st)
+	double otherLevel = 0.0;    // 0..1, la onda que no elige el conmutador
+	double otherRatio = 1.0;    // afinación de la otra onda: salto + desafinado
+	double noiseLevel = 0.0;    // 0..1
+	bool noisePink = false;
+	double ringLevel = 0.0;     // 0..1, TB × seno
+	double xmodDepth = 0.0;     // 0..1, FM lineal del seno sobre el TB
+
+	// Iguala el rms del rosa con el del blanco (0,43 frente a 0,58, medido). Tras el
+	// filtro del 303 el rosa se oye mucho más: el blanco es casi todo agudos.
+	static constexpr double PINK_GAIN = 1.35;
+
+	double phase2 = 0.0;        // fase propia de la otra onda cuando va afinada aparte
+	double phaseSin = 0.0;
+	uint32_t noiseState = 0x9e3779b9u;
+	double pink0 = 0.0, pink1 = 0.0, pink2 = 0.0;
+
+	void setLayer(double newSinLevel, double sinSemitones, double newOtherLevel,
+	              double otherSemitones, double detuneCents, double newNoiseLevel, bool pink,
+	              double newRingLevel, double newXmodDepth) {
+		sinLevel = newSinLevel;
+		sinRatio = std::pow(2.0, sinSemitones / 12.0);
+		otherLevel = newOtherLevel;
+		otherRatio = std::pow(2.0, (100.0 * otherSemitones + detuneCents) / 1200.0);
+		noiseLevel = newNoiseLevel;
+		noisePink = pink;
+		ringLevel = newRingLevel;
+		xmodDepth = newXmodDepth;
+	}
+
+	double whiteNoise() {
+		noiseState ^= noiseState << 13;
+		noiseState ^= noiseState >> 17;
+		noiseState ^= noiseState << 5;
+		return noiseState * (2.0 / 4294967295.0) - 1.0;
+	}
+	// Ruido rosa de Paul Kellet (versión económica): −3 dB/octava aproximado.
+	double pinkNoise() {
+		const double w = whiteNoise();
+		pink0 = 0.99765 * pink0 + w * 0.0990460;
+		pink1 = 0.96300 * pink1 + w * 0.2965164;
+		pink2 = 0.57000 * pink2 + w * 1.0526913;
+		return 0.25 * (pink0 + pink1 + pink2 + w * 0.1848);
+	}
+	// ---------------------------------------------------------------------------
+
 	// Estados
 	double lpSaw = 0.0, lpSq = 0.0;
 	double hpSawY = 0.0, hpSawX = 0.0;
@@ -121,8 +175,9 @@ struct AtekOsc : rosic::Open303::ExternalOscillator {
 	}
 
 	void resetPhase() override {
-		phase = 0.0;
+		phase = phase2 = phaseSin = 0.0;
 		lpSaw = lpSq = 0.0;
+		pink0 = pink1 = pink2 = 0.0;
 		hpSawY = hpSawX = hpSqY = hpSqX = 0.0;
 	}
 
@@ -143,21 +198,54 @@ struct AtekOsc : rosic::Open303::ExternalOscillator {
 	}
 
 	double getSample() override {
-		phase += inc;
+		// Seno de la capa extra: va primero porque modula la fase del TB.
+		const bool layer = sinLevel > 0.0 || ringLevel > 0.0 || xmodDepth > 0.0;
+		double sine = 0.0;
+		if (layer) {
+			phaseSin += inc * sinRatio;
+			phaseSin -= std::floor(phaseSin);
+			sine = std::sin(2.0 * M_PI * phaseSin);
+		}
+		// FM lineal: el incremento nunca baja de 0 (la rampa del 303 no va hacia atrás).
+		double dt = inc;
+		if (xmodDepth > 0.0)
+			// Con la cross-mod extrema el incremento llega a 5 veces el normal: se
+			// limita como en setFrequency para no pasar de Nyquist en notas agudas.
+			dt = std::min(0.45, std::max(0.0, inc * (1.0 + xmodDepth * 4.0 * sine)));
+
+		phase += dt;
 		if (phase >= 1.0)
-			phase -= 1.0;
+			phase -= std::floor(phase);
+
+		// La otra onda (la que no elige el conmutador) comparte la rampa salvo que
+		// esté transportada o desafinada; entonces lleva su propia fase. La onda
+		// principal siempre va por la rampa de siempre.
+		const bool shifted = otherRatio != 1.0;
+		const bool squareMain = blend >= 0.5;
+		double dt2 = dt, phase2v = phase;
+		if (shifted) {
+			dt2 = std::min(dt * otherRatio, 0.45);
+			phase2 += dt2;
+			if (phase2 >= 1.0)
+				phase2 -= std::floor(phase2);
+			phase2v = phase2;
+		}
+		const double pSaw = (shifted && squareMain) ? phase2v : phase;
+		const double dtSaw = (shifted && squareMain) ? dt2 : dt;
+		const double pSq = (shifted && !squareMain) ? phase2v : phase;
+		const double dtSq = (shifted && !squareMain) ? dt2 : dt;
 
 		// Rampa del condensador
-		double saw = 2.0 * phase - 1.0;
-		saw -= polyBlep(phase, inc);
+		double saw = 2.0 * pSaw - 1.0;
+		saw -= polyBlep(pSaw, dtSaw);
 
 		// Comparador sobre la rampa
-		double sq = (phase < pulseWidth) ? 1.0 : -1.0;
-		sq += polyBlep(phase, inc);
-		double tFall = phase + (1.0 - pulseWidth);
+		double sq = (pSq < pulseWidth) ? 1.0 : -1.0;
+		sq += polyBlep(pSq, dtSq);
+		double tFall = pSq + (1.0 - pulseWidth);
 		if (tFall >= 1.0)
 			tFall -= 1.0;
-		sq -= polyBlep(tFall, inc);
+		sq -= polyBlep(tFall, dtSq);
 
 		// 1 y 2: esquina de reset redondeada / flancos con slew finito
 		lpSaw += aLpSaw * (saw - lpSaw);
@@ -169,6 +257,21 @@ struct AtekOsc : rosic::Open303::ExternalOscillator {
 		hpSqY  = aHpSq  * (hpSqY + lpSq - hpSqX);
 		hpSqX  = lpSq;
 
-		return OUTPUT_GAIN * (hpSawY + blend * (hpSqY - hpSawY));
+		double tb = hpSawY + blend * (hpSqY - hpSawY);
+		if (otherLevel > 0.0) {
+			// Las dos ondas comparten fase: sumadas, el pico casi se dobla. Se
+			// normaliza como si fueran incorreladas para que no salte el volumen.
+			tb += otherLevel * (hpSqY + blend * (hpSawY - hpSqY));
+			tb /= std::sqrt(1.0 + otherLevel * otherLevel);
+		}
+
+		// El ring es un fundido: al 100 % solo queda el producto, sin el 303 seco.
+		// Sumado sin más, el producto queda enterrado bajo el 303 y no se oye.
+		double out = tb;
+		if (layer)
+			out = tb + ringLevel * (tb * sine - tb) + sinLevel * sine;
+		if (noiseLevel > 0.0)
+			out += noiseLevel * (noisePink ? PINK_GAIN * pinkNoise() : whiteNoise());
+		return OUTPUT_GAIN * out;
 	}
 };

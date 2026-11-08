@@ -129,6 +129,74 @@ struct Atek303 : Module {
 		const double lo = decayTauMin(), hi = decayTauMax();
 		return lo * std::pow(hi / lo, knob);
 	}
+	// Capa extra (seno, la otra onda, ruido, ring y cross-mod). Todo apagado por
+	// defecto: un patch viejo suena igual. Los pasos salen de los presets del TB-3.
+	int layerSinLevelIdx = 0;   // off / 5 / 10 / 25 / 50 / 75 / 100 %
+	int layerSinPitchIdx = 1;   // −24 / −12 / 0 / +7 / +12 / +19 / +24 / +36 / +48 st
+	int layerOtherIdx = 0;      // off / 25 / 50 / 100 %
+	int layerOtherPitchIdx = 0; // 0 / −12 / +12 / +19 / +24 / +36 st (salto de la otra onda)
+	int layerDetuneIdx = 0;     // 0 / +5 / +10 / +18 / +25 / +40 / −10 / −25 cents
+	int layerNoiseIdx = 0;      // off / white 10·25·50 % / pink 10·25·50 %
+	int layerRingIdx = 0;       // off / 25 / 50 / 100 % (fundido seco → ring)
+	int layerXmodIdx = 0;       // off / 2 / 8 / 25 / 50 / 100 % (los dos últimos, como los SFX)
+	// Función y no miembro estático: el plugin compila en C++11, donde un constexpr
+	// estático usado así queda como símbolo sin definir en plugin.so.
+	static const char* layerKey(int k) {
+		static const char* const KEYS[8] = {"layerSinLevelIdx", "layerSinPitchIdx",
+			"layerOtherIdx", "layerDetuneIdx", "layerNoiseIdx", "layerRingIdx", "layerXmodIdx",
+			"layerOtherPitchIdx"};
+		return KEYS[k];
+	}
+	int* layerIdx(int k) {
+		int* const p[8] = {&layerSinLevelIdx, &layerSinPitchIdx, &layerOtherIdx,
+		                   &layerDetuneIdx, &layerNoiseIdx, &layerRingIdx, &layerXmodIdx,
+		                   &layerOtherPitchIdx};
+		return p[k];
+	}
+	// Recetas sacadas de las familias de sonidos del TB-3 (ver NOTES.md del TB-3).
+	// Su mezclador es lineal y pone el seno al 2–10 %: ahí es un matiz casi
+	// inaudible, así que los rangos y las recetas van más arriba para que se oiga.
+	void setLayerRecipe(int sinLevel, int sinPitch, int other, int detune, int noise,
+	                    int ring, int xmod) {
+		layerSinLevelIdx = sinLevel; layerSinPitchIdx = sinPitch; layerOtherIdx = other;
+		layerDetuneIdx = detune; layerNoiseIdx = noise; layerRingIdx = ring;
+		layerXmodIdx = xmod;
+		layerOtherPitchIdx = 0;
+	}
+	// Bajos al estilo del banco b del TB-3. Sus bajos son patches completos (filtro y
+	// amplitud con ADSR, distorsión): aquí solo se rehace la parte de osciladores, y
+	// los mandos del panel quedan en un punto de partida parecido. Valores propios,
+	// elegidos a partir de la mezcla de cada sonido, no copiados de su tabla.
+	void setBassRecipe(int wave, int other, int otherPitch, int detune, int sinLevel,
+	                   int sinPitch, float cutoff, float reso, float envMod, float decay) {
+		setLayerRecipe(sinLevel, sinPitch, other, detune, 0, 0, 0);
+		layerOtherPitchIdx = otherPitch;
+		params[WAVEFORM_PARAM].setValue(wave);
+		params[CUTOFF_PARAM].setValue(cutoff);
+		params[RESONANCE_PARAM].setValue(reso);
+		params[ENVMOD_PARAM].setValue(envMod);
+		params[DECAY_PARAM].setValue(decay);
+	}
+	void applyLayer() {
+		static const double SIN_LEVEL[7] = {0.0, 0.05, 0.10, 0.25, 0.50, 0.75, 1.00};
+		static const double SIN_PITCH[9] = {-24, -12, 0, 7, 12, 19, 24, 36, 48};
+		static const double OTHER[4] = {0.0, 0.25, 0.5, 1.0};
+		static const double OTHER_PITCH[6] = {0, -12, 12, 19, 24, 36};
+		static const double DETUNE[8] = {0.0, 5.0, 10.0, 18.0, 25.0, 40.0, -10.0, -25.0};
+		static const double NOISE[7] = {0.0, 0.10, 0.25, 0.50, 0.10, 0.25, 0.50};
+		static const double RING[4] = {0.0, 0.25, 0.50, 1.00};
+		static const double XMOD[6] = {0.0, 0.02, 0.08, 0.25, 0.50, 1.00};
+		const int n = clamp(layerNoiseIdx, 0, 6);
+		atekOsc.setLayer(SIN_LEVEL[clamp(layerSinLevelIdx, 0, 6)],
+		                 SIN_PITCH[clamp(layerSinPitchIdx, 0, 8)],
+		                 OTHER[clamp(layerOtherIdx, 0, 3)],
+		                 OTHER_PITCH[clamp(layerOtherPitchIdx, 0, 5)],
+		                 DETUNE[clamp(layerDetuneIdx, 0, 7)],
+		                 NOISE[n], n >= 4,
+		                 RING[clamp(layerRingIdx, 0, 3)],
+		                 XMOD[clamp(layerXmodIdx, 0, 5)]);
+	}
+
 	// Valores elegidos a oído el 2026-08-17: 44 % de ancho y droop fuerte.
 	int pulseWidthIdx = 0;   // 44 / 47 / 50 / 53 / 56 %
 	// Afinados a oído el 2026-08-18: esquina redonda y droop marcado.
@@ -307,6 +375,7 @@ struct Atek303 : Module {
 		static const double SAW_DROOP[4] = {0.7, 3.0, 8.0, 15.0};
 		atekOsc.setSawShape(SAW_RESET[clamp(sawResetIdx, 0, 3)],
 		                    SAW_DROOP[clamp(sawDroopIdx, 0, 3)]);
+		applyLayer();
 		core.externalOscillator = (oscEngine == 1) ? &atekOsc : NULL;
 		static const double DRIVE[3] = {1.0, 2.0, 4.0};   // 0 / +6 / +12 dB
 		atekFilter.setDrive(DRIVE[clamp(filterDriveIdx, 0, 2)]);
@@ -499,6 +568,8 @@ struct Atek303 : Module {
 		json_object_set_new(rootJ, "satIdx", json_integer(satIdx));
 		json_object_set_new(rootJ, "slidePitchDomain", json_boolean(slidePitchDomain));
 		json_object_set_new(rootJ, "slideTauIdx", json_integer(slideTauIdx));
+		for (int k = 0; k < 8; k++)
+			json_object_set_new(rootJ, layerKey(k), json_integer(*layerIdx(k)));
 		return rootJ;
 	}
 
@@ -545,6 +616,9 @@ struct Atek303 : Module {
 			slidePitchDomain = json_boolean_value(j);
 		if (json_t* j = json_object_get(rootJ, "slideTauIdx"))
 			slideTauIdx = (int) json_integer_value(j);
+		for (int k = 0; k < 8; k++)
+			if (json_t* j = json_object_get(rootJ, layerKey(k)))
+				*layerIdx(k) = (int) json_integer_value(j);
 	}
 };
 
@@ -800,6 +874,67 @@ struct Atek303Widget : ModuleWidget {
 				sub->addChild(createMenuLabel("\"Custom\" shows up only when the"));
 				sub->addChild(createMenuLabel("settings match neither model"));
 			}));
+
+		menu->addChild(createSubmenuItem("Extra layer", "", [=](Menu* sub) {
+			sub->addChild(createMenuLabel("Added before the filter; off by default"));
+			sub->addChild(createSubmenuItem("Recipes", "", [=](Menu* r) {
+				r->addChild(createMenuItem("Off (plain 303)", "",
+					[=]() { module->setLayerRecipe(0, 1, 0, 0, 0, 0, 0); }));
+				r->addChild(createMenuItem("Sub: sine an octave down", "",
+					[=]() { module->setLayerRecipe(5, 1, 0, 0, 0, 0, 0); }));
+				r->addChild(createMenuItem("Fat: both waves, detuned", "",
+					[=]() { module->setLayerRecipe(0, 1, 3, 3, 0, 0, 0); }));   // +18 cents
+				r->addChild(createMenuItem("Shine: sine two octaves up", "",
+					[=]() { module->setLayerRecipe(3, 6, 0, 0, 0, 0, 0); }));
+				r->addChild(createMenuItem("Metal: ring with a fifth up", "",
+					[=]() { module->setLayerRecipe(0, 3, 0, 0, 0, 2, 0); }));
+				r->addChild(createMenuItem("Growl: sine cross-mod", "",
+					[=]() { module->setLayerRecipe(0, 1, 0, 0, 0, 0, 2); }));
+				r->addChild(createMenuItem("Breath: pink noise on top", "",
+					[=]() { module->setLayerRecipe(0, 1, 0, 0, 4, 0, 0); }));
+			}));
+			sub->addChild(createSubmenuItem("Bass recipes (also set the knobs)", "", [=](Menu* r) {
+				// onda, otra, salto, desafinado, seno, tono del seno, cutoff, reso, env, decay
+				r->addChild(createMenuItem("Detuned pair + sub", "",
+					[=]() { module->setBassRecipe(0, 3, 0, 5, 2, 1, 0.85f, 0.30f, 0.10f, 0.60f); }));
+				r->addChild(createMenuItem("Fifth up", "",
+					[=]() { module->setBassRecipe(1, 2, 3, 0, 0, 1, 0.90f, 0.30f, 0.00f, 0.50f); }));
+				r->addChild(createMenuItem("Fifth up, plucked", "",
+					[=]() { module->setBassRecipe(1, 2, 3, 0, 0, 1, 0.55f, 0.05f, 1.00f, 0.15f); }));
+				r->addChild(createMenuItem("Octave up, screaming", "",
+					[=]() { module->setBassRecipe(1, 3, 2, 0, 0, 1, 0.15f, 1.00f, 0.50f, 0.50f); }));
+			}));
+			sub->addChild(new MenuSeparator);
+			sub->addChild(createIndexPtrSubmenuItem("Sine level",
+			                                        {"off", "5 %", "10 %", "25 %", "50 %", "75 %", "100 %"},
+			                                        &module->layerSinLevelIdx));
+			sub->addChild(createIndexPtrSubmenuItem("Sine pitch",
+			                                        {"-24 st", "-12 st", "0", "+7 st", "+12 st",
+			                                         "+19 st", "+24 st", "+36 st", "+48 st"},
+			                                        &module->layerSinPitchIdx));
+			sub->addChild(createIndexPtrSubmenuItem("Other wave (saw/square)",
+			                                        {"off", "25 %", "50 %", "100 %"},
+			                                        &module->layerOtherIdx));
+			sub->addChild(createIndexPtrSubmenuItem("Other wave pitch",
+			                                        {"0", "-12 st", "+12 st", "+19 st", "+24 st", "+36 st"},
+			                                        &module->layerOtherPitchIdx));
+			sub->addChild(createIndexPtrSubmenuItem("Other wave detune",
+			                                        {"0", "+5 cents", "+10 cents", "+18 cents",
+			                                         "+25 cents", "+40 cents", "-10 cents",
+			                                         "-25 cents"},
+			                                        &module->layerDetuneIdx));
+			sub->addChild(createIndexPtrSubmenuItem("Noise",
+			                                        {"off", "white 10 %", "white 25 %", "white 50 %",
+			                                         "pink 10 %", "pink 25 %", "pink 50 %"},
+			                                        &module->layerNoiseIdx));
+			sub->addChild(createIndexPtrSubmenuItem("Ring mod (303 x sine)",
+			                                        {"off", "25 %", "50 %", "100 %"},
+			                                        &module->layerRingIdx));
+			sub->addChild(createIndexPtrSubmenuItem("Cross-mod (sine FM on 303)",
+			                                        {"off", "2 %", "8 %", "25 %", "50 % (extreme)", "100 % (extreme)"},
+			                                        &module->layerXmodIdx));
+			sub->addChild(createMenuLabel("Only with the ATEK oscillator"));
+		}));
 
 		menu->addChild(createSubmenuItem("Fine tuning", "", [=](Menu* sub) {
 			sub->addChild(createMenuLabel("Oscillator"));

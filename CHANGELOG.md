@@ -9,6 +9,11 @@ Registro de cambios de los módulos Animatek. Formato basado en
 ## [Unreleased]
 
 ### Added
+- **ATEK303: lista WAVE** (menú → *Wave*): las mismas 14 entradas que el ATEK303 del FM-1, de SAW a
+  SQUARE pasando por SAW+SUB, FAT, DETUNE+SUB, SHINE, METAL, GROWL, BREATH, WILD, OCTAVES, OCT UP,
+  FIFTH UP y SQR+SUB. Cada una pone la onda de base y la capa extra de una vez; el menú marca la que
+  suena, o «custom» si la capa se ha tocado a mano. Sustituye al submenú *Recipes* de la capa extra
+  (todas sus recetas están en la lista). El conmutador del panel sigue eligiendo la onda de base.
 - **ATEK303: capa extra antes del filtro** (menú → *Extra layer*), con la arquitectura de fuentes
   del TB-3 rehecha con código propio: seno con su afinación (−24 a +48 semitonos), la otra onda
   del 303 con desafinación fina, ruido blanco o rosa, ring-mod 303 × seno y cross-mod (FM del

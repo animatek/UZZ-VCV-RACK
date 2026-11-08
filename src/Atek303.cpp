@@ -177,6 +177,55 @@ struct Atek303 : Module {
 		params[ENVMOD_PARAM].setValue(envMod);
 		params[DECAY_PARAM].setValue(decay);
 	}
+	// La lista WAVE, la misma que la del ATEK303 del FM-1 (atek_voice.c, OSC_LIST):
+	// onda de base y los ocho índices de la capa, en el orden del FM-1
+	// (nivel del seno, su tono, la otra onda, su salto, su desafinado, ruido, ring, cross-mod).
+	static constexpr int NUM_WAVES = 14;
+	struct WaveEntry { const char* name; int wave; int idx[8]; };
+	static const WaveEntry& waveEntry(int k) {
+		static const WaveEntry LIST[NUM_WAVES] = {
+			{"SAW",        0, {0, 1, 0, 0, 0, 0, 0, 0}},
+			{"SAW+SUB",    0, {4, 1, 0, 0, 0, 0, 0, 0}},
+			{"FAT",        0, {0, 1, 3, 0, 3, 0, 0, 0}},
+			{"DETUNE+SUB", 0, {2, 1, 3, 0, 5, 0, 0, 0}},
+			{"SHINE",      0, {3, 6, 0, 0, 0, 0, 0, 0}},
+			{"METAL",      0, {0, 3, 0, 0, 0, 0, 2, 0}},
+			{"GROWL",      0, {0, 1, 0, 0, 0, 0, 0, 2}},
+			{"BREATH",     0, {0, 1, 0, 0, 0, 4, 0, 0}},
+			{"WILD",       1, {0, 3, 0, 0, 0, 0, 0, 5}},
+			{"OCTAVES",    1, {0, 1, 2, 5, 0, 0, 0, 0}},
+			{"OCT UP",     1, {0, 1, 3, 2, 0, 0, 0, 0}},
+			{"FIFTH UP",   1, {0, 1, 2, 3, 0, 0, 0, 0}},
+			{"SQR+SUB",    1, {4, 1, 0, 0, 0, 0, 0, 0}},
+			{"SQUARE",     1, {0, 1, 0, 0, 0, 0, 0, 0}},
+		};
+		return LIST[(k >= 0 && k < NUM_WAVES) ? k : 0];
+	}
+	int* waveLayerIdx(int j) {   // los índices de la capa en el orden del FM-1
+		int* const p[8] = {&layerSinLevelIdx, &layerSinPitchIdx, &layerOtherIdx,
+		                   &layerOtherPitchIdx, &layerDetuneIdx, &layerNoiseIdx,
+		                   &layerRingIdx, &layerXmodIdx};
+		return p[j];
+	}
+	void setWave(int k) {
+		const WaveEntry& e = waveEntry(k);
+		params[WAVEFORM_PARAM].setValue(e.wave);
+		for (int j = 0; j < 8; j++)
+			*waveLayerIdx(j) = e.idx[j];
+	}
+	// La entrada que coincide con la onda y la capa de ahora, o -1 si es una mezcla propia.
+	int currentWave() {
+		const int wave = params[WAVEFORM_PARAM].getValue() > 0.5f ? 1 : 0;
+		for (int k = 0; k < NUM_WAVES; k++) {
+			const WaveEntry& e = waveEntry(k);
+			bool same = e.wave == wave;
+			for (int j = 0; same && j < 8; j++)
+				same = *waveLayerIdx(j) == e.idx[j];
+			if (same)
+				return k;
+		}
+		return -1;
+	}
 	void applyLayer() {
 		static const double SIN_LEVEL[7] = {0.0, 0.05, 0.10, 0.25, 0.50, 0.75, 1.00};
 		static const double SIN_PITCH[9] = {-24, -12, 0, 7, 12, 19, 24, 36, 48};
@@ -875,24 +924,28 @@ struct Atek303Widget : ModuleWidget {
 				sub->addChild(createMenuLabel("settings match neither model"));
 			}));
 
+		{
+			const int cur = module->currentWave();
+			menu->addChild(createSubmenuItem("Wave",
+				cur < 0 ? "custom" : Atek303::waveEntry(cur).name, [=](Menu* sub) {
+					static const char* const WHAT[Atek303::NUM_WAVES] = {
+						"the 303 saw", "sine an octave down", "both waves, +18 cents",
+						"both, +40 cents, and the sub", "sine two octaves up",
+						"ring with a fifth up", "sine cross-mod", "pink noise on top",
+						"extreme cross-mod", "saw three octaves up", "saw an octave up",
+						"saw at +19 st", "sine an octave down", "the 303 square"};
+					for (int k = 0; k < Atek303::NUM_WAVES; k++)
+						sub->addChild(createCheckMenuItem(Atek303::waveEntry(k).name, WHAT[k],
+							[=]() { return module->currentWave() == k; },
+							[=]() { module->setWave(k); }));
+					sub->addChild(new MenuSeparator);
+					sub->addChild(createMenuLabel("The panel switch picks the base wave;"));
+					sub->addChild(createMenuLabel("the rest needs the ATEK oscillator"));
+				}));
+		}
+
 		menu->addChild(createSubmenuItem("Extra layer", "", [=](Menu* sub) {
 			sub->addChild(createMenuLabel("Added before the filter; off by default"));
-			sub->addChild(createSubmenuItem("Recipes", "", [=](Menu* r) {
-				r->addChild(createMenuItem("Off (plain 303)", "",
-					[=]() { module->setLayerRecipe(0, 1, 0, 0, 0, 0, 0); }));
-				r->addChild(createMenuItem("Sub: sine an octave down", "",
-					[=]() { module->setLayerRecipe(5, 1, 0, 0, 0, 0, 0); }));
-				r->addChild(createMenuItem("Fat: both waves, detuned", "",
-					[=]() { module->setLayerRecipe(0, 1, 3, 3, 0, 0, 0); }));   // +18 cents
-				r->addChild(createMenuItem("Shine: sine two octaves up", "",
-					[=]() { module->setLayerRecipe(3, 6, 0, 0, 0, 0, 0); }));
-				r->addChild(createMenuItem("Metal: ring with a fifth up", "",
-					[=]() { module->setLayerRecipe(0, 3, 0, 0, 0, 2, 0); }));
-				r->addChild(createMenuItem("Growl: sine cross-mod", "",
-					[=]() { module->setLayerRecipe(0, 1, 0, 0, 0, 0, 2); }));
-				r->addChild(createMenuItem("Breath: pink noise on top", "",
-					[=]() { module->setLayerRecipe(0, 1, 0, 0, 4, 0, 0); }));
-			}));
 			sub->addChild(createSubmenuItem("Bass recipes (also set the knobs)", "", [=](Menu* r) {
 				// onda, otra, salto, desafinado, seno, tono del seno, cutoff, reso, env, decay
 				r->addChild(createMenuItem("Detuned pair + sub", "",

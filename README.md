@@ -15,6 +15,8 @@ Eleven modules for VCV Rack 2.x by **Javier Melgar (Animatek)**.
 - **BLANK ACID** — 3HP blank panel with animated acid smileys and a shared canvas between adjacent blanks.
 - **ATEK303** — TB-303 voice emulation with circuit, Open303 and custom sound models.
 - **ATEK303 SEQ** — 16-step algorithmic acid pattern generator and ATEK303 expander.
+- **ECLIPSE** — 8HP double Euclidean sequencer: two rings in one circle, the inner one on a divided or multiplied clock, with A, B, AND, OR and XOR gate outputs. Manuals: [EN](Manuals/ECLIPSE_Manual_EN.md) / [ES](Manuals/ECLIPSE_Manual_ES.md).
+- **ECLIPSE PITCH** — 8HP note expander for ECLIPSE: one of its gates picks notes in a scale, at random or moved by each ring's hits, and LOCK loops the last steps.
 
 ## Manuals
 
@@ -28,6 +30,7 @@ Eleven modules for VCV Rack 2.x by **Javier Melgar (Animatek)**.
 | BLANK 3 + BLANK ACID | [Manual](Manuals/BLANKS_Manual_EN.md) | [Manual](Manuals/BLANKS_Manual_ES.md) |
 | ATEK303 | [Manual](Manuals/ATEK303_Manual_EN.md) | [Manual](Manuals/ATEK303_Manual_ES.md) |
 | ATEK303 SEQ | [Manual](Manuals/ATEK303SEQ_Manual_EN.md) | [Manual](Manuals/ATEK303SEQ_Manual_ES.md) |
+| ECLIPSE + ECLIPSE PITCH | [Manual](Manuals/ECLIPSE_Manual_EN.md) | [Manual](Manuals/ECLIPSE_Manual_ES.md) |
 
 ---
 

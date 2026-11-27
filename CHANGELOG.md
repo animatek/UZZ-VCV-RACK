@@ -9,6 +9,9 @@ Registro de cambios de los módulos Animatek. Formato basado en
 ## [Unreleased]
 
 ### Added
+- **Manual de ECLIPSE + ECLIPSE PITCH** en inglés y español (`Manuals/ECLIPSE_Manual_EN.md` / `_ES.md`),
+  enlazado desde el README y desde `manualUrl` de los dos módulos en `plugin.json`. La vista previa de
+  ECLIPSE PITCH (navegador de módulos y librería) acaba su frase de muestra en C4, como dice el centro.
 - **ECLIPSE PITCH (nuevo, fase 2)**, 8 HP: expansor de ECLIPSE que se pega a su derecha y se
   añade desde su menú (*Add pitch expander*). SRC elige qué gate manda la nota; MODE entre
   RND (al azar en RANGE) y ACUM (cada golpe de A suma +A grados y cada golpe de B +B).

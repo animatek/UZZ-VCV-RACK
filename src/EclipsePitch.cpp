@@ -202,7 +202,7 @@ struct EclipsePitchWheel : TransparentWidget {
             for (int i = 0; i < count; ++i)
                 notes[i] = module->graphDegree[(start + i) % N];
         } else {
-            static const int PREVIEW[8] = {0, 2, 4, 9, 7, 3, 5, 8};
+            static const int PREVIEW[8] = {2, 4, 9, 7, 3, 5, 8, 0};   // ends on C4, as the centre says
             count = 8;
             for (int i = 0; i < count; ++i)
                 notes[i] = PREVIEW[i];

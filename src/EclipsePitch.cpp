@@ -15,7 +15,7 @@ using namespace EclipseShared;
 // It holds the controls and the jacks; ECLIPSE does the work (see
 // EclipseShared.hpp) and sends the note back. On its own it does nothing.
 
-struct EclipsePitch : Module {
+struct EclipsePitch : AnimatekUI::AccentModule {
     enum ParamId {
         MODE_PARAM,
         SOURCE_PARAM,
@@ -348,14 +348,21 @@ static constexpr float ROW_Y[3] = {63.f, 77.f, 91.f};   // the first two level w
 static constexpr float OUT_Y = 106.5f;
 } // namespace EclipsePitchLayout
 
-struct EclipsePitchWidget : ModuleWidget {
+struct EclipsePitchWidget : AnimatekUI::AccentModuleWidget {
+    // Glued to an ECLIPSE, it takes that ECLIPSE's colour (ring A's), so the
+    // pair reads as one instrument; there is no menu of its own.
+    int accentIndex() override {
+        EclipsePitch* m = dynamic_cast<EclipsePitch*>(module);
+        return (m && m->last.linked) ? m->last.colorA : -1;
+    }
+    bool hasAccentMenu() override { return false; }
 
     TextLabel* stepBLabel = nullptr;
 
     explicit EclipsePitchWidget(EclipsePitch* module) {
         using namespace EclipsePitchLayout;
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/EclipsePitch.svg")));
+        setAccentPanel("res/EclipsePitch.svg");
 
         auto label = [&](const char* text, float x, float y, float w = 12.f, NVGcolor color = nvgRGBA(0, 0, 0, 0)) {
             auto* l = new TextLabel(text, mm2px(Vec(x - w * 0.5f, y)), mm2px(Vec(w, 4.f)));
@@ -412,7 +419,7 @@ struct EclipsePitchWidget : ModuleWidget {
         if (auto* m = dynamic_cast<EclipsePitch*>(module))
             if (stepBLabel && m->last.linked)
                 stepBLabel->color = paletteColor(m->last.colorB);
-        ModuleWidget::step();
+        AnimatekUI::AccentModuleWidget::step();
     }
 };
 

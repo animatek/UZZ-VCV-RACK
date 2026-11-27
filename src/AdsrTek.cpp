@@ -193,9 +193,12 @@ struct TimeQuantity : ParamQuantity {
 using namespace adsrtek;
 
 
-struct AdsrTek : Module {
+struct AdsrTek : AnimatekUI::AccentModule {
+    // New entries at the end: the indices are what patches store.
     enum ParamId { ATTACK_PARAM, DECAY_PARAM, SUSTAIN_PARAM, RELEASE_PARAM,
-                   SHAPE_PARAM, MODE_PARAM, PARAMS_LEN };
+                   SHAPE_PARAM, MODE_PARAM,
+                   ATTACK_CV_PARAM, DECAY_CV_PARAM, SUSTAIN_CV_PARAM, RELEASE_CV_PARAM,
+                   PARAMS_LEN };
     enum InputId { ATTACK_CV_INPUT, DECAY_CV_INPUT, SUSTAIN_CV_INPUT, RELEASE_CV_INPUT,
                    GATE_INPUT, RETRIG_INPUT, AMP_INPUT, IN_INPUT, INPUTS_LEN };
     enum OutputId { ENV_OUTPUT, OUT_OUTPUT, OUTPUTS_LEN };
@@ -227,6 +230,12 @@ struct AdsrTek : Module {
         configParam<TimeQuantity>(RELEASE_PARAM, 0.f, 127.f, 60.f, "Release");
         configSwitch(SHAPE_PARAM, 0.f, 2.f, 1.f, "Attack shape", {"Log", "Lin", "Exp"});
         configSwitch(MODE_PARAM, 0.f, 1.f, 0.f, "Mode", {"ADSR", "AD"});
+        // CV attenuverters, as on VCV's ADSR. At 100% by default, which is how
+        // the CVs worked before they existed, so older patches sound the same.
+        configParam(ATTACK_CV_PARAM, -1.f, 1.f, 1.f, "Attack CV", "%", 0.f, 100.f);
+        configParam(DECAY_CV_PARAM, -1.f, 1.f, 1.f, "Decay CV", "%", 0.f, 100.f);
+        configParam(SUSTAIN_CV_PARAM, -1.f, 1.f, 1.f, "Sustain CV", "%", 0.f, 100.f);
+        configParam(RELEASE_CV_PARAM, -1.f, 1.f, 1.f, "Release CV", "%", 0.f, 100.f);
         auto* attackQ = dynamic_cast<TimeQuantity*>(paramQuantities[ATTACK_PARAM]);
         attackQ->isAttack = true;
         attackQ->shapeParam = SHAPE_PARAM;
@@ -256,9 +265,10 @@ struct AdsrTek : Module {
         }
     }
 
-    /** A time knob plus its CV, in knob steps: 10 V sweeps all 128. */
-    float knobFor(int paramId, int inputId, int c) {
-        return params[paramId].getValue() + inputs[inputId].getPolyVoltage(c) * 12.7f;
+    /** A time knob plus its CV, in knob steps: 10 V at 100% sweeps all 128. */
+    float knobFor(int paramId, int inputId, int amountId, int c) {
+        return params[paramId].getValue()
+               + inputs[inputId].getPolyVoltage(c) * 12.7f * params[amountId].getValue();
     }
 
     void process(const ProcessArgs& args) override {
@@ -294,11 +304,12 @@ struct AdsrTek : Module {
 
             if (tick) {
                 float sustain = clamp(params[SUSTAIN_PARAM].getValue()
-                                      + inputs[SUSTAIN_CV_INPUT].getPolyVoltage(c) / 10.f,
+                                      + inputs[SUSTAIN_CV_INPUT].getPolyVoltage(c) / 10.f
+                                            * params[SUSTAIN_CV_PARAM].getValue(),
                                       0.f, 1.f);
-                float attackKnob = knobFor(ATTACK_PARAM, ATTACK_CV_INPUT, c);
-                float decayKnob = knobFor(DECAY_PARAM, DECAY_CV_INPUT, c);
-                float releaseKnob = knobFor(RELEASE_PARAM, RELEASE_CV_INPUT, c);
+                float attackKnob = knobFor(ATTACK_PARAM, ATTACK_CV_INPUT, ATTACK_CV_PARAM, c);
+                float decayKnob = knobFor(DECAY_PARAM, DECAY_CV_INPUT, DECAY_CV_PARAM, c);
+                float releaseKnob = knobFor(RELEASE_PARAM, RELEASE_CV_INPUT, RELEASE_CV_PARAM, c);
                 env.step(dt, mode, shape,
                          attackTime(shape, attackKnob),
                          shapeParameter(shape, attackKnob),
@@ -420,17 +431,29 @@ struct EnvelopeDisplay : TransparentWidget {
         const float xa = x0, xd = xa + wa * scale, xs = xd + wd * scale, xr = xs + wsus * scale, xe = xr + wr * scale;
         auto Y = [&](float lv) { return y1 - lv * (y1 - y0); };
 
-        // Where each stage ends, as faint dividers, like the stage grid of a
-        // hardware envelope's display.
+        // No divider where the decay ends: the guides below mark the two
+        // corners that matter, and a line there only cluttered the curve.
+
+        // Guides through the two corners that matter, as on VCV's ADSR: the
+        // peak (a level line across the top and a line down from it) and, in
+        // ADSR, the sustain point (its level right across, left and right of
+        // the release, and a line down where the release starts).
         nvgStrokeWidth(vg, 0.8f);
-        nvgStrokeColor(vg, nvgRGB(0x2a, 0x2f, 0x3a));
-        for (float xx : {xd, xs, xr}) {
-            if (mode != MODE_ADSR && xx != xd)
-                continue;
+        nvgStrokeColor(vg, nvgRGBA(0x8a, 0x95, 0xa8, 90));
+        auto guide = [&](float ax, float ay, float bx, float by) {
             nvgBeginPath(vg);
-            nvgMoveTo(vg, xx, y0);
-            nvgLineTo(vg, xx, y1);
+            nvgMoveTo(vg, ax, ay);
+            nvgLineTo(vg, bx, by);
             nvgStroke(vg);
+        };
+        guide(x0, Y(1.f), x1, Y(1.f));
+        guide(xa, y0, xa, y1);   // where the attack starts
+        guide(xd, y0, xd, y1);
+        if (mode == MODE_ADSR) {
+            guide(x0, Y(sus), x1, Y(sus));
+            // Only below the sustain point, as on VCV's: it marks where the
+            // release starts without crossing the curve above it.
+            guide(xr, Y(sus), xr, y1);
         }
 
         // The curve, stage by stage: u runs 0..1 across each stage's width, and
@@ -531,10 +554,10 @@ struct EnvelopeDisplay : TransparentWidget {
 };
 
 
-struct AdsrTekWidget : ModuleWidget {
+struct AdsrTekWidget : AnimatekUI::AccentModuleWidget {
     AdsrTekWidget(AdsrTek* module) {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/AdsrTek.svg")));
+        setAccentPanel("res/AdsrTek.svg");
 
         constexpr float W = 40.64f;  // 8 HP
         constexpr float XL = 11.0f;
@@ -581,21 +604,30 @@ struct AdsrTekWidget : ModuleWidget {
         display->module = module;
         addChild(display);
 
-        addKnob("ATTACK", XL, 35.6f, AdsrTek::ATTACK_PARAM);
-        addKnob("DECAY", XR, 35.6f, AdsrTek::DECAY_PARAM);
-        addKnob("SUSTAIN", XL, 50.6f, AdsrTek::SUSTAIN_PARAM);
-        addKnob("RELEASE", XR, 50.6f, AdsrTek::RELEASE_PARAM);
+        addKnob("ATTACK", XL, 36.2f, AdsrTek::ATTACK_PARAM);
+        addKnob("DECAY", XR, 36.2f, AdsrTek::DECAY_PARAM);
+        addKnob("SUSTAIN", XL, 51.2f, AdsrTek::SUSTAIN_PARAM);
+        addKnob("RELEASE", XR, 51.2f, AdsrTek::RELEASE_PARAM);
 
-        constexpr float CV_Y = 77.0f;
+        // Each CV with its attenuverter above it, joined by a hairline, as on
+        // VCV's ADSR: trimmer, line, name, jack.
+        constexpr float AMOUNT_Y = 71.2f;
+        constexpr float CV_LABEL_Y = 76.8f;
+        constexpr float CV_Y = 84.5f;
         const float cvX[4] = {5.6f, 15.6f, 25.0f, 35.0f};
         const int cvIds[4] = {AdsrTek::ATTACK_CV_INPUT, AdsrTek::DECAY_CV_INPUT,
                               AdsrTek::SUSTAIN_CV_INPUT, AdsrTek::RELEASE_CV_INPUT};
+        const int amountIds[4] = {AdsrTek::ATTACK_CV_PARAM, AdsrTek::DECAY_CV_PARAM,
+                                  AdsrTek::SUSTAIN_CV_PARAM, AdsrTek::RELEASE_CV_PARAM};
         const char* cvNames[4] = {"A", "D", "S", "R"};
         for (int i = 0; i < 4; i++) {
-            addLabel(cvNames[i], cvX[i], CV_Y - 7.5f, 6.f);
+            addParam(createParamCentered<AnimatekUI::FlatTrimpot>(mm2px(Vec(cvX[i], AMOUNT_Y)), module,
+                                                                  amountIds[i]));
+            addChild(new AnimatekUI::ConnectorLine(mm2px(cvX[i]), mm2px(AMOUNT_Y + 3.4f),
+                                                   mm2px(cvX[i]), mm2px(CV_LABEL_Y - 0.2f)));
+            addLabel(cvNames[i], cvX[i], CV_LABEL_Y, 6.f);
             addInput(createInputCentered<TekInputPort>(mm2px(Vec(cvX[i], CV_Y)), module, cvIds[i]));
         }
-        addLabel("CV", W * 0.5f, 66.2f, 10.f);
 
         auto addIn = [&](const char* text, float cx, float y, int inputId) {
             addLabel(text, cx, y, 12.f);
@@ -606,17 +638,18 @@ struct AdsrTekWidget : ModuleWidget {
             addOutput(createOutputCentered<TekOutputPort>(mm2px(Vec(cx, y + 7.5f)), module, outputId));
         };
 
-        // Everything that comes in above the panel line (y = 98.5 in the SVG),
+        // Everything that comes in above the panel line (y = 104.6 in the SVG),
         // what goes out below.
-        addIn("GATE", cvX[0], 84.0f, AdsrTek::GATE_INPUT);
-        addIn("RETRIG", cvX[1], 84.0f, AdsrTek::RETRIG_INPUT);
-        addIn("AMP", cvX[2], 84.0f, AdsrTek::AMP_INPUT);
-        addIn("IN", cvX[3], 84.0f, AdsrTek::IN_INPUT);
-        addOut("ENV", XL, 100.0f, AdsrTek::ENV_OUTPUT);
-        addOut("OUT", XR, 100.0f, AdsrTek::OUT_OUTPUT);
+        addIn("GATE", cvX[0], 91.3f, AdsrTek::GATE_INPUT);
+        addIn("RETRIG", cvX[1], 91.3f, AdsrTek::RETRIG_INPUT);
+        addIn("AMP", cvX[2], 91.3f, AdsrTek::AMP_INPUT);
+        addIn("IN", cvX[3], 91.3f, AdsrTek::IN_INPUT);
+        addOut("ENV", XL, 106.0f, AdsrTek::ENV_OUTPUT);
+        addOut("OUT", XR, 106.0f, AdsrTek::OUT_OUTPUT);
     }
 
     void appendContextMenu(ui::Menu* menu) override {
+        AnimatekUI::AccentModuleWidget::appendContextMenu(menu);
         AdsrTek* module = dynamic_cast<AdsrTek*>(this->module);
         if (!module)
             return;

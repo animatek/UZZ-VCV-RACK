@@ -37,7 +37,7 @@ struct EnvModQuantity : ParamQuantity {
 	void setDisplayValue(float displayValue) override;
 };
 
-struct Atek303 : Module {
+struct Atek303 : AnimatekUI::AccentModule {
 	enum ParamId {
 		TUNING_PARAM,
 		CUTOFF_PARAM,
@@ -780,7 +780,7 @@ struct AcidFace : OpaqueWidget {
 };
 
 
-struct Atek303Widget : ModuleWidget {
+struct Atek303Widget : AnimatekUI::AccentModuleWidget {
 	// Rejilla del panel, en mm. tools/panel.py usa las mismas para los símbolos de
 	// onda y para el logo, así que si aquí se mueve algo hay que moverlo allí.
 	//
@@ -807,7 +807,7 @@ struct Atek303Widget : ModuleWidget {
 
 	Atek303Widget(Atek303* module) {
 		setModule(module);
-		setPanel(createPanel(asset::plugin(pluginInstance, "res/ATEK303.svg")));
+		setAccentPanel("res/ATEK303.svg");
 		// The acid face in the panel art (30.48, 32.9 mm, radius 4.7): the easter egg.
 		{
 			auto* face = createWidget<AcidFace>(mm2px(Vec(30.48f - 4.7f, 32.9f - 4.7f)));
@@ -906,6 +906,7 @@ struct Atek303Widget : ModuleWidget {
 	}
 
 	void appendContextMenu(Menu* menu) override {
+		AnimatekUI::AccentModuleWidget::appendContextMenu(menu);
 		Atek303* module = getModule<Atek303>();
 
 		static const char* MODEL_NAME[3] = {"Circuit", "Open303", "Custom"};

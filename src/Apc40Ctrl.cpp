@@ -41,7 +41,7 @@ static constexpr std::array<const char*, NUM_EXTRA_CONTROLS> APC_EXTRA_LABELS = 
     "CUE", "MASTER", "XFAD",
 };
 
-struct Apc40Ctrl : Module {
+struct Apc40Ctrl : AnimatekUI::AccentModule {
     enum ParamIds {
         ENUMS(ATTENUVERT_PARAM, NUM_APC_CONTROLS),
         NUM_PARAMS
@@ -177,10 +177,10 @@ struct ApcVerticalSeparator : widget::TransparentWidget {
     }
 };
 
-struct Apc40CtrlWidget : ModuleWidget {
+struct Apc40CtrlWidget : AnimatekUI::AccentModuleWidget {
     Apc40CtrlWidget(Apc40Ctrl* module) {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/Apc40Ctrl.svg")));
+        setAccentPanel("res/Apc40Ctrl.svg");
 
         auto title = createWidget<ApcLabel>(mm2px(Vec(0.f, 4.0f)));
         title->box.size = mm2px(Vec(50.8f, 3.5f));
@@ -289,7 +289,7 @@ struct Apc40CtrlWidget : ModuleWidget {
     }
 
     void appendContextMenu(ui::Menu* menu) override {
-        ModuleWidget::appendContextMenu(menu);
+        AnimatekUI::AccentModuleWidget::appendContextMenu(menu);
         if (auto* m = dynamic_cast<Apc40Ctrl*>(module)) {
             menu->addChild(new MenuSeparator);
             app::appendMidiMenu(menu, &m->midiInput);

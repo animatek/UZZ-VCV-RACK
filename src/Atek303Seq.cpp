@@ -23,7 +23,7 @@
 
 static const int MAX_STEPS = ACID_MAX_STEPS;
 
-struct Atek303Seq : Module, AcidEditorHost {
+struct Atek303Seq : AnimatekUI::AccentModule, AcidEditorHost {
 	enum PatternAction { ACTION_NONE, MUTATE_TIME, MUTATE_PITCH, MUTATE_ARTICULATION,
 	                     UNDO_MUTATION, ACTION_GENERATE, ACTION_CLEAR };
 	enum ParamId {
@@ -87,7 +87,7 @@ struct Atek303Seq : Module, AcidEditorHost {
 	std::atomic<bool> hasPendingPattern {false};
 
 	dsp::SchmittTrigger clockTrig, resetTrig, genTrig;
-	dsp::BooleanTrigger genButton, mutateTimeButton, mutatePitchButton, mutateArticulationButton;
+	dsp::BooleanTrigger genButton{}, mutateTimeButton{}, mutatePitchButton{}, mutateArticulationButton{};
 	dsp::PulseGenerator eocPulse, genPulse, mutateTimePulse, mutatePitchPulse, mutateArticulationPulse;
 
 	int step = 0;
@@ -1158,7 +1158,7 @@ struct AcidStickerButton : OpaqueWidget {
 	}
 };
 
-struct Atek303SeqWidget : ModuleWidget {
+struct Atek303SeqWidget : AnimatekUI::AccentModuleWidget {
 	// Las dos vistas que comparten el mismo hueco del panel. Todo lo que hay entre la fila
 	// de LEDs y la raya azul está hecho de widgets, no horneado en el SVG, así que conmutar
 	// es enseñar una capa y esconder la otra: el SVG no se toca.
@@ -1185,9 +1185,13 @@ struct Atek303SeqWidget : ModuleWidget {
 	static constexpr float IO_JACK_Y = 110.0f;
 	static constexpr float IO_SPLIT_X = 42.5f; // separador vertical entre los dos bloques
 
+	// The layers it creates belong to the widget tree: never copied.
+	Atek303SeqWidget(const Atek303SeqWidget&) = delete;
+	Atek303SeqWidget& operator=(const Atek303SeqWidget&) = delete;
+
 	Atek303SeqWidget(Atek303Seq* module) {
 		setModule(module);
-		setPanel(createPanel(asset::plugin(pluginInstance, "res/ATEK303SEQ.svg")));
+		setAccentPanel("res/ATEK303SEQ.svg");
 
 		// Las dos capas conmutables ocupan el panel entero; cada widget conserva sus
 		// coordenadas de siempre, así que la disposición no se mueve ni un milímetro.
@@ -1402,10 +1406,11 @@ struct Atek303SeqWidget : ModuleWidget {
 		const bool edit = m && m->params[Atek303Seq::VIEW_PARAM].getValue() > 0.5f;
 		if (genLayer) genLayer->visible = !edit;
 		if (editor) editor->visible = edit;
-		ModuleWidget::step();
+		AnimatekUI::AccentModuleWidget::step();
 	}
 
 	void appendContextMenu(Menu* menu) override {
+		AnimatekUI::AccentModuleWidget::appendContextMenu(menu);
 		Atek303Seq* module = getModule<Atek303Seq>();
 		menu->addChild(new MenuSeparator);
 		menu->addChild(createMenuLabel(string::f("Pattern v%d · seed %08X",

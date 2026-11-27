@@ -109,7 +109,7 @@ struct CutoffQuantity : ParamQuantity {
 using namespace filtertek;
 
 
-struct FilterTek : Module {
+struct FilterTek : AnimatekUI::AccentModule {
     // Not released yet, so the order is free; once it is, append only.
     enum ParamId { FREQ_PARAM, RES_PARAM, CUT_CV_PARAM, RES_CV_PARAM, TYPE_PARAM, SLOPE_PARAM,
                    GAIN_CONTROL_PARAM, PARAMS_LEN };
@@ -403,10 +403,10 @@ struct ResponseDisplay : TransparentWidget {
 };
 
 
-struct FilterTekWidget : ModuleWidget {
+struct FilterTekWidget : AnimatekUI::AccentModuleWidget {
     FilterTekWidget(FilterTek* module) {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/FilterTek.svg")));
+        setAccentPanel("res/FilterTek.svg");
 
         constexpr float W = 40.64f;  // 8 HP
         constexpr float CX = W * 0.5f;

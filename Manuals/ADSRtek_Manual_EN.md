@@ -68,7 +68,7 @@ Between the two switches. Its brightness is the level of the first channel's env
 
 ### CV: A, D, S, R
 
-Polyphonic CV over each stage, added to its knob. For the times, **1 V moves 12.7 steps**, so 10 V sweeps all 128; for `SUSTAIN`, **1 V adds 10%**. Times are read continuously, so modulating a time during a stage changes its speed at once.
+Polyphonic CV over each stage, added to its knob. Each jack has an attenuverter above it, joined by a hairline as on VCV's ADSR: from −100% (the CV turned upside down) through 0 (the CV does nothing) to **100%, its default**, which is how the CVs worked before the trimmers existed. At 100%, for the times **1 V moves 12.7 steps**, so 10 V sweeps all 128; for `SUSTAIN`, **1 V adds 10%**. Times are read continuously, so modulating a time during a stage changes its speed at once.
 
 ### GATE
 

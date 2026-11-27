@@ -1,8 +1,14 @@
 #pragma once
 
 #include "../plugin.hpp"
+#include "Palette.hpp"
 
 #include <cctype>
+#include <algorithm>
+#include <map>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace AnimatekUI {
 
@@ -14,12 +20,52 @@ static constexpr uint8_t DISPLAY_BLUE_R = 0x5D;
 static constexpr uint8_t DISPLAY_BLUE_G = 0xB7;
 static constexpr uint8_t DISPLAY_BLUE_B = 0xFF;
 
+// ---------------------------------------------------------------------------
+// Accent colour
+// ---------------------------------------------------------------------------
+//
+// Every module can swap the logo blue for another colour of the palette (see
+// AccentModuleWidget below). The widget sets the accent around its own draw,
+// so everything drawn inside it that asks for logoBlue() or displayBlue() gets
+// the module's colour instead, without each widget knowing about it. -1 is
+// the plain blue. Drawing happens on the UI thread only, so one value is enough.
+inline int &currentAccent() {
+  static int accent = -1;
+  return accent;
+}
+
+/** Sets the accent for the life of the object, and puts the old one back. */
+struct AccentScope {
+  int previous;
+  explicit AccentScope(int accent) : previous(currentAccent()) { currentAccent() = accent; }
+  ~AccentScope() { currentAccent() = previous; }
+};
+
 inline NVGcolor logoBlue(uint8_t alpha = 255) {
+  const int accent = currentAccent();
+  if (accent > 0 && accent < PALETTE_LEN)
+    return paletteRGBA(accent, alpha);
   return nvgRGBA(LOGO_BLUE_R, LOGO_BLUE_G, LOGO_BLUE_B, alpha);
 }
 
+/** The lighter blue of the displays' text; with an accent, the accent a third
+of the way to white, which is about how the two blues relate. */
 inline NVGcolor displayBlue(uint8_t alpha = 255) {
+  const int accent = currentAccent();
+  if (accent > 0 && accent < PALETTE_LEN) {
+    const PaletteColor &c = paletteAt(accent);
+    auto lift = [](unsigned char v) { return (unsigned char)(v + (255 - v) / 3); };
+    return nvgRGBA(lift(c.r), lift(c.g), lift(c.b), alpha);
+  }
   return nvgRGBA(DISPLAY_BLUE_R, DISPLAY_BLUE_G, DISPLAY_BLUE_B, alpha);
+}
+
+/** A colour stored as the logo blue (a label set to it, say) follows the accent. */
+inline NVGcolor followAccent(NVGcolor c) {
+  auto byte = [](float v) { return (int)std::round(v * 255.f); };
+  if (byte(c.r) == LOGO_BLUE_R && byte(c.g) == LOGO_BLUE_G && byte(c.b) == LOGO_BLUE_B)
+    return logoBlue((uint8_t)byte(c.a));
+  return c;
 }
 
 // Los paneles Animatek son oscuros y punto: no hay variante clara. Estos colores no
@@ -34,9 +80,21 @@ inline NVGcolor panelSeparatorColor(uint8_t alpha = 180) {
   return nvgRGBA(0x9A, 0xA2, 0xB5, alpha);
 }
 
+/** Where each SVG our widgets use was loaded from, so that a module's accent
+colour can load a tinted copy of it (see AccentModuleWidget). */
+inline std::map<const window::Svg *, std::string> &svgPaths() {
+  static std::map<const window::Svg *, std::string> paths;
+  return paths;
+}
+
 inline std::shared_ptr<window::Svg> loadPluginSvg(const char *relPath) {
   std::string path = asset::plugin(pluginInstance, relPath);
-  return system::exists(path) ? Svg::load(path) : nullptr;
+  if (!system::exists(path))
+    return nullptr;
+  std::shared_ptr<window::Svg> svg = Svg::load(path);
+  if (svg)
+    svgPaths()[svg.get()] = path;
+  return svg;
 }
 
 inline std::shared_ptr<window::Svg> loadPluginSvgOr(const char *pluginRel,
@@ -103,7 +161,7 @@ struct TextLabel : TransparentWidget {
 
     nvgFontSize(args.vg, fontSize);
     nvgFontFaceId(args.vg, font->handle);
-    nvgFillColor(args.vg, color.a > 0.f ? color : panelTextColor());
+    nvgFillColor(args.vg, color.a > 0.f ? followAccent(color) : panelTextColor());
     nvgTextAlign(args.vg, NVG_ALIGN_CENTER | NVG_ALIGN_BOTTOM);
     float cx = box.size.x * .5f;
     float by = box.size.y;
@@ -545,5 +603,212 @@ inline void addModuleName(widget::Widget *panel, const char *name) {
   label->box.size = mm2px(Vec(36.f, 6.f));
   panel->addChild(label);
 }
+
+// ---------------------------------------------------------------------------
+// Accent colour: the module side and the widget side
+// ---------------------------------------------------------------------------
+
+/** A module whose colour can be chosen. The choice is saved with the patch
+(and so travels with presets and copies) at the top level of the module's
+JSON, so modules with their own dataToJson need nothing more. */
+struct AccentModule : engine::Module {
+  int accentColor = -1;   // palette index; -1 the plain blue
+
+  json_t *toJson() override {
+    json_t *root = engine::Module::toJson();
+    if (accentColor >= 0)
+      json_object_set_new(root, "accentColor", json_integer(accentColor));
+    return root;
+  }
+
+  void fromJson(json_t *root) override {
+    engine::Module::fromJson(root);
+    json_t *j = json_object_get(root, "accentColor");
+    accentColor = j ? (int)json_integer_value(j) : -1;
+  }
+};
+
+/** Recolours one nanosvg colour (0xAABBGGRR) if it is a blue: the accent at
+the same depth, so a darker blue becomes a darker accent. Greys, whites and
+any other hue are left alone. */
+inline unsigned int tintBlue(unsigned int abgr, const PaletteColor &to) {
+  const int r = abgr & 0xff, g = (abgr >> 8) & 0xff, b = (abgr >> 16) & 0xff;
+  if (!(b > r + 30 && b > g + 25))
+    return abgr;
+  const float depth = (float)b / 255.f;
+  auto ch = [&](unsigned char v) { return (unsigned int)std::min(255.f, std::round(v * depth)); };
+  return (abgr & 0xff000000u) | (ch(to.b) << 16) | (ch(to.g) << 8) | ch(to.r);
+}
+
+inline void tintPaint(NSVGpaint &paint, const PaletteColor &to) {
+  if (paint.type == NSVG_PAINT_COLOR)
+    paint.color = tintBlue(paint.color, to);
+  else if ((paint.type == NSVG_PAINT_LINEAR_GRADIENT || paint.type == NSVG_PAINT_RADIAL_GRADIENT) &&
+           paint.gradient)
+    for (int i = 0; i < paint.gradient->nstops; i++)
+      paint.gradient->stops[i].color = tintBlue(paint.gradient->stops[i].color, to);
+}
+
+/** A private copy of an SVG file with its blues turned to a palette colour.
+Svg::load() caches and shares, so tinting that one would tint every module
+using the file: the copy is loaded apart and kept per file and colour. */
+inline std::shared_ptr<window::Svg> accentPanelSvg(const std::string &path, int accent) {
+  if (accent <= 0 || accent >= PALETTE_LEN)
+    return window::Svg::load(path);
+  static std::map<std::pair<std::string, int>, std::shared_ptr<window::Svg>> cache;
+  std::shared_ptr<window::Svg> &slot = cache[std::make_pair(path, accent)];
+  if (slot)
+    return slot;
+  slot = std::make_shared<window::Svg>();
+  slot->loadFile(path);
+  if (slot->handle) {
+    const PaletteColor &c = paletteAt(accent);
+    for (NSVGshape *shape = slot->handle->shapes; shape; shape = shape->next) {
+      tintPaint(shape->fill, c);
+      tintPaint(shape->stroke, c);
+    }
+  }
+  return slot;
+}
+
+/** The tinted copy of an SVG our widgets loaded, or the SVG itself when its
+file is not known or there is no accent. */
+inline std::shared_ptr<window::Svg> accentSvg(const std::shared_ptr<window::Svg> &original, int accent) {
+  if (!original || accent <= 0)
+    return original;
+  auto it = svgPaths().find(original.get());
+  if (it == svgPaths().end())
+    return original;
+  return accentPanelSvg(it->second, accent);
+}
+
+/** The widget of a module with an accent colour: draws itself under that
+accent, tints the blue of its panel and of its blue lights, and offers the
+palette in its context menu. Subclasses use setAccentPanel() instead of
+setPanel(), and call this class's step() and appendContextMenu(). */
+struct AccentModuleWidget : app::ModuleWidget {
+  std::string panelPath;
+  int shownAccent = -2;
+  bool lightsScanned = false;
+  // Each blue light with the colour it was built with, to go back to.
+  std::vector<std::pair<app::MultiLightWidget *, NVGcolor>> accentLights;
+  // Each SVG drawn inside the module (jacks, buttons, icons) and each switch's
+  // frames, as they were loaded, to tint copies of.
+  std::vector<std::pair<widget::SvgWidget *, std::shared_ptr<window::Svg>>> accentSvgs;
+  std::vector<std::pair<app::SvgSwitch *, std::vector<std::shared_ptr<window::Svg>>>> accentSwitches;
+
+  /** The colour to draw with. By default the module's own choice. */
+  virtual int accentIndex() {
+    AccentModule *m = dynamic_cast<AccentModule *>(module);
+    return m ? m->accentColor : -1;
+  }
+  /** False where the colour comes from elsewhere (a CAP's track). */
+  virtual bool hasAccentMenu() { return true; }
+  virtual std::string accentMenuName() { return "Colour"; }
+
+  void setAccentPanel(const char *relPath) {
+    panelPath = asset::plugin(pluginInstance, relPath);
+    setPanel(createPanel(panelPath));
+  }
+
+  void draw(const DrawArgs &args) override {
+    AccentScope scope(accentIndex());
+    app::ModuleWidget::draw(args);
+  }
+
+  void drawLayer(const DrawArgs &args, int layer) override {
+    AccentScope scope(accentIndex());
+    app::ModuleWidget::drawLayer(args, layer);
+  }
+
+  /** The single-colour lights that are blue, Rack's or ours: those follow the
+  accent. Several-colour lights (an RGB one) keep their meaning. */
+  void scanLights(widget::Widget *w) {
+    for (widget::Widget *child : w->children) {
+      if (widget::SvgWidget *sw = dynamic_cast<widget::SvgWidget *>(child))
+        if (sw->svg)
+          accentSvgs.push_back(std::make_pair(sw, sw->svg));
+      if (app::SvgSwitch *sws = dynamic_cast<app::SvgSwitch *>(child))
+        accentSwitches.push_back(std::make_pair(sws, sws->frames));
+      if (app::MultiLightWidget *light = dynamic_cast<app::MultiLightWidget *>(child)) {
+        if (light->baseColors.size() == 1) {
+          NVGcolor c = light->baseColors[0];
+          auto byte = [](float v) { return (int)std::round(v * 255.f); };
+          bool rackBlue = byte(c.r) == 0x29 && byte(c.g) == 0xb2 && byte(c.b) == 0xef;
+          bool ourBlue = byte(c.r) == LOGO_BLUE_R && byte(c.g) == LOGO_BLUE_G && byte(c.b) == LOGO_BLUE_B;
+          if (rackBlue || ourBlue)
+            accentLights.push_back(std::make_pair(light, c));
+        }
+      }
+      scanLights(child);
+    }
+  }
+
+  static void dirtyFramebuffers(widget::Widget *w) {
+    if (widget::FramebufferWidget *fb = dynamic_cast<widget::FramebufferWidget *>(w))
+      fb->setDirty();
+    for (widget::Widget *child : w->children)
+      dirtyFramebuffers(child);
+  }
+
+  void step() override {
+    if (!lightsScanned) {
+      scanLights(this);
+      // A switch's picture is chosen from its frames by its value, so it is
+      // refreshed from the frames, not remembered as it was at the scan.
+      for (auto &sws : accentSwitches)
+        accentSvgs.erase(std::remove_if(accentSvgs.begin(), accentSvgs.end(),
+                                        [&](const std::pair<widget::SvgWidget *, std::shared_ptr<window::Svg>> &e) {
+                                          return e.first == sws.first->sw;
+                                        }),
+                         accentSvgs.end());
+      lightsScanned = true;
+    }
+    const int accent = accentIndex();
+    if (accent != shownAccent) {
+      shownAccent = accent;
+      const bool tinted = accent > 0 && accent < PALETTE_LEN;
+      for (auto &entry : accentLights)
+        entry.first->baseColors[0] = tinted ? paletteRGBA(accent) : entry.second;
+      // A switch's frames first, so its next change already picks a tinted one;
+      // then whatever each SVG widget shows now.
+      for (auto &entry : accentSwitches) {
+        app::SvgSwitch *sws = entry.first;
+        for (size_t i = 0; i < entry.second.size() && i < sws->frames.size(); i++)
+          sws->frames[i] = accentSvg(entry.second[i], accent);
+        if (sws->frames.empty())
+          continue;
+        int frame = 0;
+        if (engine::ParamQuantity *pq = sws->getParamQuantity())
+          frame = (int)std::round(pq->getValue() - pq->getMinValue());
+        if (frame < 0 || frame >= (int)sws->frames.size())
+          frame = 0;
+        sws->sw->setSvg(sws->frames[frame]);
+      }
+      for (auto &entry : accentSvgs)
+        entry.first->setSvg(accentSvg(entry.second, accent));
+      if (!panelPath.empty())
+        if (app::SvgPanel *panel = dynamic_cast<app::SvgPanel *>(getPanel()))
+          panel->setBackground(accentPanelSvg(panelPath, accent));
+      dirtyFramebuffers(this);
+    }
+    app::ModuleWidget::step();
+  }
+
+  void appendContextMenu(ui::Menu *menu) override {
+    app::ModuleWidget::appendContextMenu(menu);
+    AccentModule *m = dynamic_cast<AccentModule *>(module);
+    if (!m || !hasAccentMenu())
+      return;
+    menu->addChild(new ui::MenuSeparator);
+    std::vector<std::string> names;
+    for (int i = 0; i < PALETTE_LEN; i++)
+      names.push_back(PALETTE[i].name);
+    menu->addChild(createIndexSubmenuItem(
+        accentMenuName(), names,
+        [=]() { return (size_t)std::max(m->accentColor, 0); },
+        [=](size_t i) { m->accentColor = (int)i; }));
+  }
+};
 
 } // namespace AnimatekUI

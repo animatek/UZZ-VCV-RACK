@@ -1,5 +1,6 @@
 #include "plugin.hpp"
 #include "ui/CommonWidgets.hpp"
+#include "ui/Palette.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -38,15 +39,19 @@ struct CapBus : Module {
     // The LINK LED: dim when a CAP or BUS sits on the left, brighter with the
     // audio arriving from it.
     CapChainLed linkLed;
-    // Off: the BUS closes its row, and a CAP to its right starts a new one in
-    // parallel. On: its mix carries on to the right, so a row can feed a group
-    // insert and then a master further along.
-    bool passOn = false;
+    // On: its mix carries on to the right, so each track's BUS feeds the next
+    // track and the last BUS is the master. Off: the BUS closes its row, and a
+    // CAP to its right starts a new one in parallel. On for a new BUS; a patch
+    // saved before the default changed keeps what it had.
+    bool passOn = true;
 
     // Peak of each side of MIX for the meter. Written by the audio thread and
     // read by the UI; a torn float is one wrong frame of a meter at worst.
     float meterL = 0.f;
     float meterR = 0.f;
+    // The colour of the track arriving from the left (see CapBusMessage), for
+    // the meter; -1 with nothing linked.
+    int shownColor = -1;
 
     // The name at the top of the panel. Empty and not custom, the panel shows
     // the effect patched to it instead; anything typed in wins.
@@ -78,12 +83,15 @@ struct CapBus : Module {
     }
 
     /** Sends the mix on to the right, or an empty, unlinked message when this
-    BUS closes its row. */
-    void sendOn(const CapBusMessage& mix, bool linked) {
+    BUS closes its row. `endsTrack`: the CAP on the right starts a new track
+    (false only when bypassed, where the BUS steps out of the way). */
+    void sendOn(const CapBusMessage& mix, bool linked, bool endsTrack = true) {
         CapBusMessage msg;
         if (linked) {
             msg = mix;
             msg.linked = true;
+            if (endsTrack)
+                msg.fromBus = true;
         }
         capBusSend(*this, msg);
     }
@@ -126,13 +134,14 @@ struct CapBus : Module {
         meterR = std::max(std::abs(bus.right), meterR * fall);
 
         lights[LINK_LIGHT].setBrightness(linkLed.update(arrived.linked, arrived, args.sampleTime));
+        shownColor = arrived.linked ? arrived.color : -1;
     }
 
     void onReset(const ResetEvent& e) override {
         Module::onReset(e);
         label.clear();
         customLabel = false;
-        passOn = false;
+        passOn = true;
     }
 
     json_t* dataToJson() override {
@@ -150,8 +159,9 @@ struct CapBus : Module {
             label = json_string_value(j) ? json_string_value(j) : "";
         if (json_t* j = json_object_get(root, "customLabel"))
             customLabel = json_boolean_value(j);
-        if (json_t* j = json_object_get(root, "passOn"))
-            passOn = json_boolean_value(j);
+        // Missing in patches saved before the option existed: they closed the row.
+        json_t* j = json_object_get(root, "passOn");
+        passOn = j ? json_boolean_value(j) : false;
     }
 
     /** Bypassed, the BUS steps out of the way: the chain passes through it
@@ -160,7 +170,7 @@ struct CapBus : Module {
         CapBusMessage bus = capBusReceive(*this);
         outputs[MIX_L_OUTPUT].setVoltage(bus.left);
         outputs[MIX_R_OUTPUT].setVoltage(bus.right);
-        sendOn(bus, bus.linked);
+        sendOn(bus, bus.linked, false);
     }
 };
 
@@ -224,12 +234,14 @@ struct BusLevelSlider : app::SliderKnob {
                 float safeH = std::min(h, track * zeroDb);
                 nvgBeginPath(args.vg);
                 nvgRect(args.vg, x, box.size.y - INSET - safeH, bw, safeH);
-                nvgFillColor(args.vg, AnimatekUI::logoBlue());
+                // In the colour of the track it closes.
+                nvgFillColor(args.vg, AnimatekUI::paletteRGBA(bus ? bus->shownColor : 0));
                 nvgFill(args.vg);
                 if (h > safeH) {
                     nvgBeginPath(args.vg);
                     nvgRect(args.vg, x, box.size.y - INSET - h, bw, h - safeH);
-                    nvgFillColor(args.vg, nvgRGB(0xFF, 0xA0, 0x28));
+                    // Over 0 dB in red: amber would read as the orange track colour.
+                    nvgFillColor(args.vg, nvgRGB(0xFF, 0x3B, 0x3B));
                     nvgFill(args.vg);
                 }
             }
@@ -253,7 +265,9 @@ shows "MIX" in grey, since a BUS with no effect is a master. */
 struct BusNameField : ui::TextField {
     CapBus* bus = NULL;
     std::string autoName;
-    static constexpr float FONT_SIZE = 9.f;
+    static constexpr float FONT_SIZE = 12.f;
+    // A long name shrinks to fit the field, down to this.
+    static constexpr float MIN_FONT_SIZE = 8.f;
 
     BusNameField() {
         placeholder = "MIX";
@@ -317,12 +331,16 @@ struct BusNameField : ui::TextField {
                 }
                 else {
                     bool empty = text.empty();
-                    nvgFontSize(args.vg, FONT_SIZE);
+                    const char* shown = empty ? placeholder.c_str() : text.c_str();
                     nvgFontFaceId(args.vg, font->handle);
+                    nvgFontSize(args.vg, FONT_SIZE);
+                    float room = box.size.x - 4.f;
+                    float width = nvgTextBounds(args.vg, 0.f, 0.f, shown, NULL, NULL);
+                    if (width > room)
+                        nvgFontSize(args.vg, std::max(MIN_FONT_SIZE, FONT_SIZE * room / width));
                     nvgTextAlign(args.vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
                     nvgFillColor(args.vg, empty ? nvgRGB(0x5a, 0x60, 0x70) : AnimatekUI::logoBlue());
-                    nvgText(args.vg, box.size.x * 0.5f, box.size.y * 0.5f,
-                            empty ? placeholder.c_str() : text.c_str(), NULL);
+                    nvgText(args.vg, box.size.x * 0.5f, box.size.y * 0.5f, shown, NULL);
                 }
                 nvgResetScissor(args.vg);
             }
@@ -341,12 +359,19 @@ struct BusNameField : ui::TextField {
 };
 
 
-struct CapBusWidget : ModuleWidget {
+struct CapBusWidget : AnimatekUI::AccentModuleWidget {
+    // The whole BUS in the colour of the track it closes; no menu of its own.
+    int accentIndex() override {
+        CapBus* m = dynamic_cast<CapBus*>(module);
+        return m ? m->shownColor : -1;
+    }
+    bool hasAccentMenu() override { return false; }
+
     BusNameField* nameField = NULL;
 
     CapBusWidget(CapBus* module) {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/CapBus.svg")));
+        setAccentPanel("res/CapBus.svg");
 
         constexpr float W = 20.32f;  // 4 HP
         constexpr float X1 = 5.6f;
@@ -368,55 +393,64 @@ struct CapBusWidget : ModuleWidget {
             addChild(new AnimatekUI::ConnectorLine(mm2px(ax), mm2px(ay), mm2px(bx), mm2px(by)));
         };
 
-        nameField = createWidget<BusNameField>(mm2px(Vec(1.2f, 1.6f)));
-        nameField->box.size = mm2px(Vec(W - 2.4f, 4.6f));
+        // Every row at the height of its counterpart on CAP, so a BUS closing a
+        // row of CAPs lines up with them: the fader, the three controls, the
+        // CV jack, the inputs, and the two rows of outputs.
+
+        // The chain LED in the top left corner, where CAP has its own: it says
+        // whether a CAP or another BUS sits against the left edge, which is the
+        // only thing that can go wrong with a chain made without cables.
+        addChild(createLightCentered<TinyLight<BlueLight>>(mm2px(Vec(1.8f, 2.2f)), module,
+                                                            CapBus::LINK_LIGHT));
+
+        addLabel("WET", XK, 4.0f, 10.f);
+        addParam(createParamCentered<AnimatekUI::FlatSmallKnob>(mm2px(Vec(XK, 12.5f)), module,
+                                                          CapBus::WET_PARAM));
+        addLabel("PAN", XK, 18.0f, 10.f);
+        addParam(createParamCentered<AnimatekUI::FlatSmallKnob>(mm2px(Vec(XK, 26.5f)), module,
+                                                          CapBus::PAN_PARAM));
+        // The CV and its amount, joined by a hairline: the line says that
+        // trimmer is that jack's. The jack is on CAP's CV row.
+        addParam(createParamCentered<AnimatekUI::FlatTrimpot>(mm2px(Vec(XK, 40.5f)), module,
+                                              CapBus::PAN_CV_PARAM));
+        addInput(createInputCentered<TekInputPort>(mm2px(Vec(XK, 54.5f)), module,
+                                                   CapBus::PAN_CV_INPUT));
+        line(XK, 43.9f, XK, 49.9f);
+
+        // Same height and top as CAP's fader.
+        auto* slider = createParam<BusLevelSlider>(mm2px(Vec(11.3f, 4.0f)), module,
+                                                   CapBus::LEVEL_PARAM);
+        slider->box.size = mm2px(Vec(7.6f, 41.f));
+        slider->bus = module;
+        addParam(slider);
+
+        auto addJacks = [&](float y, int leftId, int rightId, bool input) {
+            if (input) {
+                addInput(createInputCentered<TekInputPort>(mm2px(Vec(X1, y)), module, leftId));
+                addInput(createInputCentered<TekInputPort>(mm2px(Vec(X2, y)), module, rightId));
+            }
+            else {
+                addOutput(createOutputCentered<TekOutputPort>(mm2px(Vec(X1, y)), module, leftId));
+                addOutput(createOutputCentered<TekOutputPort>(mm2px(Vec(X2, y)), module, rightId));
+            }
+        };
+
+        // RETURN, then the name of the effect patched to it, then its jacks on
+        // CAP's IN row. What comes in sits above the panel line (y = 88, as on
+        // CAP) and what goes out below.
+        addLabel("RETURN", W * 0.5f, 60.5f, 18.f);
+        nameField = createWidget<BusNameField>(mm2px(Vec(1.2f, 66.0f)));
+        nameField->box.size = mm2px(Vec(W - 2.4f, 6.5f));
         nameField->bus = module;
         if (module && module->customLabel)
             nameField->setText(module->label);
         addChild(nameField);
+        addJacks(81.5f, CapBus::RETURN_L_INPUT, CapBus::RETURN_R_INPUT, true);
 
-        // The LED says whether a CAP or another BUS sits against the left edge,
-        // which is the only thing that can go wrong with a chain made without
-        // cables: a gap of one HP and nothing arrives.
-        addChild(createLightCentered<SmallLight<BlueLight>>(mm2px(Vec(W * 0.5f, 8.6f)), module,
-                                                            CapBus::LINK_LIGHT));
-
-        addLabel("WET", XK, 11.0f, 10.f);
-        addParam(createParamCentered<AnimatekUI::FlatSmallKnob>(mm2px(Vec(XK, 19.0f)), module,
-                                                          CapBus::WET_PARAM));
-        addLabel("PAN", XK, 25.5f, 10.f);
-        addParam(createParamCentered<AnimatekUI::FlatSmallKnob>(mm2px(Vec(XK, 33.5f)), module,
-                                                          CapBus::PAN_PARAM));
-        // The CV and its amount, joined by a hairline: the line says that
-        // trimmer is that jack's.
-        addParam(createParamCentered<AnimatekUI::FlatTrimpot>(mm2px(Vec(XK, 43.0f)), module,
-                                              CapBus::PAN_CV_PARAM));
-        addInput(createInputCentered<TekInputPort>(mm2px(Vec(XK, 52.5f)), module,
-                                                   CapBus::PAN_CV_INPUT));
-        line(XK, 45.6f, XK, 48.3f);
-
-        auto* slider = createParam<BusLevelSlider>(mm2px(Vec(11.3f, 11.5f)), module,
-                                                   CapBus::LEVEL_PARAM);
-        slider->box.size = mm2px(Vec(7.6f, 45.f));
-        slider->bus = module;
-        addParam(slider);
-
-        // One label per stereo pair, left jack on the left. As on CAP, what
-        // comes in sits above the panel line (y = 77.5) and what goes out below.
-        auto addPair = [&](const char* text, float y, int leftId, int rightId, bool input) {
-            addLabel(text, W * 0.5f, y, 18.f);
-            if (input) {
-                addInput(createInputCentered<TekInputPort>(mm2px(Vec(X1, y + 7.5f)), module, leftId));
-                addInput(createInputCentered<TekInputPort>(mm2px(Vec(X2, y + 7.5f)), module, rightId));
-            }
-            else {
-                addOutput(createOutputCentered<TekOutputPort>(mm2px(Vec(X1, y + 7.5f)), module, leftId));
-                addOutput(createOutputCentered<TekOutputPort>(mm2px(Vec(X2, y + 7.5f)), module, rightId));
-            }
-        };
-        addPair("RETURN", 63.5f, CapBus::RETURN_L_INPUT, CapBus::RETURN_R_INPUT, true);
-        addPair("SEND", 80.0f, CapBus::SEND_L_OUTPUT, CapBus::SEND_R_OUTPUT, false);
-        addPair("MIX", 94.5f, CapBus::MIX_L_OUTPUT, CapBus::MIX_R_OUTPUT, false);
+        addLabel("SEND", W * 0.5f, 90.5f, 18.f);
+        addJacks(98.0f, CapBus::SEND_L_OUTPUT, CapBus::SEND_R_OUTPUT, false);
+        addLabel("MIX", W * 0.5f, 104.5f, 18.f);
+        addJacks(112.0f, CapBus::MIX_L_OUTPUT, CapBus::MIX_R_OUTPUT, false);
     }
 
     void appendContextMenu(ui::Menu* menu) override {
@@ -453,7 +487,7 @@ struct CapBusWidget : ModuleWidget {
                 name = moduleOnCable(getOutput(CapBus::SEND_L_OUTPUT), false);
             nameField->autoName = name;
         }
-        ModuleWidget::step();
+        AnimatekUI::AccentModuleWidget::step();
     }
 };
 

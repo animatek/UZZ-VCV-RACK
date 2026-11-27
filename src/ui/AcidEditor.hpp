@@ -10,7 +10,8 @@
 // than the green, red and amber of a drum machine: a note in the logo blue, a tie
 // in a deeper blue, an accent nearly white, a slide in cyan, and the octave
 // shifts in slate. Each stays apart from the others at a glance.
-inline NVGcolor acidNoteColor() { return nvgRGB(0x2C, 0x7F, 0xFF); }
+// The logo blue, so it follows the module's accent colour (see AccentModuleWidget).
+inline NVGcolor acidNoteColor() { return AnimatekUI::logoBlue(); }
 inline NVGcolor acidTieColor() { return nvgRGB(0x1E, 0x4E, 0x9C); }
 inline NVGcolor acidAccentColor() { return nvgRGB(0xCF, 0xE6, 0xFF); }
 inline NVGcolor acidSlideColor() { return nvgRGB(0x00, 0xC2, 0xFF); }

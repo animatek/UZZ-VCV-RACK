@@ -68,7 +68,7 @@ Entre los dos selectores. Su brillo es el nivel de la envolvente del primer cana
 
 ### CV: A, D, S, R
 
-CV polifónico sobre cada etapa, sumado a su mando. En los tiempos, **1 V mueve 12,7 pasos**, así que 10 V recorren los 128; en `SUSTAIN`, **1 V suma un 10 %**. Los tiempos se leen continuamente, así que modular un tiempo durante una etapa cambia su velocidad al momento.
+CV polifónico sobre cada etapa, sumado a su mando. Cada jack lleva encima su atenuador, unido por una línea fina como en el ADSR de VCV: de −100 % (el CV al revés) a **100 %, que es lo que trae por defecto** y como funcionaban los CV antes de que existiera, pasando por 0 (el CV no hace nada). Al 100 %, en los tiempos **1 V mueve 12,7 pasos**, así que 10 V recorren los 128; en `SUSTAIN`, **1 V suma un 10 %**. Los tiempos se leen continuamente, así que modular un tiempo durante una etapa cambia su velocidad al momento.
 
 ### GATE
 

@@ -16,7 +16,7 @@ using AnimatekUI::TextLabel;
 // ============================================================================
 // Module
 // ============================================================================
-struct UZZ : Module {
+struct UZZ : AnimatekUI::AccentModule {
   enum ParamIds {
     ENUMS(PITCH_PARAMS, 16),
     ENUMS(OCT_PARAMS, 16),
@@ -1069,10 +1069,10 @@ struct UZZ : Module {
 // ============================================================================
 // Module Widget
 // ============================================================================
-struct UZZWidget : ModuleWidget {
+struct UZZWidget : AnimatekUI::AccentModuleWidget {
   UZZWidget(UZZ *module) {
     setModule(module);
-    setPanel(createPanel(asset::plugin(pluginInstance, "res/UZZ.svg")));
+    setAccentPanel("res/UZZ.svg");
 
     const int cols = UI::COLS;
     auto Xc = [&](int i) { return UI::colCenter(box.size.x, i); };
@@ -1404,7 +1404,7 @@ struct UZZWidget : ModuleWidget {
   }
 
   void appendContextMenu(ui::Menu *menu) override {
-    ModuleWidget::appendContextMenu(menu);
+    AnimatekUI::AccentModuleWidget::appendContextMenu(menu);
     auto *m = dynamic_cast<UZZ *>(module);
 
 

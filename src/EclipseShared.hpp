@@ -51,6 +51,7 @@ struct PitchOutput {
     float voct = 0.f;
     float root = 0.f;
     int colorB = DEFAULT_B_COLOR;
+    int colorA = -1;   // ECLIPSE's own colour (ring A), which the expander takes
     bool locked = false;
     // For the note graph: counts every note the source gate picks (repeats
     // included), with its scale degree, out of `span` degrees of `scaleSize`.

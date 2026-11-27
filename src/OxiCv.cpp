@@ -171,7 +171,7 @@ static const int DEFAULT_CC_NUMBERS[NUM_CC] = { 1, 7, 10, 74, 71, 91, 93, 11 };
 // ============================================================================
 // OxiCv module
 // ============================================================================
-struct OxiCv : Module {
+struct OxiCv : AnimatekUI::AccentModule {
 
     enum ParamIds  { NUM_PARAMS };
     enum InputIds  { NUM_INPUTS };
@@ -694,10 +694,10 @@ using SeparatorLine = HorizontalSeparator;
 // ============================================================================
 // OxiCvWidget — 6HP panel
 // ============================================================================
-struct OxiCvWidget : ModuleWidget {
+struct OxiCvWidget : AnimatekUI::AccentModuleWidget {
     OxiCvWidget(OxiCv* module) {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/OxiCv.svg")));
+        setAccentPanel("res/OxiCv.svg");
 
         // Panel is 8HP = 40.64 mm wide (see res/OxiCv.svg)
         static constexpr float LX = 12.0f;
@@ -834,7 +834,7 @@ struct OxiCvWidget : ModuleWidget {
     }
 
     void appendContextMenu(ui::Menu* menu) override {
-        ModuleWidget::appendContextMenu(menu);
+        AnimatekUI::AccentModuleWidget::appendContextMenu(menu);
         auto* m = dynamic_cast<OxiCv*>(module);
         if (m) {
             menu->addChild(new MenuSeparator);

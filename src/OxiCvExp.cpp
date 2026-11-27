@@ -19,7 +19,7 @@ static constexpr float Y_COL_HEADER  = 14.5f;  // column labels above first row
 static constexpr float PANEL_W       = 50.8f;
 static constexpr float Y_TITLE       = 7.5f;   // above divider at y=10.0
 
-struct OxiCvExp : Module {
+struct OxiCvExp : AnimatekUI::AccentModule {
     enum ParamIds  { ENUMS(CH_PARAM, NUM_TRACKS), NUM_PARAMS };
     enum InputIds  { NUM_INPUTS };
     enum OutputIds {
@@ -88,10 +88,10 @@ struct ExpChannelLabel : widget::TransparentWidget {
     }
 };
 
-struct OxiCvExpWidget : ModuleWidget {
+struct OxiCvExpWidget : AnimatekUI::AccentModuleWidget {
     OxiCvExpWidget(OxiCvExp* module) {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/OxiCvExp.svg")));
+        setAccentPanel("res/OxiCvExp.svg");
 
         // The name beside the logo: the same on every panel (see ModuleName).
         AnimatekUI::addModuleName(this, "MULTI");
@@ -132,7 +132,7 @@ struct OxiCvExpWidget : ModuleWidget {
     }
 
     void appendContextMenu(ui::Menu* menu) override {
-        ModuleWidget::appendContextMenu(menu);
+        AnimatekUI::AccentModuleWidget::appendContextMenu(menu);
     }
 };
 

@@ -31,6 +31,16 @@ Registro de cambios de los módulos Animatek. Formato basado en
   `docs/ECLIPSE-SPEC.md`. Las letras A y B se pueden pulsar: sortean LEN (3–32), HITS (1 a
   LEN−1) y ROT de su anillo, en un solo paso de deshacer. El paso donde empieza el patrón de
   cada anillo se dibuja algo más grande y más brillante que los demás, y gira con ROT.
+- **Colour en todos los módulos** (menú contextual → *Colour*): la paleta de Animatek
+  sustituye al azul del módulo entero —barras y logo del panel, jacks de entrada y salida,
+  iconos (los botones de paso y las flechas de UZZ), arcos de los mandos, nombre, pantallas,
+  etiquetas y LEDs azules—. Cada azul pasa al color elegido con la misma profundidad, así
+  que el anillo azul marino de las entradas queda en un tono oscuro del color. Por defecto
+  sigue azul y se guarda con el patch (y en presets y copias). En UZZ, UZZ-X, OXI-CV, su
+  expansor, APC40, ADSRTEK, FILTERTEK, UNIT-D, ATEK303 y ATEK303 SEQ. ECLIPSE lo llama *Ring
+  A colour*, junto a *Ring B colour*; ECLIPSE PITCH toma el de su ECLIPSE; CAP y BUS se
+  pintan enteros del color de su pista. Los blanks siguen con su *Mark colour*. Los LEDs de
+  página de ATEK303 SEQ (RGB, mezclados en el motor) no cambian.
 - **ATEK303: lista WAVE** (menú → *Wave*): las mismas 14 entradas que el ATEK303 del FM-1, de SAW a
   SQUARE pasando por SAW+SUB, FAT, DETUNE+SUB, SHINE, METAL, GROWL, BREATH, WILD, OCTAVES, OCT UP,
   FIFTH UP y SQR+SUB. Cada una pone la onda de base y la capa extra de una vez; el menú marca la que
@@ -60,6 +70,33 @@ Registro de cambios de los módulos Animatek. Formato basado en
   +48); apagada, idéntica bit a bit.
 
 ### Changed
+- **ADSRTEK: atenuadores de CV**, uno encima de cada jack A, D, S y R unido por una línea
+  fina, como en el ADSR de VCV: de −100 % a +100 %, al 100 % por defecto (los patches de
+  antes suenan igual). Los mandos bajan un poco y todo lo de debajo baja para dejarles
+  sitio.
+- **ADSRTEK: guías en la pantalla de la envolvente**, como en el ADSR de VCV: una línea a la
+  altura del pico de lado a lado, una vertical donde empieza el ataque y otra que baja desde
+  el pico; en ADSR, otra al nivel del sustain de lado a lado y otra que baja desde el punto
+  de sustain (solo por debajo de él) donde empieza el release. Se quitan las divisiones de
+  etapa de antes.
+- **CAP y BUS: color por pista.** Cada fila de CAPs que acaba en un BUS es una pista, y la
+  primera CAP de la fila le da un color de la paleta de Animatek que viaja por la cadena: el
+  fader-medidor de todas sus CAPs y el del BUS que la cierra salen de ese color. Una CAP a
+  la derecha de un BUS empieza siempre pista nueva con otro color. En *Auto* cada pista
+  nueva o duplicada coge un color que no tenga otra; se elige a mano desde cualquier CAP de
+  la fila (menú → *Track colour*). El modo filtro de CAP ya no tiñe el medidor de ámbar:
+  sale «LPF» o «LPG» arriba del fader. En el BUS, lo que pasa de 0 dB sale en rojo y no en
+  ámbar, para no confundirlo con la pista naranja.
+- **BUS: panel alineado con CAP.** El fader, WET/PAN y el atenuador del CV, el jack de CV,
+  RETURN, SEND y MIX están a la altura de sus equivalentes en CAP (fader, mandos, fila de
+  CV, IN, ENV/EOC y OUT). El nombre del efecto baja de arriba a debajo de la etiqueta
+  RETURN, en un campo más alto y con letra más grande (12 px; un nombre largo se encoge
+  hasta caber, mínimo 8 px), y el LED de enlace pasa a la esquina de arriba a la izquierda,
+  como en CAP.
+- **BUS: *Pass the mix on to the right* activado por defecto** en los BUS nuevos: la mezcla
+  de cada pista sigue hacia la derecha y el último BUS hace de master (antes la pista
+  quedaba solo en los MIX de su BUS y parecía muteada). Los patches guardados mantienen lo
+  que tenían, y uno sin ese ajuste guardado carga con la fila cerrada, como antes.
 - Las escalas de UNIT-D pasan a `src/Scales.hpp`, compartidas con ECLIPSE; mismo orden, los
   patches de UNIT-D cargan igual.
 - La paleta de los blanks pasa a `src/ui/Palette.hpp`, compartida con ECLIPSE; mismos

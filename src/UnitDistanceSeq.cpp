@@ -52,7 +52,7 @@ static uint32_t hashU32(uint32_t v) {
 
 } // namespace
 
-struct UnitDistanceSeq : Module {
+struct UnitDistanceSeq : AnimatekUI::AccentModule {
     enum ParamIds {
         SEED_PARAM,
         NODES_PARAM,
@@ -1026,10 +1026,10 @@ struct UnitDistanceGraphDisplay : TransparentWidget {
     }
 };
 
-struct UnitDistanceSeqWidget : ModuleWidget {
+struct UnitDistanceSeqWidget : AnimatekUI::AccentModuleWidget {
     UnitDistanceSeqWidget(UnitDistanceSeq* module) {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/UnitDistanceSeq.svg")));
+        setAccentPanel("res/UnitDistanceSeq.svg");
 
         auto label = [&](const char* text, float x, float y, float w = 20.f) {
             auto* l = new TextLabel(text, mm2px(Vec(x - w * 0.5f, y)), mm2px(Vec(w, 4.f)));
@@ -1097,7 +1097,7 @@ struct UnitDistanceSeqWidget : ModuleWidget {
     }
 
     void appendContextMenu(ui::Menu* menu) override {
-        ModuleWidget::appendContextMenu(menu);
+        AnimatekUI::AccentModuleWidget::appendContextMenu(menu);
         auto* m = dynamic_cast<UnitDistanceSeq*>(module);
 
         menu->addChild(new ui::MenuSeparator());

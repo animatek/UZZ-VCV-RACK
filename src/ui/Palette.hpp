@@ -1,5 +1,7 @@
 #pragma once
 
+#include <rack.hpp>
+
 // The Animatek palette, from animatek.net's style guide (the artifact
 // "Animatek — Paleta de colores"). It starts with the three brand colours —the
 // primary blue, the secondary orange that is its exact complement, and the
@@ -23,5 +25,18 @@ static const PaletteColor PALETTE[] = {
     {"Rose",   0xFB, 0x71, 0x85},
 };
 static constexpr int PALETTE_LEN = (int)(sizeof(PALETTE) / sizeof(PALETTE[0]));
+
+/** A palette entry; out of range falls back to the blue. */
+inline const PaletteColor& paletteAt(int idx) {
+    if (idx < 0 || idx >= PALETTE_LEN)
+        idx = 0;
+    return PALETTE[idx];
+}
+
+/** A palette colour as NanoVG wants it; out of range falls back to the blue. */
+inline NVGcolor paletteRGBA(int idx, unsigned char alpha = 255) {
+    const PaletteColor& c = paletteAt(idx);
+    return nvgRGBA(c.r, c.g, c.b, alpha);
+}
 
 } // namespace AnimatekUI

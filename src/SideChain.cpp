@@ -1,5 +1,6 @@
 #include "plugin.hpp"
 #include "ui/CommonWidgets.hpp"
+#include "ui/Palette.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -227,6 +228,21 @@ struct SideChain : Module {
 
     // Double buffer for the chain bus arriving from the left (see plugin.hpp).
     CapBusMessage busMessages[2];
+
+    // Track colour. A CAP that starts a row (nothing linked on its left) is a
+    // track's first: its own colour goes down the row. Any other CAP shows the
+    // colour that arrives. In auto mode a first CAP takes a colour no other
+    // track has; picked or chosen, it is saved with the patch.
+    int trackColor = -1;
+    bool trackColorAuto = true;
+    // Not saved. Set by the audio thread, read by the UI: whether this CAP
+    // starts a row (false until the chain has been seen once), and the colour
+    // it is showing.
+    bool rowStart = false;
+    int shownColor = -1;
+    // Not saved: an auto first CAP looks for a free colour once, when it
+    // becomes a row's first (added, duplicated, loaded or moved there).
+    bool colorSettled = false;
     CapChainLed chainInLed, chainOutLed;
 
     /** Hands the chain on to the right and lights the two chain LEDs: what came
@@ -240,9 +256,15 @@ struct SideChain : Module {
         // that closes its row starts the count again. Not shown anywhere yet:
         // how to show it on the panel is still to be decided.
         const int channel = in.linked ? in.channel + 1 : 1;
+        // A new track starts with nothing on the left or right after a BUS,
+        // even one that passes its audio on.
+        rowStart = !in.linked || in.fromBus;
+        shownColor = rowStart ? trackColor : in.color;
         CapBusMessage msg = out;
         msg.linked = true;
         msg.channel = channel;
+        msg.color = shownColor;
+        msg.fromBus = false;
         capBusSend(*this, msg);
     }
 
@@ -610,6 +632,8 @@ struct SideChain : Module {
         json_object_set_new(root, "levelAffectsEnv", json_boolean(levelAffectsEnv));
         json_object_set_new(root, "chainMix", json_boolean(chainMix));
         json_object_set_new(root, "gateMode", json_integer(gateMode));
+        json_object_set_new(root, "trackColor", json_integer(trackColor));
+        json_object_set_new(root, "trackColorAuto", json_boolean(trackColorAuto));
         json_object_set_new(root, "pingEnvelope", json_boolean(pingEnvelope));
         // Stored as a string: a 64-bit seed does not survive JSON's double.
         json_object_set_new(root, "baseSeed",
@@ -635,6 +659,10 @@ struct SideChain : Module {
         // with a ducking envelope, exactly as they were.
         if (json_t* j = json_object_get(root, "gateMode"))
             gateMode = clamp((int) json_integer_value(j), 0, NUM_GATE_MODES - 1);
+        if (json_t* j = json_object_get(root, "trackColor"))
+            trackColor = (int) json_integer_value(j);
+        if (json_t* j = json_object_get(root, "trackColorAuto"))
+            trackColorAuto = json_boolean_value(j);
         if (json_t* j = json_object_get(root, "pingEnvelope"))
             pingEnvelope = json_boolean_value(j);
         if (json_t* j = json_object_get(root, "baseSeed")) {
@@ -708,12 +736,11 @@ struct LevelSlider : app::SliderKnob {
             float lit = 0.30f + 0.70f * env;
 
             int bars = sideChain ? clamp(sideChain->meterBars, 1, 16) : 1;
-            // Blue is the VCA; amber means a filter is in the path. The mode
-            // lives in the context menu, so the meter is what shows it.
-            const bool filtering = sideChain && sideChain->gateMode != MODE_VCA;
+            // The bars are in the track's colour. A filter in the path is
+            // named at the top of the fader instead (see below).
+            const int colorIdx = sideChain ? sideChain->shownColor : 0;
             auto barColor = [&](uint8_t alpha) {
-                return filtering ? nvgRGBA(0xFF, 0xA0, 0x28, alpha)
-                                 : AnimatekUI::logoBlue(alpha);
+                return AnimatekUI::paletteRGBA(colorIdx, alpha);
             };
             // The gap has to shrink as bars multiply or there is nothing left
             // to draw: at sixteen, a fixed 0.8 px would eat more than half the
@@ -743,16 +770,38 @@ struct LevelSlider : app::SliderKnob {
                 nvgFillColor(args.vg, barColor((uint8_t)(255.f * lit)));
                 nvgFill(args.vg);
             }
+
+            // The mode, when a filter is in the path: the mode lives in the
+            // context menu, so the panel has to say it somewhere.
+            if (sideChain && sideChain->gateMode != MODE_VCA) {
+                std::shared_ptr<window::Font> font =
+                    APP->window->loadFont(asset::system("res/fonts/Nunito-Bold.ttf"));
+                if (font && font->handle >= 0) {
+                    nvgFontFaceId(args.vg, font->handle);
+                    nvgFontSize(args.vg, 7.f);
+                    nvgTextAlign(args.vg, NVG_ALIGN_CENTER | NVG_ALIGN_TOP);
+                    nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xff, 220));
+                    nvgText(args.vg, w * 0.5f, inset + 1.f,
+                            sideChain->gateMode == MODE_LPG ? "LPG" : "LPF", nullptr);
+                }
+            }
         }
         app::SliderKnob::drawLayer(args, layer);
     }
 };
 
 
-struct SideChainWidget : ModuleWidget {
+struct SideChainWidget : AnimatekUI::AccentModuleWidget {
+    // The whole CAP in its track's colour (see Track colour); no menu of its own.
+    int accentIndex() override {
+        SideChain* m = dynamic_cast<SideChain*>(module);
+        return m ? m->shownColor : -1;
+    }
+    bool hasAccentMenu() override { return false; }
+
     SideChainWidget(SideChain* module) {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/SideChain.svg")));
+        setAccentPanel("res/SideChain.svg");
 
         constexpr float W = 30.48f;  // 6 HP
         constexpr float X1 = 8.6f;
@@ -875,10 +924,87 @@ struct SideChainWidget : ModuleWidget {
         addOut("OUT R", X2, 104.5f, SideChain::OUT_R_OUTPUT);
     }
 
+    /** A CAP that has just become the first of a row, in auto mode, takes a
+    colour no other track is using. One that clashes with a track already
+    settled (the original, when this is a duplicate) moves; between two
+    newcomers, the one with the higher id does. Once settled it keeps its
+    colour, so chosen colours and older tracks are left alone. */
+    void settleTrackColor(SideChain* m) {
+        if (!m->rowStart || m->colorSettled)
+            return;
+        m->colorSettled = true;
+        const int n = AnimatekUI::PALETTE_LEN;
+        const bool valid = m->trackColor >= 0 && m->trackColor < n;
+        if (!m->trackColorAuto && valid)
+            return;
+        bool used[AnimatekUI::PALETTE_LEN] = {};
+        bool clash = false;
+        int others = 0;
+        for (int64_t id : APP->engine->getModuleIds()) {
+            SideChain* other = dynamic_cast<SideChain*>(APP->engine->getModule(id));
+            if (!other || other == m || !other->rowStart)
+                continue;
+            others++;
+            int c = other->trackColor;
+            if (c >= 0 && c < n)
+                used[c] = true;
+            if (c == m->trackColor && (other->colorSettled || other->id < m->id))
+                clash = true;
+        }
+        if (valid && !clash)
+            return;
+        int pick = -1;
+        for (int i = 0; i < n && pick < 0; i++)
+            if (!used[i])
+                pick = i;
+        if (pick < 0)   // more tracks than colours: go round the palette again
+            pick = others % n;
+        m->trackColor = pick;
+    }
+
+    void step() override {
+        if (SideChain* m = dynamic_cast<SideChain*>(module))
+            settleTrackColor(m);
+        AnimatekUI::AccentModuleWidget::step();
+    }
+
+    /** The CAP that starts this one's row: walking left through CAPs. Null
+    when the row comes through a BUS that passes its mix on: the colour then
+    comes from further left. */
+    static SideChain* trackStart(SideChain* m) {
+        while (m && !m->rowStart) {
+            Module* left = m->leftExpander.module;
+            m = (left && left->model == modelSideChain) ? static_cast<SideChain*>(left) : nullptr;
+        }
+        return m;
+    }
+
     void appendContextMenu(ui::Menu* menu) override {
         SideChain* module = dynamic_cast<SideChain*>(this->module);
         if (!module)
             return;
+
+        // The track's colour is set on its first CAP, from any CAP of the row.
+        if (SideChain* first = trackStart(module)) {
+            menu->addChild(new ui::MenuSeparator);
+            std::vector<std::string> names = {"Auto (pick a free one)"};
+            for (int i = 0; i < AnimatekUI::PALETTE_LEN; i++)
+                names.push_back(AnimatekUI::PALETTE[i].name);
+            menu->addChild(createIndexSubmenuItem(
+                "Track colour", names,
+                [=]() { return first->trackColorAuto ? 0 : (size_t)std::max(first->trackColor + 1, 0); },
+                [=](size_t i) {
+                    if (i == 0) {
+                        // Let go of the colour and look for a free one again.
+                        first->trackColorAuto = true;
+                        first->trackColor = -1;
+                        first->colorSettled = false;
+                    } else {
+                        first->trackColorAuto = false;
+                        first->trackColor = (int)i - 1;
+                    }
+                }));
+        }
 
         menu->addChild(new ui::MenuSeparator);
         // What the panel button used to do: fire every channel once. It is

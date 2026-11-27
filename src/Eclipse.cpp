@@ -77,7 +77,7 @@ struct GateOut {
 
 } // namespace
 
-struct Eclipse : Module {
+struct Eclipse : AnimatekUI::AccentModule {
     enum ParamId {
         LEN_A_PARAM,
         HITS_A_PARAM,
@@ -440,6 +440,7 @@ struct Eclipse : Module {
             out->voct = oct + (float)octave + (float)(pitch.rootSemitones + semis) / 12.f;
             out->root = oct + (float)pitch.rootSemitones / 12.f;
             out->colorB = colorB;
+            out->colorA = accentColor;
             out->locked = locked();
             out->noteCount = noteCount;
             out->degree = degree;
@@ -665,7 +666,9 @@ struct RingDiceTag : TextLabel {
     }
 };
 
-struct EclipseWidget : ModuleWidget {
+struct EclipseWidget : AnimatekUI::AccentModuleWidget {
+    // The module's colour is ring A's, beside Ring B colour in the menu.
+    std::string accentMenuName() override { return "Ring A colour"; }
 
     // Everything drawn in ring B's colour, repainted when it changes.
     std::vector<TextLabel*> colorBLabels;
@@ -674,7 +677,7 @@ struct EclipseWidget : ModuleWidget {
     explicit EclipseWidget(Eclipse* module) {
         using namespace EclipseLayout;
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/Eclipse.svg")));
+        setAccentPanel("res/Eclipse.svg");
 
         auto label = [&](const char* text, float x, float y, float w = 12.f, NVGcolor color = nvgRGBA(0, 0, 0, 0),
                          float fontSize = 7.5f) {
@@ -807,7 +810,7 @@ struct EclipseWidget : ModuleWidget {
             if (colorBLight)
                 colorBLight->baseColors[0] = c;
         }
-        ModuleWidget::step();
+        AnimatekUI::AccentModuleWidget::step();
     }
 
     /** Rolls a ring: LEN from 3 to 32, HITS from 1 to one less than LEN (a
@@ -856,7 +859,7 @@ struct EclipseWidget : ModuleWidget {
     }
 
     void appendContextMenu(ui::Menu* menu) override {
-        ModuleWidget::appendContextMenu(menu);
+        AnimatekUI::AccentModuleWidget::appendContextMenu(menu);
         auto* m = dynamic_cast<Eclipse*>(module);
         if (!m)
             return;

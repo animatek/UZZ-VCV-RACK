@@ -14,7 +14,7 @@
 
 **BUS** turns a row of **CAP** modules into a mixer. Place CAPs side by side with a BUS to their right: each CAP passes its stereo signal, after its `LEVEL` fader and its pan, to the module on its right, and the BUS outputs the sum. No cables are needed between them.
 
-The BUS also carries a stereo **send and return**, so an effect can be inserted on everything to its left, a **WET** control to blend the return with the dry bus, a **PAN** with CV, a **LEVEL** fader that is also the stereo meter, and a name at the top that it fills in by itself with the effect patched to it.
+The BUS also carries a stereo **send and return**, so an effect can be inserted on everything to its left, a **WET** control to blend the return with the dry bus, a **PAN** with CV, a **LEVEL** fader that is also the stereo meter, and a name, under the `RETURN` label, that it fills in by itself with the effect patched to it. Every row sits at the height of its counterpart on CAP, so a BUS closing a row of CAPs lines up with them.
 
 ---
 
@@ -24,7 +24,8 @@ The BUS also carries a stereo **send and return**, so an effect can be inserted 
 - **A row needs no BUS to be heard.** Without one, the last CAP of the row puts the mix on its own `OUT` (see the CAP manual, *Last in a row*). The other CAPs' `OUT L` / `OUT R` stay direct outputs, and patching them takes nothing away from the mix. A BUS at the end adds the send and return, the master and the meter.
 - What each CAP adds is **post-fader** (after `LEVEL`, the `VCA` CV, the envelope and the mode) and **summed across polyphony**.
 - Each CAP has its own **PAN** trimmer and CV. It is a balance control: in the centre both sides pass at unity, and turning it to one side fades the other. It only affects the mix, not the CAP's own outputs.
-- **A BUS closes its row.** A CAP placed to its right starts a new row, in parallel, with its own mix; its left chain LED stays off. To carry the mix on instead, into another group and then a master, turn on **Pass the mix on to the right** in the BUS's context menu.
+- **A BUS ends its track and passes its mix on.** A CAP placed to its right starts a new track, with a colour of its own, and its mix adds to what the BUS hands on: `CAP CAP BUS CAP CAP BUS` is two tracks into a master. To close the row instead, so the CAP to its right starts a separate mix in parallel, turn off **Pass the mix on to the right** in the BUS's context menu. (Patches saved before this was the default keep the row closed.)
+- **Track colours.** The first CAP of each track gives it a colour from the Animatek palette, and the whole track shows it: the meters of all its CAPs and of the BUS that ends it. In **Auto** each new or duplicated track takes a colour no other track has; choose one by hand from any CAP of the track (context menu → **Track colour**).
 - A **bypassed CAP** keeps the chain alive and adds its input untouched, as its own outputs do when bypassed. A bypassed BUS passes the chain straight through.
 - Every module the signal crosses adds one sample of delay (about 21 µs at 48 kHz), so the CAPs at the far left arrive a few samples later than those near the BUS. That is inaudible unless the same source feeds several CAPs at once.
 
@@ -34,11 +35,11 @@ The BUS also carries a stereo **send and return**, so an effect can be inserted 
 
 ### Name
 
-The field at the top. Left empty, it shows the name of the module patched into `RETURN L` (or, with nothing there, the one `SEND L` feeds), so a BUS with a reverb on it reads as that reverb; with nothing patched it shows **MIX** in grey, since a BUS with no effect is a master. Click it to type your own name, and press Enter or click elsewhere to leave it; what you type wins over the detected name and is saved with the patch. Clear the field to go back to the detected name.
+The field between the `RETURN` label and its jacks. Left empty, it shows the name of the module patched into `RETURN L` (or, with nothing there, the one `SEND L` feeds), so a BUS with a reverb on it reads as that reverb; with nothing patched it shows **MIX** in grey, since a BUS with no effect is a master. Click it to type your own name, and press Enter or click elsewhere to leave it; what you type wins over the detected name and is saved with the patch. Clear the field to go back to the detected name.
 
 ### LINK LED
 
-Lit when a CAP or another BUS sits against the left edge of the BUS, which means the chain is reaching it: dim when linked, brighter with the audio arriving, following its level. If it is off, nothing is arriving. Each CAP also has chain LEDs in its top corners, so a break in a row shows where it is.
+The tiny LED in the top left corner, where CAP has its own. Lit when a CAP or another BUS sits against the left edge of the BUS, which means the chain is reaching it: dim when linked, brighter with the audio arriving, following its level. If it is off, nothing is arriving. Each CAP also has chain LEDs in its top corners, so a break in a row shows where it is.
 
 ### WET
 
@@ -54,7 +55,7 @@ The jack under `PAN`, with the trimmer above it setting how much and in which di
 
 ### LEVEL fader and meter
 
-The fader on the right is the master level, 0 to 100%, applied after the return; the white handle shows where it sits. Default: **100%**. The bars inside it are the peak level of `MIX`, left and right, on a dB scale from −36 to +6 dB relative to 5 V, Rack's nominal audio level. The white tick marks 5 V; the part of a bar above it turns amber, which is where whatever comes next may start to clip.
+The fader on the right is the master level, 0 to 100%, applied after the return; the white handle shows where it sits. Default: **100%**. The bars inside it are the peak level of `MIX`, left and right, on a dB scale from −36 to +6 dB relative to 5 V, Rack's nominal audio level. The bars are in the colour of the track the BUS ends. The white tick marks 5 V; the part of a bar above it turns red, which is where whatever comes next may start to clip.
 
 ---
 

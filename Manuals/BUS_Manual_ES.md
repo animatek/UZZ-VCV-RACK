@@ -14,7 +14,7 @@
 
 **BUS** convierte una fila de módulos **CAP** en un mezclador. Pon varias CAP una al lado de otra con un BUS a su derecha: cada CAP pasa su señal estéreo, después de su fader `LEVEL` y de su panorama, al módulo de su derecha, y el BUS saca la suma. No hace falta ningún cable entre ellos.
 
-El BUS lleva además un **envío y retorno** estéreo, para insertar un efecto sobre todo lo que tiene a su izquierda, un control **WET** para mezclar el retorno con el bus seco, un **PAN** con CV, un fader **LEVEL** que es también el medidor estéreo, y un nombre arriba que se rellena solo con el efecto que tiene conectado.
+El BUS lleva además un **envío y retorno** estéreo, para insertar un efecto sobre todo lo que tiene a su izquierda, un control **WET** para mezclar el retorno con el bus seco, un **PAN** con CV, un fader **LEVEL** que es también el medidor estéreo, y un nombre, bajo la etiqueta `RETURN`, que se rellena solo con el efecto que tiene conectado. Cada fila está a la altura de la suya en la CAP, así que un BUS que cierra una fila de CAP queda alineado con ellas.
 
 ---
 
@@ -24,7 +24,8 @@ El BUS lleva además un **envío y retorno** estéreo, para insertar un efecto s
 - **Una fila no necesita un BUS para sonar.** Sin él, la última CAP de la fila saca la mezcla por su propio `OUT` (ver el manual de CAP, *Last in a row*). Los `OUT L` / `OUT R` de las demás CAP siguen siendo salidas directas, y conectarlos no quita nada de la mezcla. Un BUS al final añade el envío y retorno, el master y el medidor.
 - Lo que aporta cada CAP es **post-fader** (después de `LEVEL`, del CV de `VCA`, de la envolvente y del modo) y **sumado entre canales polifónicos**.
 - Cada CAP tiene su propio trimmer **PAN** y su CV. Es un control de balance: en el centro los dos lados pasan a ganancia unidad, y girarlo hacia un lado atenúa el otro. Solo afecta a la mezcla, no a las salidas propias de la CAP.
-- **Un BUS cierra su fila.** Una CAP colocada a su derecha empieza una fila nueva, en paralelo, con su propia mezcla; su LED de cadena izquierdo queda apagado. Para que la mezcla siga en cambio, hacia otro grupo y luego un master, activa **Pass the mix on to the right** en el menú contextual del BUS.
+- **Un BUS cierra su pista y pasa su mezcla.** Una CAP colocada a su derecha empieza una pista nueva, con su propio color, y su mezcla se suma a lo que el BUS pasa: `CAP CAP BUS CAP CAP BUS` son dos pistas hacia un master. Para cerrar la fila, de modo que la CAP de su derecha empiece una mezcla aparte en paralelo, desactiva **Pass the mix on to the right** en el menú contextual del BUS. (Los patches guardados antes de que esto fuera lo normal mantienen la fila cerrada.)
+- **Colores de pista.** La primera CAP de cada pista le da un color de la paleta de Animatek, y toda la pista lo enseña: los medidores de sus CAP y el del BUS que la cierra. En **Auto** cada pista nueva o duplicada coge un color que no tenga otra; se elige a mano desde cualquier CAP de la pista (menú contextual → **Track colour**).
 - Una **CAP en bypass** mantiene viva la cadena y aporta su entrada sin procesar, como hacen sus salidas en bypass. Un BUS en bypass deja pasar la cadena tal cual.
 - Cada módulo que cruza la señal añade una muestra de retardo (unos 21 µs a 48 kHz), así que las CAP del extremo izquierdo llegan unas muestras más tarde que las cercanas al BUS. No se oye, salvo que la misma fuente alimente varias CAP a la vez.
 
@@ -34,11 +35,11 @@ El BUS lleva además un **envío y retorno** estéreo, para insertar un efecto s
 
 ### Nombre
 
-El campo de arriba. Vacío, muestra el nombre del módulo conectado a `RETURN L` (o, si ahí no hay nada, el que alimenta `SEND L`), así que un BUS con una reverb se lee como esa reverb; sin nada conectado muestra **MIX** en gris, porque un BUS sin efecto es un master. Haz clic para escribir tu propio nombre, y pulsa Intro o haz clic fuera para dejarlo; lo que escribas manda sobre el nombre detectado y se guarda con el patch. Borra el campo para volver al nombre detectado.
+El campo entre la etiqueta `RETURN` y sus jacks. Vacío, muestra el nombre del módulo conectado a `RETURN L` (o, si ahí no hay nada, el que alimenta `SEND L`), así que un BUS con una reverb se lee como esa reverb; sin nada conectado muestra **MIX** en gris, porque un BUS sin efecto es un master. Haz clic para escribir tu propio nombre, y pulsa Intro o haz clic fuera para dejarlo; lo que escribas manda sobre el nombre detectado y se guarda con el patch. Borra el campo para volver al nombre detectado.
 
 ### LED LINK
 
-Encendido cuando hay una CAP u otro BUS pegado al borde izquierdo del BUS, es decir, cuando la cadena llega hasta él: tenue con el enlace hecho, más brillante con el audio que llega, según su nivel. Si está apagado, no llega nada. Cada CAP lleva además LEDs de cadena en sus esquinas de arriba, así que un corte en la fila se ve dónde está.
+El LED pequeño de la esquina de arriba a la izquierda, donde la CAP tiene el suyo. Encendido cuando hay una CAP u otro BUS pegado al borde izquierdo del BUS, es decir, cuando la cadena llega hasta él: tenue con el enlace hecho, más brillante con el audio que llega, según su nivel. Si está apagado, no llega nada. Cada CAP lleva además LEDs de cadena en sus esquinas de arriba, así que un corte en la fila se ve dónde está.
 
 ### WET
 
@@ -54,7 +55,7 @@ El jack bajo `PAN`, con el trimmer de encima fijando cuánto y en qué sentido m
 
 ### Fader LEVEL y medidor
 
-El fader de la derecha es el nivel master, de 0 a 100 %, aplicado después del retorno; la marca blanca dice dónde está. Por defecto: **100 %**. Las barras de dentro son el nivel de pico de `MIX`, izquierda y derecha, en una escala de −36 a +6 dB respecto a 5 V, el nivel nominal de audio en Rack. La marca blanca fina señala 5 V; la parte de la barra por encima se vuelve ámbar, que es donde lo que venga después puede empezar a saturar.
+El fader de la derecha es el nivel master, de 0 a 100 %, aplicado después del retorno; la marca blanca dice dónde está. Por defecto: **100 %**. Las barras de dentro son el nivel de pico de `MIX`, izquierda y derecha, en una escala de −36 a +6 dB respecto a 5 V, el nivel nominal de audio en Rack. Las barras van del color de la pista que cierra el BUS. La marca blanca fina señala 5 V; la parte de la barra por encima se vuelve roja, que es donde lo que venga después puede empezar a saturar.
 
 ---
 

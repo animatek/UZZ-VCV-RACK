@@ -70,6 +70,13 @@ struct CapBusMessage {
     bool linked = false;
     // How many CAPs the row has numbered so far: the next CAP is channel + 1.
     int channel = 0;
+    // The track's colour, an index into the Animatek palette (ui/Palette.hpp):
+    // the first CAP of a row picks it and the rest of the row, BUS included,
+    // shows it. -1 until it has one.
+    int color = -1;
+    // Sent by a BUS that passes its mix on: the audio carries on, but the CAP
+    // to its right starts a new track, with a colour of its own.
+    bool fromBus = false;
 };
 
 // Declare each Model, defined in each module source file

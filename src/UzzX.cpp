@@ -12,7 +12,7 @@ using AnimatekUI::TextLabel;
 // double-fired regardless of engine ordering.
 // ============================================================================
 
-struct UzzX : Module {
+struct UzzX : AnimatekUI::AccentModule {
     enum ParamIds { NUM_PARAMS };
     enum InputIds {
         ENUMS(CV_INPUTS, UZZX_NUM_CVS),
@@ -76,10 +76,10 @@ struct UzzX : Module {
 
 };
 
-struct UzzXWidget : ModuleWidget {
+struct UzzXWidget : AnimatekUI::AccentModuleWidget {
     UzzXWidget(UzzX* module) {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/UzzX.svg")));
+        setAccentPanel("res/UzzX.svg");
 
         constexpr float W = 30.48f;  // 6 HP
         constexpr float C = W * 0.5f;
@@ -124,7 +124,7 @@ struct UzzXWidget : ModuleWidget {
     }
 
     void appendContextMenu(ui::Menu* menu) override {
-        ModuleWidget::appendContextMenu(menu);
+        AnimatekUI::AccentModuleWidget::appendContextMenu(menu);
     }
 };
 

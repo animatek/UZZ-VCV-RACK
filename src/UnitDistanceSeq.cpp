@@ -1,5 +1,6 @@
 #include "plugin.hpp"
 #include "ui/CommonWidgets.hpp"
+#include "Scales.hpp"
 
 #include <array>
 #include <cmath>
@@ -17,31 +18,11 @@ static constexpr int SHORT_LOCK_LOOP_SIZE = 16;
 static constexpr float PI = 3.14159265358979323846f;
 static constexpr float DEFAULT_CLOCK_PERIOD = 0.125f;
 
-// Scales the X position is quantised into. Natural minor stays first: it was the
-// only scale before the selector existed, so it is what older patches load into.
-struct Scale {
-    const char* name;
-    int size;
-    std::array<int, 12> degrees;
-};
-
-static const Scale SCALES[] = {
-    {"Minor", 7, {0, 2, 3, 5, 7, 8, 10}},
-    {"Major", 7, {0, 2, 4, 5, 7, 9, 11}},
-    {"Dorian", 7, {0, 2, 3, 5, 7, 9, 10}},
-    {"Phrygian", 7, {0, 1, 3, 5, 7, 8, 10}},
-    {"Lydian", 7, {0, 2, 4, 6, 7, 9, 11}},
-    {"Mixolydian", 7, {0, 2, 4, 5, 7, 9, 10}},
-    {"Harmonic minor", 7, {0, 2, 3, 5, 7, 8, 11}},
-    {"Minor pentatonic", 5, {0, 3, 5, 7, 10}},
-    {"Major pentatonic", 5, {0, 2, 4, 7, 9}},
-    {"Blues", 6, {0, 3, 5, 6, 7, 10}},
-    {"Chromatic", 12, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}},
-};
-static constexpr int NUM_SCALES = sizeof(SCALES) / sizeof(SCALES[0]);
-
-static const char* ROOT_NAMES[12] = {
-    "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+// Scales the X position is quantised into: the shared list (Scales.hpp).
+using AnimatekScales::Scale;
+using AnimatekScales::SCALES;
+using AnimatekScales::NUM_SCALES;
+using AnimatekScales::ROOT_NAMES;
 
 struct GraphNode {
     float x = 0.f;

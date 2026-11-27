@@ -1,27 +1,16 @@
 #include "plugin.hpp"
+#include "ui/Palette.hpp"
 
 #include <array>
 
 static bool blank3AnimationPaused = false;
 
-// Paleta de las marcas, sacada de la guía de estilo de animatek.net (el artifact
-// "Animatek — Paleta de colores"). Empieza por los tres colores de marca —el azul
-// primario, el naranja secundario que es justo su complementario, y el verde de
-// acento— y sigue con acentos de chip. Cada blank de un grupo coge el siguiente,
-// así que pegar paneles va sumando colores en vez de repetir el azul.
-struct BlankMarkColor {
-    const char* name;
-    unsigned char r, g, b;
-};
-static const BlankMarkColor BLANK_PALETTE[] = {
-    {"Blue",   0x2C, 0x7F, 0xFF},   // Primary
-    {"Orange", 0xFD, 0x9A, 0x00},   // Secondary — complementario del azul
-    {"Green",  0x24, 0xB9, 0x79},   // Accent
-    {"Purple", 0xC0, 0x84, 0xFC},
-    {"Cyan",   0x22, 0xD3, 0xEE},
-    {"Rose",   0xFB, 0x71, 0x85},
-};
-static constexpr int BLANK_PALETTE_LEN = (int)(sizeof(BLANK_PALETTE) / sizeof(BLANK_PALETTE[0]));
+// Paleta de las marcas: la común de Animatek (ui/Palette.hpp). Cada blank de un
+// grupo coge el siguiente color, así que pegar paneles va sumando colores en vez
+// de repetir el azul.
+using BlankMarkColor = AnimatekUI::PaletteColor;
+static const BlankMarkColor* const BLANK_PALETTE = AnimatekUI::PALETTE;
+static constexpr int BLANK_PALETTE_LEN = AnimatekUI::PALETTE_LEN;
 
 // Una copia privada del SVG con el color cambiado. Svg::load() cachea y comparte la
 // instancia, así que teñir esa rompería el resto del plugin: aquí se carga aparte y se

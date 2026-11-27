@@ -88,6 +88,8 @@ extern Model* modelBlank3; // 3HP blank panel
 extern Model* modelBlankAcid; // 3HP blank panel, acid smiley marks
 extern Model* modelAtek303;    // ATEK303 TB-303 voice
 extern Model* modelAtek303Seq; // ATEK303 SEQ acid pattern generator
+extern Model* modelEclipse;    // ECLIPSE double Euclidean ring with logic
+extern Model* modelEclipsePitch; // ECLIPSE PITCH note expander
 
 
 

@@ -22,6 +22,8 @@ void init(Plugin* p) {
 		p->addModel(modelBlankAcid); // 3HP blank panel, acid smiley marks
 		p->addModel(modelAtek303);    // ATEK303 TB-303 voice
 		p->addModel(modelAtek303Seq); // ATEK303 SEQ acid pattern generator
+		p->addModel(modelEclipse);    // ECLIPSE double Euclidean ring with logic
+		p->addModel(modelEclipsePitch); // ECLIPSE PITCH note expander
 
 
 	// Any other plugin initialization may go here.

@@ -9,6 +9,28 @@ Registro de cambios de los módulos Animatek. Formato basado en
 ## [Unreleased]
 
 ### Added
+- **ECLIPSE PITCH (nuevo, fase 2)**, 8 HP: expansor de ECLIPSE que se pega a su derecha y se
+  añade desde su menú (*Add pitch expander*). SRC elige qué gate manda la nota; MODE entre
+  RND (al azar en RANGE) y ACUM (cada golpe de A suma +A grados y cada golpe de B +B).
+  SCALE, KEY, OCT y entrada ROOT (transpone); salidas V/OCT y ROOT. LOCK (botón o gate)
+  vuelve al estado de hace LOOP pasos y lo repite: gates y notas iguales. ECLIPSE se queda
+  en 8 HP solo con el ritmo y enseña el LOCK en su display. Su pantalla es una rueda de
+  notas como los anillos de ECLIPSE, del mismo tamaño y a la misma altura: un anillo de LEDs
+  por octava de RANGE (la grave dentro), un LED por grado con la tónica arriba, más grande,
+  y las últimas 12 notas encendidas y unidas en el orden en que sonaron; la nota que suena
+  en blanco y en grande en el centro, y en las esquinas la tonalidad, el LOCK y el modo.
+- **ECLIPSE (nuevo, fase 1: solo gates)**, 8 HP: dos euclidianos en un círculo. A (fuera,
+  azul) va con el reloj; B (dentro, ámbar) a ÷4…×4 de él. LEN 1–64, HITS y ROT por anillo,
+  GATE global. Salidas A, B, AND, OR y XOR. La lógica se mira al ritmo del reloj más rápido;
+  en el menú, *Logic → Hold* (el golpe dura todo su paso: con B rápido, el AND hace ratchets
+  dentro de los golpes de A) o *Trigger* (solo el tick que avanza). Con B multiplicado, los
+  ticks intermedios que no da tiempo a tocar se saltan en silencio para que B no se desfase
+  de A. El color del anillo B (y de todo lo suyo: RATIO, la B, su salida y su luz) se elige
+  en el menú, *Ring B colour*, con la paleta de Animatek; en *Auto* cada ECLIPSE nuevo o
+  duplicado coge uno que no tenga otro del patch. Especificación y fases siguientes en
+  `docs/ECLIPSE-SPEC.md`. Las letras A y B se pueden pulsar: sortean LEN (3–32), HITS (1 a
+  LEN−1) y ROT de su anillo, en un solo paso de deshacer. El paso donde empieza el patrón de
+  cada anillo se dibuja algo más grande y más brillante que los demás, y gira con ROT.
 - **ATEK303: lista WAVE** (menú → *Wave*): las mismas 14 entradas que el ATEK303 del FM-1, de SAW a
   SQUARE pasando por SAW+SUB, FAT, DETUNE+SUB, SHINE, METAL, GROWL, BREATH, WILD, OCTAVES, OCT UP,
   FIFTH UP y SQR+SUB. Cada una pone la onda de base y la capa extra de una vez; el menú marca la que
@@ -36,6 +58,12 @@ Registro de cambios de los módulos Animatek. Formato basado en
   **cross-mod extrema** al 50 y al 100 % (como sus SFX). Con la extrema el incremento de fase se
   limita a Nyquist. Banco: sin muestras no finitas ni recortes (pico ≤ 0,83, también con el seno a
   +48); apagada, idéntica bit a bit.
+
+### Changed
+- Las escalas de UNIT-D pasan a `src/Scales.hpp`, compartidas con ECLIPSE; mismo orden, los
+  patches de UNIT-D cargan igual.
+- La paleta de los blanks pasa a `src/ui/Palette.hpp`, compartida con ECLIPSE; mismos
+  colores y mismo orden, nada cambia en los patches.
 
 ## [2.5.10] - 2026-10-04
 

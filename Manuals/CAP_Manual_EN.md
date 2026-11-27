@@ -1,8 +1,8 @@
 # CAP User Manual
 
-**Manual version:** 1.1
+**Manual version:** 1.2
 
-**Plugin version:** Animatek 2.5.9
+**Plugin version:** Animatek 2.5.11
 
 **Module:** CAP for VCV Rack
 
@@ -138,7 +138,7 @@ The illuminated bar behind the `LEVEL` slider displays applied gain, not audio a
 - Bar brightness follows the envelope.
 - A stereo or polyphonic patch may show multiple narrow bars.
 - In shared-envelope mode, repeated bars represent the same coherent gain; in per-channel mode, they show the individual channel envelopes.
-- The bar is blue in **VCA** mode and amber in the two filter modes, where its height reads as how open the filter is.
+- The bar is in the colour of the CAP's track (see *Track colour* below). In the two filter modes the mode is written at the top of the fader, `LPF` or `LPG`, and the height of the bar reads as how open the filter is.
 
 ---
 
@@ -154,7 +154,11 @@ What the control signal (the envelope multiplied by `VCA` CV) acts on. `LEVEL` s
 - **Lowpass filter:** the control sets the cutoff of a two-pole lowpass, from 20 Hz with the control closed to 20 kHz with it fully open; the level is left alone. A duck becomes a filtered pump: the hit darkens the sound instead of lowering it. The filter follows the envelope without lag, so the 2 ms fall keeps its punch. Bear in mind that a deep duck pulls the cutoff below the fundamental of most sources, so `DEPTH` decides how dark the hit gets.
 - **Low-pass gate:** cutoff and level close together, through a vactrol model that opens in about 2 ms and closes in 30 ms or more, slower the further it closes. That lag is the low-pass gate sound: the tail of a note keeps losing highs after its level has fallen. It also softens the fall of a duck to some 50 ms.
 
-The meter turns amber in both filter modes, so the mode shows on the panel.
+In both filter modes the fader shows `LPF` or `LPG` at its top, so the mode shows on the panel.
+
+### Track colour
+
+A row of CAPs, up to the BUS that ends it, is a track, and its first CAP gives it a colour from the Animatek palette: the whole CAP takes it (meter, knob arcs, name, panel and jacks), and so does every CAP of the track and the BUS that ends it. In **Auto** (default) each new or duplicated track takes a colour no other track has. This item sets it by hand from any CAP of the track; the choice is saved with the patch. A CAP to the right of a BUS always starts a new track.
 
 ### Ping envelope (trigger opens)
 

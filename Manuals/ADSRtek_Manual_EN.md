@@ -1,8 +1,8 @@
 # ADSRTEK User Manual
 
-**Manual version:** 1.0
+**Manual version:** 1.1
 
-**Plugin version:** Animatek 2.5.9
+**Plugin version:** Animatek 2.5.11
 
 **Module:** ADSRTEK for VCV Rack
 

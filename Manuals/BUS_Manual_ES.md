@@ -1,8 +1,8 @@
 # Manual de usuario de BUS
 
-**Versión del manual:** 1.0
+**Versión del manual:** 1.1
 
-**Versión del plugin:** Animatek 2.5.9
+**Versión del plugin:** Animatek 2.5.11
 
 **Módulo:** BUS para VCV Rack
 

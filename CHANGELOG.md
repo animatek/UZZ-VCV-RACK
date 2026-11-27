@@ -8,6 +8,8 @@ Registro de cambios de los módulos Animatek. Formato basado en
 
 ## [Unreleased]
 
+## [2.5.11] - 2026-11-27
+
 ### Added
 - **Manual de ECLIPSE + ECLIPSE PITCH** en inglés y español (`Manuals/ECLIPSE_Manual_EN.md` / `_ES.md`),
   enlazado desde el README y desde `manualUrl` de los dos módulos en `plugin.json`. La vista previa de
@@ -30,8 +32,7 @@ Registro de cambios de los módulos Animatek. Formato basado en
   ticks intermedios que no da tiempo a tocar se saltan en silencio para que B no se desfase
   de A. El color del anillo B (y de todo lo suyo: RATIO, la B, su salida y su luz) se elige
   en el menú, *Ring B colour*, con la paleta de Animatek; en *Auto* cada ECLIPSE nuevo o
-  duplicado coge uno que no tenga otro del patch. Especificación y fases siguientes en
-  `docs/ECLIPSE-SPEC.md`. Las letras A y B se pueden pulsar: sortean LEN (3–32), HITS (1 a
+  duplicado coge uno que no tenga otro del patch. Manual en `Manuals/ECLIPSE_Manual_EN.md` / `_ES.md`. Las letras A y B se pueden pulsar: sortean LEN (3–32), HITS (1 a
   LEN−1) y ROT de su anillo, en un solo paso de deshacer. El paso donde empieza el patrón de
   cada anillo se dibuja algo más grande y más brillante que los demás, y gira con ROT.
 - **Colour en todos los módulos** (menú contextual → *Colour*): la paleta de Animatek
@@ -73,6 +74,9 @@ Registro de cambios de los módulos Animatek. Formato basado en
   +48); apagada, idéntica bit a bit.
 
 ### Changed
+- **Manuales de CAP, BUS y ADSRTEK al día** con lo de esta versión: el color de pista y la etiqueta
+  LPF/LPG de CAP (ya no hay medidor ámbar), el *pass on* y la nueva colocación del BUS, y los
+  atenuadores de CV de ADSRTEK.
 - **ADSRTEK: atenuadores de CV**, uno encima de cada jack A, D, S y R unido por una línea
   fina, como en el ADSR de VCV: de −100 % a +100 %, al 100 % por defecto (los patches de
   antes suenan igual). Los mandos bajan un poco y todo lo de debajo baja para dejarles

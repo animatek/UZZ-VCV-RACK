@@ -2,7 +2,7 @@
 
 **Versión del manual:** 1.0
 
-**Versión del plugin:** Animatek, la siguiente a la 2.5.10
+**Versión del plugin:** Animatek 2.5.11
 
 **Módulos:** ECLIPSE y ECLIPSE PITCH para VCV Rack
 

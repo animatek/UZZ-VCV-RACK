@@ -1,8 +1,8 @@
 # Manual de usuario de CAP
 
-**Versión del manual:** 1.1
+**Versión del manual:** 1.2
 
-**Versión del plugin:** Animatek 2.5.9
+**Versión del plugin:** Animatek 2.5.11
 
 **Módulo:** CAP para VCV Rack
 
@@ -138,7 +138,7 @@ La barra iluminada tras el deslizador `LEVEL` muestra la ganancia aplicada, no l
 - El brillo de la barra sigue a la envolvente.
 - Un patch estéreo o polifónico puede mostrar varias barras estrechas.
 - En modo compartido, las barras repetidas representan la misma ganancia coherente; en modo por canal muestran las envolventes individuales.
-- La barra es azul en modo **VCA** y ámbar en los dos modos con filtro, donde su altura se lee como lo abierto que está el filtro.
+- La barra va del color de la pista de la CAP (ver *Track colour* más abajo). En los dos modos con filtro el modo se escribe arriba del fader, `LPF` o `LPG`, y la altura de la barra se lee como lo abierto que está el filtro.
 
 ---
 
@@ -154,7 +154,11 @@ Sobre qué actúa la señal de control (la envolvente multiplicada por el CV de 
 - **Lowpass filter:** el control fija el corte de un paso bajo de dos polos, de 20 Hz con el control cerrado a 20 kHz del todo abierto; el nivel no se toca. El duck se convierte en un bombeo filtrado: el golpe oscurece el sonido en vez de bajarlo. El filtro sigue a la envolvente sin retraso, así que la caída de 2 ms conserva su pegada. Ten en cuenta que un duck profundo lleva el corte por debajo de la fundamental de casi cualquier fuente, así que `DEPTH` decide lo oscuro que queda el golpe.
 - **Low-pass gate:** corte y nivel cierran juntos, a través de un modelo de vactrol que abre en unos 2 ms y cierra en 30 ms o más, más despacio cuanto más cerrado está. Ese retraso es el sonido de un low-pass gate: la cola de la nota sigue perdiendo agudos después de que el nivel haya caído. También suaviza la caída de un duck a unos 50 ms.
 
-El medidor se vuelve ámbar en los dos modos con filtro, así que el modo se ve en el panel.
+En los dos modos con filtro el fader enseña `LPF` o `LPG` arriba, así que el modo se ve en el panel.
+
+### Track colour
+
+Una fila de CAP, hasta el BUS que la cierra, es una pista, y su primera CAP le da un color de la paleta de Animatek: la CAP entera lo toma (medidor, arcos de los mandos, nombre, panel y jacks), y también todas las CAP de la pista y el BUS que la cierra. En **Auto** (por defecto) cada pista nueva o duplicada coge un color que no tenga otra. Esta opción lo elige a mano desde cualquier CAP de la pista; se guarda con el patch. Una CAP a la derecha de un BUS empieza siempre una pista nueva.
 
 ### Ping envelope (trigger opens)
 

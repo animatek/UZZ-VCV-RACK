@@ -1,4 +1,6 @@
 #include "plugin.hpp"
+
+#include <array>
 #include "ui/AtekWidgets.hpp"
 #include "ui/AcidEditor.hpp"
 #include "AcidPattern.hpp"
@@ -87,7 +89,11 @@ struct Atek303Seq : AnimatekUI::AccentModule, AcidEditorHost {
 	std::atomic<bool> hasPendingPattern {false};
 
 	dsp::SchmittTrigger clockTrig, resetTrig, genTrig;
-	dsp::BooleanTrigger genButton{}, mutateTimeButton{}, mutatePitchButton{}, mutateArticulationButton{};
+	// The four panel buttons' edge detectors. A std::array and not four members
+	// initialised with {}: GCC 11 rejects value-initialising a dsp trigger (its
+	// inner union's constructor is inaccessible), and the array keeps cppcheck quiet.
+	enum ButtonId { BTN_GENERATE, BTN_MUTATE_TIME, BTN_MUTATE_PITCH, BTN_MUTATE_ARTICULATION, NUM_BUTTONS };
+	std::array<dsp::BooleanTrigger, NUM_BUTTONS> buttonTriggers;
 	dsp::PulseGenerator eocPulse, genPulse, mutateTimePulse, mutatePitchPulse, mutateArticulationPulse;
 
 	int step = 0;
@@ -440,17 +446,17 @@ struct Atek303Seq : AnimatekUI::AccentModule, AcidEditorHost {
 
 	void process(const ProcessArgs& args) override {
 		seedLocked = params[SEED_LOCK_PARAM].getValue() > 0.5f;
-		const bool genPressed = genButton.process(params[GENERATE_PARAM].getValue() > 0.5f);
+		const bool genPressed = buttonTriggers[BTN_GENERATE].process(params[GENERATE_PARAM].getValue() > 0.5f);
 		const bool genTrigged = genTrig.process(inputs[GEN_INPUT].getVoltage(), 0.1f, 1.f);
 		if (genPressed || genTrigged)
 			generateOrMutate();
-		if (mutateTimeButton.process(params[MUTATE_TIME_PARAM].getValue() > 0.5f)
+		if (buttonTriggers[BTN_MUTATE_TIME].process(params[MUTATE_TIME_PARAM].getValue() > 0.5f)
 		    && mutatePattern(AcidPatternMutator::Time))
 			mutateTimePulse.trigger(0.12f);
-		if (mutatePitchButton.process(params[MUTATE_PITCH_PARAM].getValue() > 0.5f)
+		if (buttonTriggers[BTN_MUTATE_PITCH].process(params[MUTATE_PITCH_PARAM].getValue() > 0.5f)
 		    && mutatePattern(AcidPatternMutator::Pitch))
 			mutatePitchPulse.trigger(0.12f);
-		if (mutateArticulationButton.process(params[MUTATE_ARTICULATION_PARAM].getValue() > 0.5f)
+		if (buttonTriggers[BTN_MUTATE_ARTICULATION].process(params[MUTATE_ARTICULATION_PARAM].getValue() > 0.5f)
 		    && mutatePattern(AcidPatternMutator::Articulation))
 			mutateArticulationPulse.trigger(0.12f);
 		const int action = pendingPatternAction.exchange(ACTION_NONE);

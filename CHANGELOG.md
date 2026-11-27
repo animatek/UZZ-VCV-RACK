@@ -8,6 +8,12 @@ Registro de cambios de los módulos Animatek. Formato basado en
 
 ## [Unreleased]
 
+### Fixed
+- **La 2.5.11 no compilaba en Linux con GCC 11** (el compilador del workflow de binarios y de la
+  librería de VCV): los cuatro disparadores de botón de ATEK303 SEQ se inicializaban con `{}` para
+  callar a cppcheck, y GCC 11 no acepta inicializar así un `dsp::BooleanTrigger`. Pasan a un
+  `std::array`, como los de UZZ, que compila en los dos y deja cppcheck limpio.
+
 ## [2.5.11] - 2026-11-27
 
 ### Added
